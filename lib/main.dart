@@ -807,10 +807,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Expanded(
                   child: Slider(
                     min: 0,
-                    max: _duration.inMilliseconds.toDouble().clamp(1, 1 << 31),
+                    max: _duration.inMilliseconds <= 0
+                        ? 1.0
+                        : _duration.inMilliseconds.toDouble(),
                     value: _position.inMilliseconds
-                        .toDouble()
-                        .clamp(0, _duration.inMilliseconds.toDouble()),
+                        .clamp(
+                            0,
+                            _duration.inMilliseconds <= 0
+                                ? 0
+                                : _duration.inMilliseconds)
+                        .toDouble(),
                     onChanged: (v) {
                       player.seek(Duration(milliseconds: v.round()));
                       _startHideTimer();
@@ -952,4 +958,3 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
-
