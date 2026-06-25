@@ -1,3 +1,4 @@
+
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
@@ -808,7 +809,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.initState();
     _playIndex = widget.playlistIndex.clamp(0, (widget.playlist.length - 1).clamp(0, 999999));
     WakelockPlus.enable();
-    VolumeController().showSystemUI = false;
+    VolumeController.instance.showSystemUI = false;
     _subs.add(player.stream.position.listen((pos) {
       _position = pos; _maybeWatched();
       if (mounted) setState(() {});
@@ -896,7 +897,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _hideTimer?.cancel(); _overlayTimer?.cancel();
     WakelockPlus.disable();
     try { ScreenBrightness().resetApplicationScreenBrightness(); } catch (_) {}
-    try { VolumeController().showSystemUI = true; } catch (_) {}
+    try { VolumeController.instance.showSystemUI = true; } catch (_) {}
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     player.dispose();
@@ -947,7 +948,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _seekStartMs = _position.inMilliseconds;
     _subPaddingStart = _subBottomPadding;
     _getBrightness().then((b) => _startBrightness = b);
-    VolumeController().getVolume().then((v) => _startSysVolume = v);
+    VolumeController.instance.getVolume().then((v) => _startSysVolume = v);
   }
 
   void _onScaleUpdate(ScaleUpdateDetails d) {
@@ -988,7 +989,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       case _GMode.volume:
         // صدای سیستم گوشی (۰.۰ تا ۱.۰)
         final nv = (_startSysVolume - dy / _size.height).clamp(0.0, 1.0);
-        VolumeController().setVolume(nv);
+        VolumeController.instance.setVolume(nv);
         _showOverlay('🔊 ${(nv * 100).round()}%');
         break;
       case _GMode.subtitlePos:
@@ -1368,4 +1369,3 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
-
