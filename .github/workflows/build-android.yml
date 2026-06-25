@@ -1,7 +1,5 @@
 name: ساخت اپ اندروید
 
-# این ورک‌فلو هم با هر بار push روی شاخه main اجرا می‌شود،
-# هم می‌توانی دستی از تب Actions اجرایش کنی (دکمه Run workflow).
 on:
   push:
     branches: [ main ]
@@ -11,51 +9,50 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
-      # ۱) دریافت کدهای مخزن
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ۲) نصب جاوا (برای بیلد اندروید لازم است)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # ۳) نصب فلاتر
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      # ۴) ساخت خودکار فایل‌های پلتفرم اندروید (پوشه android و ...)
       - name: Generate Android files
         run: flutter create --platforms=android --org ir.subteam --project-name subtitle_player .
 
-      # ۵) برگرداندن فایل‌های خودمان (چون مرحله بالا ممکن است بازنویسی کند)
       - name: Restore our files
         run: git checkout HEAD -- pubspec.yaml lib/main.dart
 
-      # ۶) بالا بردن compileSdk به 36 (لازمه‌ی پکیج‌های جدید)
-      #    این کار خطای checkReleaseAarMetadata را برطرف می‌کند.
-      - name: Bump compileSdk to 36
+      - name: Force compileSdk 36 everywhere
         run: |
-          if [ -f android/app/build.gradle.kts ]; then
-            sed -i 's/compileSdk = .*/compileSdk = 36/' android/app/build.gradle.kts
+          set -e
+          APP=android/app/build.gradle.kts
+          if [ ! -f "$APP" ]; then APP=android/app/build.gradle; fi
+          sed -i 's/flutter\.compileSdkVersion/36/g' "$APP" || true
+          sed -i -E 's/compileSdk[[:space:]]*=[[:space:]]*[0-9]+/compileSdk = 36/g' "$APP" || true
+          echo "===== APP BUILD FILE ====="
+          cat "$APP"
+          echo "=========================="
+          if [ -f android/build.gradle.kts ]; then
+            printf '\nsubprojects {\n    afterEvaluate {\n        val androidExt = extensions.findByName("android")\n        if (androidExt != null) {\n            try {\n                val m = androidExt.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)\n                m.invoke(androidExt, 36)\n            } catch (e: Exception) {\n                println("skip " + project.name)\n            }\n        }\n    }\n}\n' >> android/build.gradle.kts
+          else
+            printf '\nsubprojects {\n    afterEvaluate { proj ->\n        if (proj.hasProperty("android")) {\n            proj.android.compileSdkVersion 36\n        }\n    }\n}\n' >> android/build.gradle
           fi
-          if [ -f android/app/build.gradle ]; then
-            sed -i 's/compileSdk .*/compileSdk 36/' android/app/build.gradle
-          fi
+          echo "===== ROOT BUILD FILE (tail) ====="
+          tail -n 25 android/build.gradle.kts 2>/dev/null || tail -n 25 android/build.gradle
 
-      # ۷) دریافت پکیج‌ها
       - name: Get packages
         run: flutter pub get
 
-      # ۸) ساخت APK نسخه release
       - name: Build APK
         run: flutter build apk --release
 
-      # ۹) آپلود APK تا بتوانی دانلودش کنی
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
