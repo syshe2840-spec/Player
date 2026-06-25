@@ -40,9 +40,9 @@ jobs:
           cat "$APP"
           echo "=========================="
           if [ -f android/build.gradle.kts ]; then
-            printf '\nsubprojects {\n    afterEvaluate {\n        val androidExt = extensions.findByName("android")\n        if (androidExt != null) {\n            try {\n                val m = androidExt.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)\n                m.invoke(androidExt, 36)\n            } catch (e: Exception) {\n                println("skip " + project.name)\n            }\n        }\n    }\n}\n' >> android/build.gradle.kts
+            printf '\nsubprojects {\n    val forceSdk = {\n        val ext = extensions.findByName("android")\n        if (ext != null) {\n            try {\n                ext.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType).invoke(ext, 36)\n            } catch (e: Exception) {\n                println("skip " + project.name)\n            }\n        }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle.kts
           else
-            printf '\nsubprojects {\n    afterEvaluate { proj ->\n        if (proj.hasProperty("android")) {\n            proj.android.compileSdkVersion 36\n        }\n    }\n}\n' >> android/build.gradle
+            printf '\nsubprojects {\n    def forceSdk = {\n        if (project.hasProperty("android")) { project.android.compileSdkVersion 36 }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle
           fi
           echo "===== ROOT BUILD FILE (tail) ====="
           tail -n 25 android/build.gradle.kts 2>/dev/null || tail -n 25 android/build.gradle
@@ -58,4 +58,3 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
