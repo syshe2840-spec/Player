@@ -1,0 +1,27 @@
+name: subtitle_player
+description: پلیر ویدیو با زیرنویس رمزگذاری‌شده
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # موتور پخش ویدیو (بر پایه mpv) و پشتیبانی اندروید
+  media_kit: ^1.1.10
+  media_kit_video: ^1.2.4
+  media_kit_libs_android_video: ^1.3.6
+
+  # برای انتخاب فایل ویدیو و زیرنویس
+  file_picker: ^8.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
