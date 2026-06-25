@@ -33,6 +33,9 @@ dependencies:
   # روشن نگه داشتن صفحه هنگام پخش
   wakelock_plus: ^1.1.1
 
+  # کنترل صدای سیستم گوشی
+  volume_controller: ^2.0.7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
