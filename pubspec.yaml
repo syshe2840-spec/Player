@@ -15,8 +15,14 @@ dependencies:
   media_kit_video: ^1.2.4
   media_kit_libs_android_video: ^1.3.6
 
-  # برای انتخاب فایل ویدیو و زیرنویس
+  # انتخاب دستی زیرنویس
   file_picker: ^8.0.0
+
+  # دسترسی به حافظه گوشی
+  permission_handler: ^11.3.0
+
+  # کار با مسیر فایل‌ها (پیدا کردن زیرنویس هم‌اسم)
+  path: ^1.8.0
 
 dev_dependencies:
   flutter_test:
