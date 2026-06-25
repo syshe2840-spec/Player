@@ -28,7 +28,7 @@ dependencies:
   shared_preferences: ^2.2.0
 
   # کنترل نور صفحه با اشاره
-  screen_brightness: ^1.0.1
+  screen_brightness: ^2.1.11
 
   # روشن نگه داشتن صفحه هنگام پخش
   wakelock_plus: ^1.1.1
