@@ -1,0 +1,55 @@
+name: ساخت اپ اندروید
+
+# این ورک‌فلو هم با هر بار push روی شاخه main اجرا می‌شود،
+# هم می‌توانی دستی از تب Actions اجرایش کنی (دکمه Run workflow).
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      # ۱) دریافت کدهای مخزن
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ۲) نصب جاوا (برای بیلد اندروید لازم است)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # ۳) نصب فلاتر
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # ۴) ساخت خودکار فایل‌های پلتفرم اندروید (پوشه android و ...)
+      #    این کار باعث می‌شود لازم نباشد خودت این فایل‌ها را بسازی.
+      - name: Generate Android files
+        run: flutter create --platforms=android --org ir.subteam --project-name subtitle_player .
+
+      # ۵) چون مرحله بالا ممکن است فایل‌های ما را بازنویسی کند،
+      #    نسخه‌ی خودمان را برمی‌گردانیم.
+      - name: Restore our files
+        run: git checkout HEAD -- pubspec.yaml lib/main.dart
+
+      # ۶) دریافت پکیج‌ها
+      - name: Get packages
+        run: flutter pub get
+
+      # ۷) ساخت APK نسخه release
+      - name: Build APK
+        run: flutter build apk --release
+
+      # ۸) آپلود APK تا بتوانی دانلودش کنی
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-player-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
