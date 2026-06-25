@@ -470,7 +470,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<double> _getBrightness() async {
     try {
-      return await ScreenBrightness().current;
+      return await ScreenBrightness().application;
     } catch (_) {
       return 0.5;
     }
@@ -478,7 +478,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _setBrightness(double v) async {
     try {
-      await ScreenBrightness().setScreenBrightness(v);
+      await ScreenBrightness().setApplicationScreenBrightness(v);
     } catch (_) {}
   }
 
@@ -492,7 +492,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _overlayTimer?.cancel();
     WakelockPlus.disable();
     try {
-      ScreenBrightness().resetScreenBrightness();
+      ScreenBrightness().resetApplicationScreenBrightness();
     } catch (_) {}
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -952,3 +952,4 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
+
