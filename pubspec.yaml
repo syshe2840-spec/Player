@@ -24,6 +24,15 @@ dependencies:
   # کار با مسیر فایل‌ها (پیدا کردن زیرنویس هم‌اسم)
   path: ^1.8.0
 
+  # ذخیره ویدیوهای دیده‌شده و آخرین موقعیت پخش
+  shared_preferences: ^2.2.0
+
+  # کنترل نور صفحه با اشاره
+  screen_brightness: ^1.0.1
+
+  # روشن نگه داشتن صفحه هنگام پخش
+  wakelock_plus: ^1.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
