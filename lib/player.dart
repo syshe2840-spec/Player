@@ -13,6 +13,7 @@ import 'package:screen_brightness/screen_brightness.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:volume_controller/volume_controller.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'settings.dart';
 
@@ -262,6 +263,27 @@ class _PlayerState extends State<PlayerScreen>{
     }
   }
 
+  Future<void> _translateSubText()async{
+    final text=_subText??_sub2Text;
+    if(text==null)return;
+    final url=Uri.parse('https://translate.google.com/?text=${Uri.encodeComponent(text)}&hl=fa');
+    try{await launchUrl(url,mode:LaunchMode.externalApplication);}catch(_){
+      Clipboard.setData(ClipboardData(text:text));
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('متن کپی شد — در اپ ترجمه paste کنید')));
+    }
+  }
+
+  Future<void> _dictionarySubText()async{
+    final text=_subText??_sub2Text;
+    if(text==null)return;
+    final word=text.split(RegExp(r'\s+')).first.replaceAll(RegExp(r'[^a-zA-Z]'),'');
+    if(word.isEmpty){Clipboard.setData(ClipboardData(text:text));return;}
+    final url=Uri.parse('https://dictionary.cambridge.org/dictionary/english/${Uri.encodeComponent(word)}');
+    try{await launchUrl(url,mode:LaunchMode.externalApplication);}catch(_){
+      Clipboard.setData(ClipboardData(text:text));
+    }
+  }
+
   Future<void> _takeScreenshot()async{
     try{
       final boundary=_videoKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
@@ -356,6 +378,23 @@ class _PlayerState extends State<PlayerScreen>{
       const Spacer(),
       Text(val,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w500)),
     ]),
+  );
+
+  // دکمه ابزار زیرنویس
+  Widget _subToolBtn(IconData icon,String tooltip,VoidCallback onTap)=>Tooltip(
+    message:tooltip,
+    child:GestureDetector(
+      onTap:onTap,
+      child:Container(
+        padding:const EdgeInsets.all(6),
+        decoration:BoxDecoration(
+          color:Colors.black.withOpacity(0.55),
+          borderRadius:BorderRadius.circular(8),
+          border:Border.all(color:Colors.white.withOpacity(0.15)),
+        ),
+        child:Icon(icon,size:16,color:Colors.white70),
+      ),
+    ),
   );
 
   // badge کوچک برای top bar
@@ -598,6 +637,20 @@ class _PlayerState extends State<PlayerScreen>{
           ),
 
         // ── thumbnail preview روی اسلایدر ──
+        // ── نوار ابزار زیرنویس (وقتی متن زیرنویس هست) ──
+        if(sub!=null&&!_locked)
+          Positioned(
+            right:60, // کنار drag handle
+            bottom:_vs.bottomPadding+navBottom+_vs.fontSize*0.4,
+            child:Row(mainAxisSize:MainAxisSize.min,children:[
+              _subToolBtn(Icons.copy_all_rounded,'کپی',_copySubText),
+              const SizedBox(width:4),
+              _subToolBtn(Icons.translate_rounded,'ترجمه',_translateSubText),
+              const SizedBox(width:4),
+              _subToolBtn(Icons.menu_book_rounded,'دیکشنری',_dictionarySubText),
+            ]),
+          ),
+
         // ── نمایش timestamp هنگام کشیدن اسلایدر ──
         if(_seekDragging)
           Positioned(
@@ -818,4 +871,3 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
-
