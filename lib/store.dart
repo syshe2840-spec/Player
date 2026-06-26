@@ -10,7 +10,7 @@ const Set<String> kVideoExt = {
   '.mp4','.mkv','.avi','.mov','.webm','.m4v',
   '.3gp','.flv','.ts','.m2ts','.wmv','.mpg','.mpeg',
 };
-const List<String> kSubExt = ['.srt','.ass','.ssa','.vtt'];
+const List<String> kSubExt = ['.srt','.ass','.ssa','.vtt','.sub','.sbv','.smi','.lrc'];
 
 // فونت‌های پیش‌فرض
 const List<(String label, String family)> kDefaultFonts = [
@@ -139,17 +139,113 @@ Duration _parseAssTime(String s) {
   );
 }
 
-// تجزیه هر فرمت زیرنویس
+// تجزیه هر فرمت زیرنویس — پشتیبانی از همه فرمت‌ها
 List<SubEntry> parseSubtitle(String content, String ext) {
   final lower = ext.toLowerCase();
-  List<SubEntry> result = [];
-  if (lower=='.ass'||lower=='.ssa') {
-    result = parseAss(content);
-  } else {
-    // SRT و VTT هر دو با parseSrt کار می‌کنند
-    result = parseSrt(content);
+  switch(lower) {
+    case '.ass': case '.ssa':
+      return parseAss(content);
+    case '.sub':
+      // SubViewer اگه خط اول با # شروع شد، وگرنه MicroDVD
+      if (content.trimLeft().startsWith('[') || content.contains('-->')) {
+        return parseSrt(content);
+      }
+      final subv = parseSubViewer(content);
+      return subv.isNotEmpty ? subv : parseMicroDvd(content);
+    case '.sbv':
+      return parseSbv(content);
+    case '.lrc':
+      return parseLrc(content);
+    default: // .srt, .vtt و هر چیز دیگه
+      return parseSrt(content);
   }
-  return result;
+}
+
+// SubViewer: H:MM:SS.ss,H:MM:SS.ss\ntext
+List<SubEntry> parseSubViewer(String raw) {
+  final entries = <SubEntry>[];
+  final lines = raw.replaceAll('\r\n','\n').replaceAll('\r','\n').split('\n');
+  for (int i = 0; i < lines.length - 1; i++) {
+    final m = RegExp(r'(\d+:\d+:\d+\.\d+),(\d+:\d+:\d+\.\d+)').firstMatch(lines[i]);
+    if (m != null) {
+      final start = _parseSrtTime(m.group(1)!.replaceAll(',', '.'));
+      final end = _parseSrtTime(m.group(2)!.replaceAll(',', '.'));
+      final text = lines[i + 1].trim();
+      if (text.isNotEmpty) entries.add(SubEntry(start, end, text));
+    }
+  }
+  return entries;
+}
+
+// MicroDVD: {frame}{frame}text — بدون fps تقریبی می‌زنیم 25fps
+List<SubEntry> parseMicroDvd(String raw) {
+  final entries = <SubEntry>[];
+  const fps = 25.0;
+  for (final line in raw.split(RegExp(r'[\r\n]+'))) {
+    final m = RegExp(r'\{(\d+)\}\{(\d+)\}(.+)').firstMatch(line);
+    if (m != null) {
+      final sf = int.tryParse(m.group(1)!) ?? 0;
+      final ef = int.tryParse(m.group(2)!) ?? 0;
+      final text = m.group(3)!.replaceAll('|', '\n').trim();
+      if (text.isNotEmpty) {
+        entries.add(SubEntry(
+          Duration(milliseconds: (sf / fps * 1000).round()),
+          Duration(milliseconds: (ef / fps * 1000).round()),
+          text,
+        ));
+      }
+    }
+  }
+  return entries;
+}
+
+// SBV (YouTube): H:MM:SS.mmm,H:MM:SS.mmm\ntext
+List<SubEntry> parseSbv(String raw) {
+  final entries = <SubEntry>[];
+  final cleaned = raw.replaceAll('\r\n','\n').replaceAll('\r','\n');
+  for (final block in cleaned.trim().split(RegExp(r'\n\n+'))) {
+    final lines = block.trim().split('\n');
+    if (lines.length < 2) continue;
+    final m = RegExp(r'(\d+:\d+:\d+\.\d+),(\d+:\d+:\d+\.\d+)').firstMatch(lines[0]);
+    if (m != null) {
+      final text = lines.sublist(1).join('\n').trim();
+      if (text.isNotEmpty) {
+        entries.add(SubEntry(
+          _parseSrtTime(m.group(1)!),
+          _parseSrtTime(m.group(2)!),
+          text,
+        ));
+      }
+    }
+  }
+  return entries;
+}
+
+// LRC: [mm:ss.xx]text — برای ترانه
+List<SubEntry> parseLrc(String raw) {
+  final entries = <SubEntry>[];
+  final lines = raw.replaceAll('\r\n','\n').split('\n');
+  for (int i = 0; i < lines.length; i++) {
+    final m = RegExp(r'\[(\d+):(\d+\.\d+)\](.*)').firstMatch(lines[i]);
+    if (m == null) continue;
+    final min = int.tryParse(m.group(1)!) ?? 0;
+    final sec = double.tryParse(m.group(2)!) ?? 0;
+    final text = m.group(3)!.trim();
+    final start = Duration(milliseconds: (min * 60000 + sec * 1000).round());
+    // پایان = شروع بعدی یا + ۳ ثانیه
+    Duration end = start + const Duration(seconds: 3);
+    for (int j = i + 1; j < lines.length; j++) {
+      final nm = RegExp(r'\[(\d+):(\d+\.\d+)\]').firstMatch(lines[j]);
+      if (nm != null) {
+        final nmin = int.tryParse(nm.group(1)!) ?? 0;
+        final nsec = double.tryParse(nm.group(2)!) ?? 0;
+        end = Duration(milliseconds: (nmin * 60000 + nsec * 1000).round());
+        break;
+      }
+    }
+    if (text.isNotEmpty) entries.add(SubEntry(start, end, text));
+  }
+  return entries;
 }
 
 // ─── تنظیمات ویدیو (قابل ذخیره per-video) ───
