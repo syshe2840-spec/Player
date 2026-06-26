@@ -1,7 +1,5 @@
 name: ساخت اپ اندروید
 
-# این ورک‌فلو هم با هر بار push روی شاخه main اجرا می‌شود،
-# هم می‌توانی دستی از تب Actions اجرایش کنی (دکمه Run workflow).
 on:
   push:
     branches: [ main ]
@@ -11,42 +9,59 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
-      # ۱) دریافت کدهای مخزن
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ۲) نصب جاوا (برای بیلد اندروید لازم است)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # ۳) نصب فلاتر
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      # ۴) ساخت خودکار فایل‌های پلتفرم اندروید (پوشه android و ...)
-      #    این کار باعث می‌شود لازم نباشد خودت این فایل‌ها را بسازی.
       - name: Generate Android files
         run: flutter create --platforms=android --org ir.subteam --project-name subtitle_player .
 
-      # ۵) چون مرحله بالا ممکن است فایل‌های ما را بازنویسی کند،
-      #    نسخه‌ی خودمان را برمی‌گردانیم.
       - name: Restore our files
         run: git checkout HEAD -- pubspec.yaml lib/main.dart
 
-      # ۶) دریافت پکیج‌ها
+      - name: Add storage permissions
+        run: |
+          set -e
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <application#' "$M"
+          echo "===== MANIFEST ====="
+          cat "$M"
+
+      - name: Force compileSdk 36 everywhere
+        run: |
+          set -e
+          APP=android/app/build.gradle.kts
+          if [ ! -f "$APP" ]; then APP=android/app/build.gradle; fi
+          sed -i 's/flutter\.compileSdkVersion/36/g' "$APP" || true
+          sed -i -E 's/compileSdk[[:space:]]*=[[:space:]]*[0-9]+/compileSdk = 36/g' "$APP" || true
+          if [ -f android/build.gradle.kts ]; then
+            printf '\nsubprojects {\n    val forceSdk = {\n        val ext = extensions.findByName("android")\n        if (ext != null) {\n            try {\n                ext.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType).invoke(ext, 36)\n            } catch (e: Exception) {\n                println("skip " + project.name)\n            }\n        }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle.kts
+          else
+            printf '\nsubprojects {\n    def forceSdk = {\n        if (project.hasProperty("android")) { project.android.compileSdkVersion 36 }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle
+          fi
+
+      - name: Patch jcenter to mavenCentral
+        run: |
+          find /root/.pub-cache/hosted/pub.dev -name "*.gradle" 2>/dev/null | while read f; do
+            grep -q "jcenter()" "$f" 2>/dev/null && sed -i 's/jcenter()/mavenCentral()/g' "$f" && echo "Patched: $f"
+          done || true
+
       - name: Get packages
         run: flutter pub get
 
-      # ۷) ساخت APK نسخه release
       - name: Build APK
         run: flutter build apk --release
 
-      # ۸) آپلود APK تا بتوانی دانلودش کنی
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
