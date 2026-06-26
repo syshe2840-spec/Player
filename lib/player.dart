@@ -58,6 +58,9 @@ class _PlayerState extends State<PlayerScreen>{
   _Repeat _repeatMode=_Repeat.none;
   bool _muted=false,_hwDecode=true;
   double _currentAmpVolume=100.0;
+  // ── PiP + Notification ──
+  static const _pipCh=MethodChannel('ir.subteam.subtitle_player/pip');
+  bool _inPipMode=false;
   double _savedVol=100;
   double _rotationDeg=0;
 
@@ -146,7 +149,10 @@ class _PlayerState extends State<PlayerScreen>{
       if(d.inSeconds>0)Store.saveDur(_curPath,d.inSeconds);
       if(mounted)setState((){});
     }));
-    _subs.add(player.stream.playing.listen((pl){_playing=pl;if(mounted)setState((){});}));
+    _subs.add(player.stream.playing.listen((pl){
+      _playing=pl;
+      if(mounted){setState((){});_notifUpdate();}
+    }));
     _subs.add(player.stream.tracks.listen((t){
       if(!mounted)return;
       final newSubTracks=t.subtitle.where((s)=>s.id!='no'&&s.id!='auto').toList();
@@ -173,6 +179,7 @@ class _PlayerState extends State<PlayerScreen>{
       }
     }));
     _start(); _startHideTimer();
+    _initPipChannel();
   }
 
   Future<void> _start()async{
@@ -485,6 +492,36 @@ class _PlayerState extends State<PlayerScreen>{
     child:Text(text,style:TextStyle(fontSize:9,color:color,fontWeight:FontWeight.w700)),
   );
 
+  void _initPipChannel(){
+    _pipCh.setMethodCallHandler((call)async{
+      if(!mounted)return;
+      switch(call.method){
+        case 'playerAction':
+          final a=call.arguments['action']as String?;
+          if(a=='play')player.play();
+          else if(a=='pause')player.pause();
+          else if(a=='close'){
+            await _pipCh.invokeMethod('hideNotif');
+            if(mounted)Navigator.pop(context);
+          }
+          break;
+        case 'pipModeChanged':
+          if(mounted)setState(()=>_inPipMode=call.arguments['inPip']as bool? ??false);
+          break;
+      }
+    });
+  }
+
+  Future<void> _enterPip()async{
+    try{await _pipCh.invokeMethod('enterPip',{'playing':_playing,'title':p.basename(_curPath)});}
+    catch(_){}
+  }
+
+  void _notifUpdate(){
+    try{_pipCh.invokeMethod('updateState',{'playing':_playing,'title':p.basename(_curPath)});}
+    catch(_){}
+  }
+
   void _startFastSeek(bool forward){
     // forward=true → جلو (چپ صفحه)، forward=false → عقب (راست صفحه)
     if(_locked)return;
@@ -513,6 +550,7 @@ class _PlayerState extends State<PlayerScreen>{
     Store.savePos(_curPath,_position);
     for(final s in _subs)s.cancel();
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
+    try{_pipCh.invokeMethod('hideNotif');}catch(_){}
     WakelockPlus.disable();
     try{ScreenBrightness().resetApplicationScreenBrightness();}catch(_){}
     try{VolumeController.instance.showSystemUI=true;}catch(_){}
@@ -615,6 +653,26 @@ class _PlayerState extends State<PlayerScreen>{
     final bkm=Store.bookmarked.contains(_curPath);
     final sub=_subText,sub2=_sub2Text;
     final align=TextAlign.values[_vs.textAlign.clamp(0,TextAlign.values.length-1)];
+
+    // در حالت PiP فقط ویدیو — بدون کنترل‌ها
+    if(_inPipMode){
+      return Scaffold(backgroundColor:Colors.black,body:Stack(children:[
+        Positioned.fill(child:Video(controller:controller,controls:NoVideoControls,fit:_fit,
+          subtitleViewConfiguration:_embeddedSubEnabled
+            ?SubtitleViewConfiguration(style:TextStyle(fontSize:_vs.fontSize*0.7,
+                color:Color(_vs.textColor),fontWeight:_vs.bold?FontWeight.bold:FontWeight.normal,
+                shadows:const[Shadow(color:Colors.black,blurRadius:8)]),
+                padding:EdgeInsets.only(bottom:8,left:8,right:8))
+            :const SubtitleViewConfiguration(style:TextStyle(fontSize:0,color:Colors.transparent),padding:EdgeInsets.zero),
+        )),
+        if(_subText!=null)Positioned(left:4,right:4,bottom:4,child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
+          color:Color(_vs.bgColor).withOpacity(_vs.bgOpacity),
+          child:Text(_subText!,textAlign:TextAlign.center,style:TextStyle(
+            fontSize:_vs.fontSize*0.7,color:Color(_vs.textColor),fontWeight:FontWeight.bold)),
+        )),
+      ]));
+    }
 
     return Scaffold(
       backgroundColor:Colors.black,
@@ -876,6 +934,8 @@ class _PlayerState extends State<PlayerScreen>{
               videoWidth:_videoWidth,videoHeight:_videoHeight,
             ),
           )),
+          IconButton(icon:const Icon(Icons.picture_in_picture_rounded),
+              tooltip:'PiP',onPressed:_enterPip),
           IconButton(icon:Icon(_landscape?Icons.stay_current_portrait:Icons.screen_rotation),onPressed:_toggleOrientation),
           PopupMenuButton<String>(icon:const Icon(Icons.more_vert),
             onSelected:(v){
