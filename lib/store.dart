@@ -39,14 +39,22 @@ String sizeStr(File f) {
   } catch(_){return '';}
 }
 
-String? matchSubtitle(String videoPath) {
+// همه زیرنویس‌های موجود را به ترتیب برمی‌گرداند
+List<String> findAllSubtitles(String videoPath) {
   final dir = p.dirname(videoPath);
   final base = p.basenameWithoutExtension(videoPath);
+  final found = <String>[];
   for (final ext in kSubExt) {
     final c = p.join(dir,'$base$ext');
-    if (File(c).existsSync()) return c;
+    if (File(c).existsSync()) found.add(c);
   }
-  return null;
+  return found;
+}
+
+// اولین زیرنویس موجود (برای سازگاری قدیم)
+String? matchSubtitle(String videoPath) {
+  final all = findAllSubtitles(videoPath);
+  return all.isEmpty ? null : all.first;
 }
 
 // ─── تجزیه SRT ───
@@ -71,19 +79,77 @@ Duration _parseSrtTime(String s) {
 
 List<SubEntry> parseSrt(String raw) {
   final entries = <SubEntry>[];
-  for (final block in raw.replaceAll('\r\n','\n').replaceAll('\r','\n').trim().split(RegExp(r'\n\n+'))) {
+  // حذف header WEBVTT اگر وجود داشت
+  final cleaned = raw.replaceAll('\r\n','\n').replaceAll('\r','\n');
+  for (final block in cleaned.trim().split(RegExp(r'\n\n+'))) {
     final lines = block.trim().split('\n');
-    if (lines.length<2) continue;
-    for (int i=0;i<lines.length-1;i++) {
+    if (lines.isEmpty) continue;
+    // رد کردن header خط WEBVTT
+    final startIdx = lines[0].startsWith('WEBVTT')||lines[0].trim().isEmpty ? 1 : 0;
+    for (int i=startIdx;i<lines.length-1;i++) {
       final m = RegExp(r'(\d+:\d+:\d+[,.]\d+)\s*-->\s*(\d+:\d+:\d+[,.]\d+)').firstMatch(lines[i]);
       if (m!=null) {
-        final text = lines.sublist(i+1).join('\n').trim();
+        // پاکسازی HTML tags و styling از VTT
+        final rawText = lines.sublist(i+1).join('\n').trim();
+        final text = rawText.replaceAll(RegExp(r'<[^>]+>'), '').trim();
         if (text.isNotEmpty) entries.add(SubEntry(_parseSrtTime(m.group(1)!),_parseSrtTime(m.group(2)!),text));
         break;
       }
     }
   }
   return entries;
+}
+
+// تجزیه فرمت ASS/SSA
+List<SubEntry> parseAss(String raw) {
+  final entries = <SubEntry>[];
+  bool inEvents = false;
+  final lines = raw.replaceAll('\r\n','\n').replaceAll('\r','\n').split('\n');
+  for (final line in lines) {
+    final trimmed = line.trim();
+    if (trimmed.toLowerCase()=='[events]') { inEvents=true; continue; }
+    if (trimmed.startsWith('[') && inEvents) break;
+    if (!inEvents) continue;
+    if (!trimmed.startsWith('Dialogue:')) continue;
+    try {
+      final parts = trimmed.substring(10).split(',');
+      if (parts.length < 10) continue;
+      final start = _parseAssTime(parts[1].trim());
+      final end = _parseAssTime(parts[2].trim());
+      // متن از آیتم دهم به بعد (با کاما join می‌شه)
+      final rawText = parts.sublist(9).join(',').trim();
+      // حذف override tags مثل {\an8} یا {\b1}
+      final text = rawText.replaceAll(RegExp(r'\{[^}]*\}'), '').trim();
+      if (text.isNotEmpty) entries.add(SubEntry(start, end, text));
+    } catch(_) {}
+  }
+  return entries;
+}
+
+Duration _parseAssTime(String s) {
+  // فرمت: H:MM:SS.CC (صدم ثانیه)
+  final parts = s.split(':');
+  if (parts.length != 3) return Duration.zero;
+  final secscs = parts[2].split('.');
+  return Duration(
+    hours: int.tryParse(parts[0]) ?? 0,
+    minutes: int.tryParse(parts[1]) ?? 0,
+    seconds: int.tryParse(secscs[0]) ?? 0,
+    milliseconds: secscs.length > 1 ? (int.tryParse(secscs[1]) ?? 0) * 10 : 0,
+  );
+}
+
+// تجزیه هر فرمت زیرنویس
+List<SubEntry> parseSubtitle(String content, String ext) {
+  final lower = ext.toLowerCase();
+  List<SubEntry> result = [];
+  if (lower=='.ass'||lower=='.ssa') {
+    result = parseAss(content);
+  } else {
+    // SRT و VTT هر دو با parseSrt کار می‌کنند
+    result = parseSrt(content);
+  }
+  return result;
 }
 
 // ─── تنظیمات ویدیو (قابل ذخیره per-video) ───
