@@ -1,3 +1,4 @@
+
 // lib/browser.dart — مرورگر فایل، منوی ویدیو، پانل شناور
 import 'dart:async';
 import 'dart:io';
@@ -442,7 +443,7 @@ class _BrowserState extends State<BrowserScreen> {
     ]));
     if(total==0)return const Center(child:Text('نتیجه‌ای یافت نشد'));
     return ListView.separated(
-      padding:const EdgeInsets.only(bottom:90,top:4),itemCount:total,
+      padding:EdgeInsets.only(bottom:MediaQuery.of(context).viewPadding.bottom+90,top:4),itemCount:total,
       separatorBuilder:(_,__)=>const Divider(height:1,color:Color(0xFF222230)),
       itemBuilder:(ctx,i){
         if(i<fDirs.length){
@@ -639,4 +640,3 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     const ListTile(leading:Icon(Icons.code),title:Text('Flutter + media_kit'),subtitle:Text('Anthropic Claude')),
   ]);
 }
-
