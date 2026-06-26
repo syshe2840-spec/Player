@@ -39,6 +39,20 @@ class _BrowserState extends State<BrowserScreen> {
 
   Future<void> _init()async{await Store.load();await _ensurePermission();}
 
+  // شناسایی همه حافظه‌های موجود (داخلی + SD card + OTG)
+  List<Directory> _getStorageDevices() {
+    final result = <Directory>[];
+    try {
+      for (final entity in Directory('/storage').listSync()) {
+        if (entity is Directory && p.basename(entity.path) != 'emulated' &&
+            p.basename(entity.path) != 'self') {
+          result.add(entity);
+        }
+      }
+    } catch(_) {}
+    return result;
+  }
+
   Future<void> _ensurePermission()async{
     setState(()=>_checking=true);
     var ok=await Permission.manageExternalStorage.isGranted;
@@ -343,6 +357,40 @@ class _BrowserState extends State<BrowserScreen> {
       ),
       IconButton(icon:Icon(_searching?Icons.close:Icons.search),
           onPressed:(){setState((){_searching=!_searching;if(!_searching){_searchQuery='';_searchCtrl.clear();_searchResults=[];_recursiveSearch=false;}});}),
+      // دکمه رفتن به حافظه‌های دیگه و مسیر دلخواه
+      PopupMenuButton<String>(
+        icon:const Icon(Icons.storage),
+        tooltip:'انتخاب حافظه',
+        onSelected:(path){
+          if(path=='__custom__'){
+            final ctrl=TextEditingController(text:_path);
+            showDialog(context:context,builder:(ctx)=>AlertDialog(
+              backgroundColor:const Color(0xFF1C1C22),title:const Text('مسیر دلخواه'),
+              content:TextField(controller:ctrl,autofocus:true,
+                  decoration:const InputDecoration(hintText:'/storage/emulated/0/...')),
+              actions:[
+                TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
+                FilledButton(onPressed:(){final p=ctrl.text.trim();Navigator.pop(ctx);if(p.isNotEmpty)_loadDir(p);},child:const Text('برو')),
+              ],
+            ));
+          } else {
+            _loadDir(path);
+          }
+        },
+        itemBuilder:(_){
+          final items = <PopupMenuEntry<String>>[
+            const PopupMenuItem(value:'/storage/emulated/0',child:Text('📱 حافظه داخلی')),
+            const PopupMenuItem(value:'/storage/emulated/0/Download',child:Text('⬇ دانلودها')),
+            const PopupMenuItem(value:'/storage/emulated/0/Movies',child:Text('🎬 فیلم‌ها')),
+          ];
+          for(final d in _getStorageDevices()){
+            items.add(PopupMenuItem(value:d.path,child:Text('💾 کارت SD: \${p.basename(d.path)}')));
+          }
+          items.add(const PopupMenuDivider());
+          items.add(const PopupMenuItem(value:'__custom__',child:Text('📂 مسیر دلخواه...')));
+          return items;
+        },
+      ),
       if(_path!=root)IconButton(
         icon:Icon(isSaved?Icons.push_pin:Icons.push_pin_outlined,color:isSaved?Colors.amber:null),
         onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
