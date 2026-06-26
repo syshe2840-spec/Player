@@ -94,6 +94,11 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   Widget _sub1Tab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('نمایش زیرنویس'),value:_s1v,
         onChanged:(v){setState(()=>_s1v=v);widget.onSub1Visible(v);}),
+    SwitchListTile(contentPadding:EdgeInsets.zero,
+        title:const Text('نمایش دکمه‌های زیرنویس'),
+        subtitle:const Text('دکمه کپی و آیکون جابجایی روی صفحه'),
+        value:_vs.showSubToolbar,
+        onChanged:(v)=>_ch(()=>_vs.showSubToolbar=v)),
 
     // اندازه فونت
     Text('اندازه فونت: ${_vs.fontSize.round()}'),
