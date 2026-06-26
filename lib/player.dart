@@ -825,7 +825,7 @@ class _PlayerState extends State<PlayerScreen>{
             left:0,right:0,
             bottom:navBottom+52,
             child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-              if(_seekThumbData!=null)ClipRRect(
+              if(_seekThumbData!=null&&_vs.showSeekPreview)ClipRRect(
                 borderRadius:BorderRadius.circular(8),
                 child:Image.memory(_seekThumbData!,width:160,height:90,fit:BoxFit.cover)),
               Container(
@@ -1034,8 +1034,7 @@ class _PlayerState extends State<PlayerScreen>{
             },
             onChanged:(v){
               setState(()=>_seekDragMs=v);
-              _seekThumbTimer?.cancel();
-              _seekThumbTimer=Timer(const Duration(milliseconds:250),()=>_fetchSeekThumb(v.round()));
+              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:250),()=>_fetchSeekThumb(v.round()));}
             },
             onChangeEnd:(v){
               player.seek(Duration(milliseconds:v.round()));
