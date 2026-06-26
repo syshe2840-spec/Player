@@ -130,23 +130,41 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     return _dirs.where((d)=>p.basename(d.path).toLowerCase().contains(_searchQuery.toLowerCase())).toList();
   }
 
-  // جستجوی سراسری — از ریشه حافظه داخلی
+  // جستجوی سراسری — recursion دستی تا پوشه‌های ممنوع skip بشن
   Future<void> _runGlobalSearch(String query)async{
     if(query.isEmpty){setState((){_searchResults=[];_searchRunning=false;});return;}
     setState((){_searchResults=[];_searchRunning=true;});
     final results=<File>[];
-    // جستجو از کل حافظه داخلی (root)
-    final searchRoot=Directory(root);
-    try{
-      await for(final e in searchRoot.list(recursive:true,followLinks:false)){
-        if(e is File&&kVideoExt.contains(p.extension(e.path).toLowerCase())&&
-            p.basename(e.path).toLowerCase().contains(query.toLowerCase())){
+    final q=query.toLowerCase();
+    // شروع از ریشه کل حافظه
+    await _deepSearch(Directory(root),q,results);
+    // اگه SD card داشت اونم بگرده
+    for(final d in _getStorageDevices()){
+      if(mounted&&_searchRunning)await _deepSearch(d,q,results);
+    }
+    if(mounted)setState(()=>_searchRunning=false);
+  }
+
+  Future<void> _deepSearch(Directory dir,String query,List<File> results)async{
+    if(!mounted||!_searchRunning)return;
+    List<FileSystemEntity> entities;
+    try{entities=await dir.list(recursive:false).toList();}catch(_){return;}
+    for(final e in entities){
+      if(!mounted||!_searchRunning)return;
+      if(e is File){
+        if(kVideoExt.contains(p.extension(e.path).toLowerCase())&&
+            p.basename(e.path).toLowerCase().contains(query)){
           results.add(e);
           if(mounted)setState(()=>_searchResults=List.from(results));
         }
+      }else if(e is Directory){
+        // skip پوشه‌های سیستمی
+        final name=p.basename(e.path);
+        if(!name.startsWith('.')&&name!='proc'&&name!='sys'&&name!='dev'){
+          await _deepSearch(e,query,results);
+        }
       }
-    }catch(_){}
-    if(mounted)setState(()=>_searchRunning=false);
+    }
   }
 
   Future<void> _openVideo(File video,[List<File>?playlist,int?idx])async{
