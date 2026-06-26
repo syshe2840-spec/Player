@@ -286,13 +286,21 @@ class _PlayerState extends State<PlayerScreen>{
   void _onDoubleTap(){
     if(_locked)return;
     final third=_size.width/3;
-    if(_doubleTapPos.dx<third){var t=_position-const Duration(seconds:10);if(t<Duration.zero)t=Duration.zero;player.seek(t);_showOverlay('⏮ ۱۰ ثانیه');}
-    else if(_doubleTapPos.dx>third*2){player.seek(_position+const Duration(seconds:10));_showOverlay('۱۰ ثانیه ⏭');}
+    if(_doubleTapPos.dx>third*2){var t=_position-const Duration(seconds:10);if(t<Duration.zero)t=Duration.zero;player.seek(t);_showOverlay('⏮ ۱۰ ثانیه');}
+    else if(_doubleTapPos.dx<third){player.seek(_position+const Duration(seconds:10));_showOverlay('۱۰ ثانیه ⏭');}
     else{_playing?player.pause():player.play();_showOverlay(_playing?'⏸':'▶');_startHideTimer();}
   }
 
   Future<double> _getBr()async{try{return await ScreenBrightness().application;}catch(_){return 0.5;}}
   Future<void> _setBr(double v)async{try{await ScreenBrightness().setApplicationScreenBrightness(v.clamp(0.0,1.0));}catch(_){}}
+
+  // تشخیص اینکه انگشت نزدیک زیرنویس هست یا نه
+  bool _isNearSubtitle(){
+    if(!_sub1Visible) return false;
+    final subY = _size.height - _vs.bottomPadding;
+    return _startFocal.dy >= subY - _vs.fontSize * 4.0 &&
+           _startFocal.dy <= subY + 70;
+  }
 
   void _onScaleStart(ScaleStartDetails d){
     if(_locked)return;
@@ -309,14 +317,14 @@ class _PlayerState extends State<PlayerScreen>{
       if(dx.abs()<8&&dy.abs()<8)return;
       if(_scale>1.05&&dx.abs()<dy.abs()*2){_mode=_GMode.pan;}
       else if(dx.abs()>dy.abs()){_mode=_GMode.seek;}
-      else if(_sub1Visible&&_startFocal.dy>_size.height*0.6){_mode=_GMode.subtitlePos;}
+      else if(_isNearSubtitle()){_mode=_GMode.subtitlePos;}
       else if(_startFocal.dx>_size.width/2){_mode=_GMode.brightness;}
       else{_mode=_GMode.volume;}
     }
     switch(_mode){
       case _GMode.pan:setState(()=>_offset=_baseOffset+(d.localFocalPoint-_startFocal));break;
       case _GMode.seek:
-        _seekTargetMs=(_seekStartMs+((dx/_size.width)*90000).round()).clamp(0,_duration.inMilliseconds);
+        _seekTargetMs=(_seekStartMs+((-dx/_size.width)*90000).round()).clamp(0,_duration.inMilliseconds);
         _showOverlay('${fmt(Duration(milliseconds:_seekTargetMs))} / ${fmt(_duration)}');break;
       case _GMode.brightness:final nb=(_startBrightness-dy/_size.height).clamp(0.0,1.0);_setBr(nb);_showOverlay('☀ ${(nb*100).round()}%');break;
       case _GMode.volume:final nv=(_startSysVol-dy/_size.height).clamp(0.0,1.0);VolumeController.instance.setVolume(nv);_showOverlay('🔊 ${(nv*100).round()}%');break;
@@ -352,7 +360,7 @@ class _PlayerState extends State<PlayerScreen>{
 
       // ── زیرنویس ۱ ──
       if(sub!=null)Positioned(left:12,right:12,bottom:_vs.bottomPadding,child:Align(
-        alignment:_vs.textAlign==0?Alignment.bottomRight:_vs.textAlign==2?Alignment.bottomLeft:Alignment.bottomCenter,
+        alignment:_vs.textAlign==1?Alignment.bottomRight:_vs.textAlign==0?Alignment.bottomLeft:Alignment.bottomCenter,
         child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
           decoration:BoxDecoration(color:Color(_vs.bgColor).withOpacity(_vs.bgOpacity),borderRadius:BorderRadius.circular(5)),
           child:Text(sub,textAlign:align,style:TextStyle(
