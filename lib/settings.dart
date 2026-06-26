@@ -57,6 +57,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   final List<Color> _bgColors=const[Colors.black,Color(0xFF0D1B2A),Color(0xFF1B2E1B),Color(0xFF2A1B1B),Color(0xFF1B1B2E),Colors.transparent];
 
   bool _hwDecode=true;
+  bool _embeddedSub=true;
   final TextEditingController _d1Ctrl=TextEditingController();
   final TextEditingController _d2Ctrl=TextEditingController();
   final TextEditingController _adCtrl=TextEditingController();
@@ -65,6 +66,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   void initState(){
     super.initState();
     _tab=TabController(length:4,vsync:this);
+    _embeddedSub=widget.embeddedSubEnabled;
     _vs=widget.vs;_sd1=widget.subDelayMs;_sd2=widget.subDelay2Ms;_ad=widget.audioDelayMs;
     _c2=widget.color2;_speed=widget.speed;_amp=widget.ampVolume;
     _s1v=widget.sub1Visible;_s2v=widget.sub2Visible;
@@ -274,8 +276,8 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     SwitchListTile(contentPadding:EdgeInsets.zero,
       title:const Text('زیرنویس داخلی (Embedded)'),
       subtitle:const Text('libmpv تراک‌های داخلی را نمایش دهد'),
-      value:widget.embeddedSubEnabled,
-      onChanged:widget.onEmbeddedSubEnabled,
+      value:_embeddedSub,
+      onChanged:(v){setState(()=>_embeddedSub=v);widget.onEmbeddedSubEnabled(v);},
     ),
     const Divider(height:16),
     const Text('دیکودر',style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
