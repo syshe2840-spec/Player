@@ -4,9 +4,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
-import 'package:video_thumbnail/video_thumbnail.dart';
 import 'store.dart';
 import 'player.dart';
 
@@ -44,15 +44,13 @@ Widget _badge(String text,Color color)=>Container(
   child:Text(text,style:TextStyle(fontSize:10,color:color,fontWeight:FontWeight.w600,height:1.2)),
 );
 
-// ── کش thumbnail ──
+// ── کش thumbnail با MethodChannel → MediaMetadataRetriever ──
 final Map<String,Uint8List?> _thumbCache={};
+const _thumbChannel=MethodChannel('ir.subteam.subtitle_player/thumbnail');
 Future<Uint8List?> _loadThumb(String path)async{
   if(_thumbCache.containsKey(path))return _thumbCache[path];
   try{
-    final data=await VideoThumbnail.thumbnailData(
-      video:path,imageFormat:ImageFormat.JPEG,
-      maxHeight:120,maxWidth:120,quality:70,timeMs:1000,
-    );
+    final data=await _thumbChannel.invokeMethod<Uint8List>('getThumbnail',{'path':path,'width':160,'height':90});
     return _thumbCache[path]=data;
   }catch(_){return _thumbCache[path]=null;}
 }
