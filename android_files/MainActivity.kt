@@ -37,6 +37,7 @@ class MainActivity : FlutterActivity() {
     private var pipCh: MethodChannel? = null
     private var playing   = false
     private var title     = "پلیر"
+    private var playerActive = false  // فقط وقتی پلیر باز باشه PiP مجاز
     // cache برای thumbnail
     private val thumbCache = HashMap<String, ByteArray?>()
 
@@ -74,8 +75,8 @@ class MainActivity : FlutterActivity() {
                         val ok = try { enterPip(); true } catch (e: Exception) { android.util.Log.e("PiP","enterPip failed: $e"); false }
                         result.success(ok)
                     }
-                    "updateState" -> { playing = call.argument<Boolean>("playing") ?: false; title = call.argument<String>("title") ?: title; showNotif(); if (Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode) updatePipParams(); result.success(null) }
-                    "hideNotif" -> { nm().cancel(NOTIF_ID); result.success(null) }
+                    "updateState" -> { playing = call.argument<Boolean>("playing") ?: false; playerActive = true; title = call.argument<String>("title") ?: title; showNotif(); if (Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode) updatePipParams(); result.success(null) }
+                    "hideNotif" -> { nm().cancel(NOTIF_ID); playerActive = false; playing = false; result.success(null) }
                     else -> result.notImplemented()
                 }
             }
@@ -147,7 +148,8 @@ class MainActivity : FlutterActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (playing && Build.VERSION.SDK_INT >= 26) try { enterPip() } catch (_: Exception) {}
+        // فقط وقتی پلیر باز و در حال پخش است PiP فعال شود
+        if (playing && playerActive && Build.VERSION.SDK_INT >= 26) try { enterPip() } catch (_: Exception) {}
     }
 
     override fun onDestroy() {
