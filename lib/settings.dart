@@ -76,9 +76,10 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         Tab(text:'زیرنویس ۲',icon:Icon(Icons.subtitles_outlined,size:16)),
         Tab(text:'سایر',icon:Icon(Icons.more_horiz,size:16)),
       ]),
-      SizedBox(height:MediaQuery.of(context).size.height*0.55,child:TabBarView(controller:_tab,children:[
+      SizedBox(height:MediaQuery.of(context).size.height*0.48,child:TabBarView(controller:_tab,children:[
         _sub1Tab(),_audioTab(),_sub2Tab(),_otherTab(),
       ])),
+      SizedBox(height:MediaQuery.of(context).viewPadding.bottom+4),
     ]);
   }
 
@@ -114,9 +115,9 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     const SizedBox(height:8),const Text('چینش'),const SizedBox(height:8),
     SegmentedButton<int>(
       segments:const[
-        ButtonSegment(value:0,label:Text('راست'),icon:Icon(Icons.format_align_right,size:16)),
-        ButtonSegment(value:1,label:Text('وسط'),icon:Icon(Icons.format_align_center,size:16)),
-        ButtonSegment(value:2,label:Text('چپ'),icon:Icon(Icons.format_align_left,size:16)),
+        ButtonSegment(value:1,label:Text('راست'),icon:Icon(Icons.format_align_right,size:16)),
+        ButtonSegment(value:2,label:Text('وسط'),icon:Icon(Icons.format_align_center,size:16)),
+        ButtonSegment(value:0,label:Text('چپ'),icon:Icon(Icons.format_align_left,size:16)),
       ],
       selected:{_vs.textAlign},onSelectionChanged:(s)=>_ch(()=>_vs.textAlign=s.first),
     ),
