@@ -60,27 +60,17 @@ class _PlayerState extends State<PlayerScreen>{
   int? _videoWidth,_videoHeight;
   VideoParams? _videoParams;
 
-  // HDR detection
+  // HDR detection — فقط pixelformat موجود در media_kit 1.2.6
   bool get _isHDR {
     if(_videoParams==null) return false;
     final pf=(_videoParams!.pixelformat??'').toLowerCase();
-    final vf=(_videoParams!.videoformat??'').toLowerCase();
-    return pf.contains('p10')||pf.contains('p12')||pf.contains('10le')||
-           vf.contains('dvh')||vf.contains('dovi');
+    return pf.contains('p10')||pf.contains('p12')||pf.contains('10le')||pf.contains('16le');
   }
-  String get _codecStr => _videoParams?.videoformat?.toUpperCase()??'';
-  String get _fpsStr {
-    final fps=_videoParams?.fps;
-    if(fps==null||fps<=0) return '';
-    return '${fps.round()}fps';
-  }
-  String get _bitrateStr {
-    final br=_videoParams?.bitrate;
-    if(br==null||br<=0) return '';
-    if(br>1000000) return '${(br/1000000).toStringAsFixed(1)}Mbps';
-    return '${(br/1000).toStringAsFixed(0)}Kbps';
-  }
+  String get _codecStr => '';   // media_kit 1.2.6 این فیلد را ندارد
+  String get _fpsStr => '';     // media_kit 1.2.6 این فیلد را ندارد
+  String get _bitrateStr => ''; // media_kit 1.2.6 این فیلد را ندارد
   String get _resStr => (_videoWidth!=null&&_videoHeight!=null)?'${_videoWidth}×${_videoHeight}':'';
+  String get _pixelFmtStr => _videoParams?.pixelformat??'';
 
   // A-B
   Duration? _repeatA,_repeatB;
@@ -182,8 +172,9 @@ class _PlayerState extends State<PlayerScreen>{
       );
       if(resume==true&&mounted)await player.seek(saved);
     }
-    final sub=widget.subtitlePath??matchSubtitle(_curPath);
-    if(sub!=null)await _loadSub(sub,secondary:false);
+    // امتحان همه زیرنویس‌های موجود به ترتیب اولویت
+    final subPath=widget.subtitlePath??matchSubtitle(_curPath);
+    if(subPath!=null)await _loadSub(subPath,secondary:false);
     if(_vs.speed!=1.0)player.setRate(_vs.speed);
   }
 
@@ -209,13 +200,37 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   Future<void> _loadSub(String path,{required bool secondary})async{
-    final bytes=await File(path).readAsBytes();
-    String content;
-    try{content=utf8.decode(bytes);}catch(_){content=utf8.decode(bytes,allowMalformed:true);}
-    if(['.srt','.vtt'].contains(p.extension(path).toLowerCase())){
-      final entries=parseSrt(content);
-      if(secondary){setState((){_sub2=entries;_sub2Path=path;_sub2Visible=true;});}
+    try{
+      final bytes=await File(path).readAsBytes();
+      String content;
+      try{content=utf8.decode(bytes);}catch(_){content=utf8.decode(bytes,allowMalformed:true);}
+      final ext=p.extension(path).toLowerCase();
+      var entries=parseSubtitle(content,ext);
+      // اگه خالی بود، سعی کن فرمت‌های دیگه همون ویدیو رو پیدا کن
+      if(entries.isEmpty&&!secondary){
+        final videoPath=_curPath;
+        final allSubs=findAllSubtitles(videoPath);
+        for(final altPath in allSubs){
+          if(altPath==path)continue;
+          try{
+            final altBytes=await File(altPath).readAsBytes();
+            String altContent;
+            try{altContent=utf8.decode(altBytes);}catch(_){altContent=utf8.decode(altBytes,allowMalformed:true);}
+            final altEntries=parseSubtitle(altContent,p.extension(altPath).toLowerCase());
+            if(altEntries.isNotEmpty){
+              entries=altEntries;
+              if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content:Text('زیرنویس خالی بود — استفاده از: \${p.basename(altPath)}')));
+              break;
+            }
+          }catch(_){}
+        }
+      }
+      if(secondary){setState((){_sub2=entries;_sub2Path=path;_sub2Visible=entries.isNotEmpty;});}
       else{setState(()=>_sub1=entries);}
+    }catch(e){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content:Text('خطا در بارگذاری زیرنویس: \${p.basename(path)}')));
     }
   }
 
@@ -320,12 +335,12 @@ class _PlayerState extends State<PlayerScreen>{
         if(_codecStr.isNotEmpty)_infoRow(Icons.code_rounded,const Color(0xFF10B981),'کدک',_codecStr),
         if(_bitrateStr.isNotEmpty)_infoRow(Icons.network_check_rounded,const Color(0xFFF59E0B),'بیت‌ریت',_bitrateStr),
         if(_isHDR)_infoRow(Icons.hdr_on_rounded,const Color(0xFFEC4899),'HDR','فعال ✓'),
+        if(_pixelFmtStr.isNotEmpty)_infoRow(Icons.palette_rounded,const Color(0xFF7C3AED),'Pixel Format',_pixelFmtStr),
         _infoRow(Icons.timer_outlined,const Color(0xFF94A3B8),'مدت',fmt(_duration)),
         _infoRow(Icons.memory_rounded,const Color(0xFF94A3B8),'دیکودر',_hwDecode?'سخت‌افزاری (HW)':'نرم‌افزاری (SW)'),
         if(_audioTracks.isNotEmpty)
           _infoRow(Icons.music_note_rounded,const Color(0xFF94A3B8),'تراک صوتی','${_audioTracks.length} تراک'),
-        if(_videoParams?.hwdecCurrent!=null&&(_videoParams!.hwdecCurrent!.isNotEmpty&&_videoParams!.hwdecCurrent!='no'))
-          _infoRow(Icons.developer_board_rounded,const Color(0xFF0EA5E9),'HW Decoder',_videoParams!.hwdecCurrent!),
+        if(_hwDecode)_infoRow(Icons.developer_board_rounded,const Color(0xFF0EA5E9),'دیکودر','سخت‌افزاری فعال'),
       ]),
       actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
     ));
