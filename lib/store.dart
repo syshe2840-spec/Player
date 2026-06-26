@@ -260,6 +260,7 @@ class VideoSettings {
   String fontFamily;
   double speed;
   double nightOpacity;
+  bool showSubToolbar;
 
   VideoSettings({
     this.fontSize=30,this.bold=true,this.textColor=0xFFFFFFFF,
@@ -282,6 +283,7 @@ class VideoSettings {
     fontFamily:m['fontFamily']as String? ??'',
     speed:(m['speed']as num? ??1.0).toDouble(),
     nightOpacity:(m['nightOpacity']as num? ??0).toDouble(),
+    showSubToolbar:m['showSubToolbar']as bool? ??true,
   );
 }
 
