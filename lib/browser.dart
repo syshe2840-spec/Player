@@ -50,7 +50,7 @@ const _thumbChannel=MethodChannel('ir.subteam.subtitle_player/thumbnail');
 Future<Uint8List?> _loadThumb(String path)async{
   if(_thumbCache.containsKey(path))return _thumbCache[path];
   try{
-    final data=await _thumbChannel.invokeMethod<Uint8List>('getThumbnail',{'path':path,'width':160,'height':90});
+    final data=await _thumbChannel.invokeMethod<Uint8List>('getThumbnail',{'path':path,'timeMs':2000,'width':160,'height':90});
     return _thumbCache[path]=data;
   }catch(_){return _thumbCache[path]=null;}
 }
@@ -955,3 +955,4 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         ])),
   ]);
 }
+
