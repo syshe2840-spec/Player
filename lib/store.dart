@@ -308,6 +308,11 @@ class Store {
     favorited = (prefs.getStringList('favorites')??[]).toSet();
     savedFolders = prefs.getStringList('savedFolders')??[];
     watchHistory = prefs.getStringList('watchHistory')??[];
+    final plJson = prefs.getString('playlists');
+    if(plJson!=null){
+      final m=json.decode(plJson)as Map;
+      playlists=m.map((k,v)=>MapEntry(k as String,(v as List).map((e)=>e as String).toList()));
+    }
     final rJson = prefs.getString('ratings');
     if (rJson!=null) {
       final m = json.decode(rJson) as Map;
@@ -346,6 +351,28 @@ class Store {
     savedFolders.contains(path)?savedFolders.remove(path):savedFolders.add(path);
     _save('savedFolders',savedFolders);
   }
+  // ── Playlists ──
+  static Map<String,List<String>> playlists={};
+
+  static Future<void> _savePlaylists()async=>(await SharedPreferences.getInstance()).setString('playlists',json.encode(playlists));
+
+  static Future<void> createPlaylist(String name)async{
+    if(!playlists.containsKey(name)){playlists[name]=[];await _savePlaylists();}
+  }
+  static Future<void> deletePlaylist(String name)async{playlists.remove(name);await _savePlaylists();}
+  static Future<void> addToPlaylist(String name,String path)async{
+    if(!playlists.containsKey(name))playlists[name]=[];
+    if(!playlists[name]!.contains(path))playlists[name]!.add(path);
+    await _savePlaylists();
+  }
+  static Future<void> removeFromPlaylist(String name,String path)async{playlists[name]?.remove(path);await _savePlaylists();}
+  static Future<void> reorderPlaylist(String name,int old,int nw)async{
+    final list=playlists[name];if(list==null)return;
+    final item=list.removeAt(old);
+    list.insert((nw>old?nw-1:nw).clamp(0,list.length),item);
+    await _savePlaylists();
+  }
+
   static Future<void> addToHistory(String path) async {
     watchHistory.remove(path); watchHistory.insert(0,path);
     if (watchHistory.length>100) watchHistory=watchHistory.sublist(0,100);
