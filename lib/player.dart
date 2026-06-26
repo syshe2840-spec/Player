@@ -1,5 +1,6 @@
 // lib/player.dart — پلیر ویدیو
 import 'dart:async';
+import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -91,6 +92,8 @@ class _PlayerState extends State<PlayerScreen>{
   // اسلایدر پیش‌نمایش
   bool _seekDragging=false;
   double _seekDragMs=0;
+  Uint8List? _seekThumbData;
+  Timer? _seekThumbTimer;
   // Fast seek (long press)
   bool _fastSeeking=false;
   bool _fastSeekRight=false;
@@ -517,6 +520,16 @@ class _PlayerState extends State<PlayerScreen>{
     catch(_){}
   }
 
+  // thumbnail پیش‌نمایش seek — با timeMs دقیق
+  static const _thumbCh=MethodChannel('ir.subteam.subtitle_player/thumbnail');
+  Future<void> _fetchSeekThumb(int ms)async{
+    try{
+      final data=await _thumbCh.invokeMethod<Uint8List>('getThumbnail',
+          {'path':_curPath,'timeMs':ms});
+      if(mounted&&_seekDragging)setState(()=>_seekThumbData=data);
+    }catch(_){}
+  }
+
   void _notifUpdate(){
     try{_pipCh.invokeMethod('updateState',{'playing':_playing,'title':p.basename(_curPath)});}
     catch(_){}
@@ -802,18 +815,19 @@ class _PlayerState extends State<PlayerScreen>{
           Positioned(
             left:0,right:0,
             bottom:navBottom+52,
-            child:Center(child:Container(
-              padding:const EdgeInsets.symmetric(horizontal:16,vertical:8),
-              decoration:BoxDecoration(
-                color:Colors.black.withOpacity(0.75),
+            child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+              if(_seekThumbData!=null)ClipRRect(
                 borderRadius:BorderRadius.circular(8),
-                border:Border.all(color:Colors.white24,width:1),
+                child:Image.memory(_seekThumbData!,width:160,height:90,fit:BoxFit.cover)),
+              Container(
+                margin:EdgeInsets.only(top:_seekThumbData!=null?4:0),
+                padding:const EdgeInsets.symmetric(horizontal:14,vertical:6),
+                decoration:BoxDecoration(color:Colors.black.withOpacity(0.75),borderRadius:BorderRadius.circular(8),
+                    border:Border.all(color:Colors.white24,width:0.5)),
+                child:Text(fmt(Duration(milliseconds:_seekDragMs.round())),
+                    style:const TextStyle(fontSize:15,fontWeight:FontWeight.bold,color:Colors.white)),
               ),
-              child:Text(
-                fmt(Duration(milliseconds:_seekDragMs.round())),
-                style:const TextStyle(fontSize:16,fontWeight:FontWeight.bold,color:Colors.white),
-              ),
-            )),
+            ])),
           ),
 
         // ── نوار fast seek ──
@@ -1011,11 +1025,14 @@ class _PlayerState extends State<PlayerScreen>{
             },
             onChanged:(v){
               setState(()=>_seekDragMs=v);
+              _seekThumbTimer?.cancel();
+              _seekThumbTimer=Timer(const Duration(milliseconds:250),()=>_fetchSeekThumb(v.round()));
             },
             onChangeEnd:(v){
               player.seek(Duration(milliseconds:v.round()));
               _thumbTimer?.cancel();
-              setState((){_seekDragging=false;});
+              setState((){_seekDragging=false;_seekThumbData=null;});
+              _seekThumbTimer?.cancel();
               _startHideTimer();
             },
           ))),  // SliderTheme
