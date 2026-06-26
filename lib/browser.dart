@@ -1,4 +1,3 @@
-
 // lib/browser.dart — مرورگر فایل، منوی ویدیو، پانل شناور
 import 'dart:async';
 import 'dart:io';
@@ -517,7 +516,7 @@ class VideoMenu extends StatefulWidget {
 class _VideoMenuState extends State<VideoMenu>{
   late bool _bkm=Store.bookmarked.contains(widget.file.path);
   late bool _fav=Store.favorited.contains(widget.file.path);
-  @override Widget build(BuildContext context)=>Column(mainAxisSize:MainAxisSize.min,children:[
+  @override Widget build(BuildContext context)=>SafeArea(top:false,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
     const SizedBox(height:8),
     Center(child:Container(width:40,height:4,decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2)))),
     const SizedBox(height:4),
@@ -534,7 +533,7 @@ class _VideoMenuState extends State<VideoMenu>{
     ListTile(leading:const Icon(Icons.delete_outline,color:Colors.redAccent),title:const Text('حذف',style:TextStyle(color:Colors.redAccent)),onTap:widget.onDelete),
     ListTile(leading:const Icon(Icons.select_all),title:const Text('انتخاب گروهی'),onTap:widget.onSelect),
     const SizedBox(height:8),
-  ]);
+  ])));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -598,7 +597,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       Icon(icon,size:48,color:color.withOpacity(0.3)),const SizedBox(height:12),
       const Text('هنوز چیزی نیست',style:TextStyle(color:Colors.white54)),
     ]));
-    return ListView.builder(itemCount:paths.length,itemBuilder:(_,i){
+    return ListView.builder(itemCount:paths.length,padding:const EdgeInsets.only(bottom:8),itemBuilder:(_,i){
       final path=paths[i];
       final exists=File(path).existsSync();
       return ListTile(
@@ -640,3 +639,4 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     const ListTile(leading:Icon(Icons.code),title:Text('Flutter + media_kit'),subtitle:Text('Anthropic Claude')),
   ]);
 }
+
