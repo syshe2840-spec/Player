@@ -750,6 +750,25 @@ class _VideoMenuState extends State<VideoMenu>{
     _mi(Icons.star_outline_rounded,kAmber,'امتیازدهی',widget.onRate),
     _mi(Icons.notes_rounded,kTextSec,'یادداشت',widget.onNote),
     const Divider(height:1),
+    _mi(Icons.queue_music_rounded,kCyan,'افزودن به پلی‌لیست',()async{
+      final playlists=Store.playlists.keys.toList();
+      if(playlists.isEmpty){
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('ابتدا یک پلی‌لیست بسازید')));
+        return;
+      }
+      final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+        title:const Text('انتخاب پلی‌لیست'),
+        content:Column(mainAxisSize:MainAxisSize.min,children:playlists.map((pl)=>ListTile(
+          dense:true,leading:const Icon(Icons.queue_music_rounded,color:kCyan,size:18),
+          title:Text(pl,style:const TextStyle(fontSize:13)),
+          onTap:()=>Navigator.pop(ctx,pl))).toList()),
+        actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو'))],
+      ));
+      if(name!=null){
+        await Store.addToPlaylist(name,widget.file.path);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('اضافه شد به «$name»')));
+      }
+    }),
     _mi(Icons.copy_rounded,kTextSec,'کپی به پوشه',widget.onCopy),
     _mi(Icons.drive_file_move_outline,kTextSec,'انتقال',widget.onMove),
     _mi(Icons.edit_rounded,kTextSec,'تغییر نام',widget.onRename),
@@ -773,7 +792,7 @@ class BottomPanel extends StatefulWidget{
 }
 class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStateMixin{
   late TabController _tab;
-  @override void initState(){super.initState();_tab=TabController(length:5,vsync:this,initialIndex:widget.initialPage);}
+  @override void initState(){super.initState();_tab=TabController(length:6,vsync:this,initialIndex:widget.initialPage.clamp(0,5));}
   @override void dispose(){_tab.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Column(children:[
     const SizedBox(height:10),
@@ -785,12 +804,13 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:'نشانه‌ها'),
           Tab(icon:Icon(Icons.favorite_rounded,size:16),text:'علاقه‌مندی'),
           Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:'پوشه‌ها'),
+          Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:'پلی‌لیست'),
           Tab(icon:Icon(Icons.settings_rounded,size:16),text:'اپ')]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
       _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber),
       _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink),
-      _folderList(),_settingsTab(),
+      _folderList(),_playlistTab(),_settingsTab(),
     ])),
     SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
   ]);
@@ -851,6 +871,69 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     });
   }
 
+  Widget _playlistTab(){
+    final playlists=Store.playlists;
+    return Column(children:[
+      Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+        child:Row(children:[
+          const Expanded(child:Text('پلی‌لیست‌ها',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
+          FilledButton.icon(
+            style:FilledButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:10),minimumSize:const Size(0,32)),
+            icon:const Icon(Icons.add_rounded,size:16),label:const Text('جدید',style:TextStyle(fontSize:12)),
+            onPressed:()async{
+              final ctrl=TextEditingController();
+              final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+                title:const Text('پلی‌لیست جدید'),
+                content:TextField(controller:ctrl,autofocus:true,
+                    decoration:const InputDecoration(hintText:'نام پلی‌لیست...',border:OutlineInputBorder())),
+                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
+                  FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text('ساخت'))],
+              ));
+              if(name!=null&&name.isNotEmpty){await Store.createPlaylist(name);setState((){});}
+            }),
+        ])),
+      const Divider(height:1),
+      if(playlists.isEmpty)Expanded(child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+            child:const Icon(Icons.queue_music_rounded,size:32,color:kTextDim)),
+        const SizedBox(height:12),const Text('پلی‌لیستی ندارید',style:TextStyle(color:kTextSec)),
+        const SizedBox(height:4),const Text('با دکمه «جدید» بسازید',style:TextStyle(fontSize:11,color:kTextDim)),
+      ])))
+      else Expanded(child:ListView.builder(itemCount:playlists.keys.length,itemBuilder:(_,i){
+        final name=playlists.keys.elementAt(i);
+        final paths=playlists[name]!;
+        return ListTile(dense:true,
+          leading:Container(width:32,height:32,decoration:BoxDecoration(
+              gradient:LinearGradient(colors:[kAccent,kCyan]),borderRadius:BorderRadius.circular(8)),
+              child:const Icon(Icons.queue_music_rounded,size:16,color:Colors.white)),
+          title:Text(name,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w500)),
+          subtitle:Text('${paths.length} ویدیو',style:const TextStyle(fontSize:11,color:kTextDim)),
+          trailing:PopupMenuButton<String>(
+            icon:const Icon(Icons.more_vert_rounded,size:18,color:kTextSec),
+            itemBuilder:(_)=>[
+              const PopupMenuItem(value:'play',child:Text('پخش',style:TextStyle(fontSize:13))),
+              const PopupMenuItem(value:'delete',child:Text('حذف',style:TextStyle(fontSize:13,color:kRed))),
+            ],
+            onSelected:(v)async{
+              if(v=='delete'){
+                final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+                  title:Text('حذف «$name»؟'),
+                  actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('لغو')),
+                    FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),
+                        onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))],
+                ));
+                if(ok==true){await Store.deletePlaylist(name);setState((){});}
+              }else if(v=='play'&&paths.isNotEmpty){
+                final files=paths.map((p)=>File(p)).where((f)=>f.existsSync()).toList();
+                if(files.isNotEmpty)widget.onVideoTap(files.first.path);
+              }
+            }),
+          onTap:paths.isEmpty?null:(){widget.onVideoTap(paths.first);},
+        );
+      })),
+    ]);
+  }
+
   Widget _settingsTab()=>ListView(padding:const EdgeInsets.all(16),children:[
     Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(
       gradient:LinearGradient(colors:[kAccent.withOpacity(0.15),kCyan.withOpacity(0.08)]),
@@ -872,4 +955,3 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         ])),
   ]);
 }
-
