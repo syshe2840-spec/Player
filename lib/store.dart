@@ -199,7 +199,7 @@ class Store {
   static Map<String,int> ratings = {};
   static Map<String,String> notes = {};
   static Map<String,String> _vsMap = {};
-  static final Map<String,int> _durCache = {};
+  static final Map<String,int> _durCache = {}; // public access for tiles
 
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -285,6 +285,9 @@ class Store {
     _durCache[path]=s;
     (await SharedPreferences.getInstance()).setInt('dur:$path',s);
   }
+  // دسترسی مستقیم به cache (برای tile‌ها بدون await)
+  static int? getCachedDur(String path) => _durCache[path];
+
   static Future<int> getDur(String path) async {
     if (_durCache.containsKey(path)) return _durCache[path]!;
     final p=await SharedPreferences.getInstance();
