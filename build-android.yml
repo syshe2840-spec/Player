@@ -29,19 +29,19 @@ jobs:
       - name: Restore our files
         run: |
           git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart android_files/MainActivity.kt
-          # کپی MainActivity با پشتیبانی thumbnail
           mkdir -p android/app/src/main/kotlin/ir/subteam/subtitle_player/
           cp android_files/MainActivity.kt android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt
+          echo "=== MainActivity.kt installed ==="
+          head -5 android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt
 
       - name: Add storage permissions, PiP and notifications
         run: |
           set -e
           M=android/app/src/main/AndroidManifest.xml
-          # permissions
           sed -i 's#<application#<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application#' "$M"
-          # PiP: supportsPictureInPicture
           sed -i 's/android:launchMode="singleTop"/android:launchMode="singleTop"\n            android:supportsPictureInPicture="true"/' "$M" || true
-          cat "$M" | grep -i "pip\|NOTIF\|STORAGE" || true
+          echo "=== Manifest check ==="
+          cat "$M" | grep -E "pip|NOTIF|STORAGE|launchMode" || true
 
       - name: Force compileSdk 36 everywhere
         run: |
