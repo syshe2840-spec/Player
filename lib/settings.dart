@@ -35,6 +35,8 @@ class PlayerSettings extends StatefulWidget {
     required this.onPickFont, required this.onSaveForVideo,
     required this.speed, required this.onSpeed,
     required this.ampVolume, required this.onAmpVolume,
+    required this.hwDecode, required this.onHwDecode,
+    this.videoWidth, this.videoHeight,
   });
 
   @override State<PlayerSettings> createState()=>_SettingsState();
