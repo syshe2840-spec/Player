@@ -27,15 +27,29 @@ jobs:
         run: flutter create --platforms=android --org ir.subteam --project-name subtitle_player .
 
       - name: Restore our files
-        run: git checkout HEAD -- pubspec.yaml lib/main.dart
+        run: |
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart android_files/MainActivity.kt
+          # پیدا کردن مسیر دقیق MainActivity.kt که flutter create ساخته
+          MAKT=$(find android -name "MainActivity.kt" | head -1)
+          echo "=== Found MainActivity at: $MAKT ==="
+          if [ -n "$MAKT" ]; then
+            cp android_files/MainActivity.kt "$MAKT"
+            echo "=== Replaced! ==="
+          else
+            mkdir -p android/app/src/main/kotlin/ir/subteam/subtitle_player/
+            cp android_files/MainActivity.kt android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt
+            echo "=== Created in kotlin dir ==="
+          fi
+          head -3 "${MAKT:-android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt}"
 
-      - name: Add storage permissions
+      - name: Add storage permissions, PiP and notifications
         run: |
           set -e
           M=android/app/src/main/AndroidManifest.xml
-          sed -i 's#<application#<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <application#' "$M"
-          echo "===== MANIFEST ====="
-          cat "$M"
+          sed -i 's#<application#<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application#' "$M"
+          sed -i 's/android:launchMode="singleTop"/android:launchMode="singleTop"\n            android:supportsPictureInPicture="true"/' "$M" || true
+          echo "=== Manifest check ==="
+          cat "$M" | grep -E "pip|NOTIF|STORAGE|launchMode" || true
 
       - name: Force compileSdk 36 everywhere
         run: |
@@ -52,6 +66,15 @@ jobs:
 
       - name: Get packages
         run: flutter pub get
+
+      - name: Patch jcenter to mavenCentral (after pub get)
+        run: |
+          find /root/.pub-cache/hosted/pub.dev -name "*.gradle" 2>/dev/null | while read f; do
+            if grep -q "jcenter()" "$f" 2>/dev/null; then
+              sed -i 's/jcenter()/mavenCentral()/g' "$f"
+              echo "Patched: $f"
+            fi
+          done || true
 
       - name: Build APK
         run: flutter build apk --release
