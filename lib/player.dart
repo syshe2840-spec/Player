@@ -381,6 +381,20 @@ class _PlayerState extends State<PlayerScreen>{
   );
 
   // دکمه ابزار زیرنویس
+  // دکمه کوچک بالای زیرنویس
+  Widget _subSmallBtn(IconData icon,String tooltip)=>Tooltip(
+    message:tooltip,
+    child:Container(
+      padding:const EdgeInsets.all(6),
+      decoration:BoxDecoration(
+        color:Colors.black.withOpacity(0.65),
+        borderRadius:BorderRadius.circular(8),
+        border:Border.all(color:Colors.white.withOpacity(0.18)),
+      ),
+      child:Icon(icon,size:15,color:Colors.white60),
+    ),
+  );
+
   Widget _subToolBtn(IconData icon,String tooltip,VoidCallback onTap)=>Tooltip(
     message:tooltip,
     child:GestureDetector(
@@ -614,42 +628,32 @@ class _PlayerState extends State<PlayerScreen>{
           onLongPressCancel:()=>_stopFastSeek(),
           child:const SizedBox.expand(),
         )),
-        // ── دستگیره جابجایی زیرنویس (بعد از GestureDetector تا z-index درست باشه) ──
-        if(_sub1Visible&&!_locked)
-          Positioned(
-            right:8,
-            bottom:_vs.bottomPadding+navBottom+_vs.fontSize*0.4,
-            child:Listener(
-              behavior:HitTestBehavior.opaque,
-              onPointerDown:(_){_subPaddingStart=_vs.bottomPadding;},
-              onPointerMove:(e)=>setState(()=>
-                _vs.bottomPadding=(_vs.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
-                decoration:BoxDecoration(
-                  color:Colors.black.withOpacity(0.6),
-                  borderRadius:BorderRadius.circular(20),
-                  border:Border.all(color:Colors.white24,width:1),
-                ),
-                child:const Icon(Icons.drag_indicator,color:Colors.white70,size:22),
-              ),
-            ),
-          ),
 
-        // ── thumbnail preview روی اسلایدر ──
-        // ── نوار ابزار زیرنویس (وقتی متن زیرنویس هست) ──
+        // ── سربرگ زیرنویس: فقط وقتی متن زیرنویس روی صفحه هست ──
+        // شامل: دکمه کپی + drag handle برای جابجایی
+        // بالای متن قرار می‌گیره تا روی متن نیاد
         if(sub!=null&&!_locked)
           Positioned(
-            right:60, // کنار drag handle
-            bottom:_vs.bottomPadding+navBottom+_vs.fontSize*0.4,
+            right:8,
+            bottom:_vs.bottomPadding+navBottom+_vs.fontSize*1.8+10,
             child:Row(mainAxisSize:MainAxisSize.min,children:[
-              _subToolBtn(Icons.copy_all_rounded,'کپی',_copySubText),
-              const SizedBox(width:4),
-              _subToolBtn(Icons.translate_rounded,'ترجمه',_translateSubText),
-              const SizedBox(width:4),
-              _subToolBtn(Icons.menu_book_rounded,'دیکشنری',_dictionarySubText),
+              GestureDetector(
+                onTap:_copySubText,
+                child:_subSmallBtn(Icons.copy_all_rounded,'کپی'),
+              ),
+              const SizedBox(width:5),
+              Listener(
+                behavior:HitTestBehavior.opaque,
+                onPointerDown:(_){_subPaddingStart=_vs.bottomPadding;},
+                onPointerMove:(e)=>setState(()=>
+                  _vs.bottomPadding=(_vs.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
+                child:_subSmallBtn(Icons.drag_indicator,'جابجا کن'),
+              ),
             ]),
           ),
+
+
+        // ── thumbnail preview روی اسلایدر ──
 
         // ── نمایش timestamp هنگام کشیدن اسلایدر ──
         if(_seekDragging)
@@ -871,3 +875,4 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
+
