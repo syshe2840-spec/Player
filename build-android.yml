@@ -27,7 +27,11 @@ jobs:
         run: flutter create --platforms=android --org ir.subteam --project-name subtitle_player .
 
       - name: Restore our files
-        run: git checkout HEAD -- pubspec.yaml lib/main.dart
+        run: |
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart android_files/MainActivity.kt
+          # کپی MainActivity با پشتیبانی thumbnail
+          mkdir -p android/app/src/main/kotlin/ir/subteam/subtitle_player/
+          cp android_files/MainActivity.kt android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt
 
       - name: Add storage permissions
         run: |
