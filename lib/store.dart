@@ -101,7 +101,7 @@ class VideoSettings {
 
   VideoSettings({
     this.fontSize=30,this.bold=true,this.textColor=0xFFFFFFFF,
-    this.bgColor=0xFF000000,this.bgOpacity=0.5,this.textAlign=1,
+    this.bgColor=0xFF000000,this.bgOpacity=0.5,this.textAlign=2,
     this.bottomPadding=50,this.fontFamily='',this.speed=1.0,this.nightOpacity=0,
   });
 
