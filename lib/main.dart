@@ -71,7 +71,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         dividerColor: const Color(0xFF1A1A35),
-        dialogTheme: const DialogTheme(
+        dialogTheme: const DialogThemeData(
           backgroundColor: Color(0xFF0D0D1E),
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
