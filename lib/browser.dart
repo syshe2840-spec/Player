@@ -1,13 +1,54 @@
-// lib/browser.dart — مرورگر فایل، منوی ویدیو، پانل شناور
+// lib/browser.dart — مرورگر فایل با UI حرفه‌ای
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
 import 'store.dart';
 import 'player.dart';
 
-enum _SortBy { name, date, size, type }
+// ── رنگ‌ها و ثابت‌ها ──
+const kBg       = Color(0xFF08080F);
+const kSurface  = Color(0xFF0D0D1E);
+const kCard     = Color(0xFF12122A);
+const kBorder   = Color(0xFF232350);
+const kAccent   = Color(0xFF7C3AED);
+const kCyan     = Color(0xFF0EA5E9);
+const kGreen    = Color(0xFF10B981);
+const kAmber    = Color(0xFFF59E0B);
+const kRed      = Color(0xFFEF4444);
+const kPink     = Color(0xFFEC4899);
+const kTextSec  = Color(0xFF94A3B8);
+const kTextDim  = Color(0xFF64748B);
+
+enum _SortBy{name,date,size,type}
+
+// ── گرادیان رنگ بر اساس پسوند ──
+LinearGradient _extGrad(String ext){
+  switch(ext){
+    case 'mp4': return const LinearGradient(colors:[Color(0xFF7C3AED),Color(0xFF4F46E5)]);
+    case 'mkv': return const LinearGradient(colors:[Color(0xFF0EA5E9),Color(0xFF0284C7)]);
+    case 'avi': return const LinearGradient(colors:[Color(0xFF10B981),Color(0xFF059669)]);
+    case 'mov': return const LinearGradient(colors:[Color(0xFFEC4899),Color(0xFFBE185D)]);
+    case 'webm':return const LinearGradient(colors:[Color(0xFFF59E0B),Color(0xFFD97706)]);
+    case 'flv': return const LinearGradient(colors:[Color(0xFFEF4444),Color(0xFFDC2626)]);
+    default:    return const LinearGradient(colors:[Color(0xFF6366F1),Color(0xFF4338CA)]);
+  }
+}
+
+// ── باج کوچک ──
+Widget _badge(String text,Color color){
+  return Container(
+    padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
+    decoration:BoxDecoration(
+      color:color.withOpacity(0.12),
+      borderRadius:BorderRadius.circular(5),
+      border:Border.all(color:color.withOpacity(0.35),width:0.7),
+    ),
+    child:Text(text,style:TextStyle(fontSize:10,color:color,fontWeight:FontWeight.w600,height:1.2)),
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BrowserScreen
@@ -17,7 +58,7 @@ class BrowserScreen extends StatefulWidget {
   @override State<BrowserScreen> createState()=>_BrowserState();
 }
 
-class _BrowserState extends State<BrowserScreen> {
+class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   static const root='/storage/emulated/0';
   bool _granted=false,_checking=true;
   String _path=root;
@@ -27,31 +68,18 @@ class _BrowserState extends State<BrowserScreen> {
   final Set<String> _selected={};
   _SortBy _sortBy=_SortBy.name;
   bool _sortDesc=false;
-  bool _searching=false;
-  bool _recursiveSearch=false;
+  bool _searching=false,_recursiveSearch=false;
   String _searchQuery='';
   List<File> _searchResults=[];
   bool _searchRunning=false;
   final TextEditingController _searchCtrl=TextEditingController();
+  late final AnimationController _searchAnim=AnimationController(
+      vsync:this,duration:const Duration(milliseconds:200))..forward();
 
   @override void initState(){super.initState();_init();}
-  @override void dispose(){_searchCtrl.dispose();super.dispose();}
+  @override void dispose(){_searchCtrl.dispose();_searchAnim.dispose();super.dispose();}
 
   Future<void> _init()async{await Store.load();await _ensurePermission();}
-
-  // شناسایی همه حافظه‌های موجود (داخلی + SD card + OTG)
-  List<Directory> _getStorageDevices() {
-    final result = <Directory>[];
-    try {
-      for (final entity in Directory('/storage').listSync()) {
-        if (entity is Directory && p.basename(entity.path) != 'emulated' &&
-            p.basename(entity.path) != 'self') {
-          result.add(entity);
-        }
-      }
-    } catch(_) {}
-    return result;
-  }
 
   Future<void> _ensurePermission()async{
     setState(()=>_checking=true);
@@ -69,19 +97,16 @@ class _BrowserState extends State<BrowserScreen> {
       final vids=items.whereType<File>().where(
           (f)=>kVideoExt.contains(p.extension(f.path).toLowerCase())).toList();
       dirs.sort((a,b)=>p.basename(a.path).toLowerCase().compareTo(p.basename(b.path).toLowerCase()));
-      setState((){_path=path;_dirs=dirs;_videos=vids;_selectMode=false;_selected.clear();
-        _searching=false;_searchQuery='';_searchCtrl.clear();_searchResults=[];});
+      setState((){_path=path;_dirs=dirs;_videos=vids;_selectMode=false;
+        _selected.clear();_searching=false;_searchQuery='';_searchCtrl.clear();
+        _searchResults=[];_recursiveSearch=false;});
     }catch(_){
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('دسترسی ندارید')));
     }
   }
 
-  void _goUp(){
-    final parent=p.dirname(_path);
-    if(parent!=_path&&parent.startsWith('/storage'))_loadDir(parent);
-  }
+  void _goUp(){final par=p.dirname(_path);if(par!=_path&&par.startsWith('/storage'))_loadDir(par);}
 
-  // ─── مرتب‌سازی ───
   int _sd(int v)=>_sortDesc?-v:v;
   List<File> get _sortedVideos{
     final s=List<File>.from(_videos);
@@ -100,20 +125,19 @@ class _BrowserState extends State<BrowserScreen> {
   }
   List<Directory> get _filteredDirs{
     if(!_searching||_searchQuery.isEmpty)return _dirs;
-    if(_recursiveSearch)return [];
+    if(_recursiveSearch)return[];
     return _dirs.where((d)=>p.basename(d.path).toLowerCase().contains(_searchQuery.toLowerCase())).toList();
   }
 
-  // جستجوی بازگشتی کامل
   Future<void> _runRecursiveSearch(String query)async{
     if(query.isEmpty){setState((){_searchResults=[];_searchRunning=false;});return;}
     setState((){_searchResults=[];_searchRunning=true;});
     final results=<File>[];
     try{
-      await for(final entity in Directory(_path).list(recursive:true,followLinks:false)){
-        if(entity is File&&kVideoExt.contains(p.extension(entity.path).toLowerCase())&&
-            p.basename(entity.path).toLowerCase().contains(query.toLowerCase())){
-          results.add(entity);
+      await for(final e in Directory(_path).list(recursive:true,followLinks:false)){
+        if(e is File&&kVideoExt.contains(p.extension(e.path).toLowerCase())&&
+            p.basename(e.path).toLowerCase().contains(query.toLowerCase())){
+          results.add(e);
           if(mounted)setState(()=>_searchResults=List.from(results));
         }
       }
@@ -121,7 +145,7 @@ class _BrowserState extends State<BrowserScreen> {
     if(mounted)setState(()=>_searchRunning=false);
   }
 
-  Future<void> _openVideo(File video,[List<File>? playlist,int? idx])async{
+  Future<void> _openVideo(File video,[List<File>?playlist,int?idx])async{
     final pl=playlist??_filteredVideos;
     final i=idx??pl.indexOf(video);
     await Navigator.push(context,MaterialPageRoute(
@@ -137,11 +161,20 @@ class _BrowserState extends State<BrowserScreen> {
     await _openVideo(f,[f],0);
   }
 
-  // ─── منوی ویدیو ───
+  List<Directory> _getStorageDevices(){
+    final r=<Directory>[];
+    try{
+      for(final e in Directory('/storage').listSync()){
+        if(e is Directory&&p.basename(e.path)!='emulated'&&p.basename(e.path)!='self')r.add(e);
+      }
+    }catch(_){}
+    return r;
+  }
+
   void _showVideoMenu(File f){
     showModalBottomSheet(
-      context:context,backgroundColor:const Color(0xFF1C1C22),
-      shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(16))),
+      context:context,backgroundColor:kSurface,
+      shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
       builder:(ctx)=>VideoMenu(
         file:f,
         onDone:()async{Navigator.pop(ctx);await Store.load();_loadDir(_path);},
@@ -170,12 +203,8 @@ class _BrowserState extends State<BrowserScreen> {
     final dest=await _pickFolder('انتقال به');
     if(dest==null)return;
     final newPath=p.join(dest,p.basename(f.path));
-    try{
-      await f.rename(newPath);
-    }catch(_){
-      try{await f.copy(newPath);await f.delete();}
-      catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در انتقال')));return;}
-    }
+    try{await f.rename(newPath);}
+    catch(_){try{await f.copy(newPath);await f.delete();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در انتقال')));return;}}
     _loadDir(_path);
     if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('انتقال موفق')));
   }
@@ -184,10 +213,9 @@ class _BrowserState extends State<BrowserScreen> {
     final all=[...Store.savedFolders];
     if(all.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('ابتدا یک پوشه را ذخیره کنید')));return null;}
     return showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),title:Text(title),
+      title:Text(title),
       content:Column(mainAxisSize:MainAxisSize.min,children:all.map((folder)=>ListTile(
-        leading:const Icon(Icons.folder,color:Color(0xFFFFCB6B)),
-        title:Text(p.basename(folder)),
+        leading:const Icon(Icons.folder,color:kAmber),title:Text(p.basename(folder)),
         onTap:()=>Navigator.pop(ctx,folder),
       )).toList()),
     ));
@@ -195,11 +223,11 @@ class _BrowserState extends State<BrowserScreen> {
 
   Future<void> _confirmDelete(List<File> files)async{
     final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),title:const Text('حذف'),
+      title:const Text('حذف فایل'),
       content:Text(files.length==1?'«${p.basename(files.first.path)}» حذف شود؟':'${files.length} فایل حذف شود؟'),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('لغو')),
-        FilledButton(style:FilledButton.styleFrom(backgroundColor:Colors.red),
+        FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),
             onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف')),
       ],
     ));
@@ -211,8 +239,10 @@ class _BrowserState extends State<BrowserScreen> {
   Future<void> _renameFile(File f)async{
     final ctrl=TextEditingController(text:p.basenameWithoutExtension(f.path));
     final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),title:const Text('تغییر نام'),
-      content:TextField(controller:ctrl,autofocus:true,decoration:const InputDecoration(hintText:'نام جدید')),
+      title:const Text('تغییر نام'),
+      content:TextField(controller:ctrl,autofocus:true,
+          decoration:const InputDecoration(hintText:'نام جدید',
+              border:OutlineInputBorder(),contentPadding:EdgeInsets.symmetric(horizontal:12,vertical:8))),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
         FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text('تأیید')),
@@ -226,18 +256,19 @@ class _BrowserState extends State<BrowserScreen> {
   Future<void> _showRating(File f)async{
     int rating=Store.ratings[f.path]??0;
     await showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),
       title:Text(p.basename(f.path),style:const TextStyle(fontSize:13)),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
-        const Text('امتیاز شما'),const SizedBox(height:12),
-        Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>IconButton(
-          icon:Icon(i<rating?Icons.star:Icons.star_border,color:Colors.amber,size:36),
-          onPressed:(){ss(()=>rating=i+1);},
+        const Text('امتیاز شما:',style:TextStyle(color:kTextSec)),const SizedBox(height:12),
+        Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>GestureDetector(
+          onTap:()=>ss(()=>rating=i+1),
+          child:AnimatedContainer(duration:const Duration(milliseconds:150),padding:const EdgeInsets.all(4),
+              child:Icon(i<rating?Icons.star_rounded:Icons.star_outline_rounded,
+                  color:kAmber,size:36)),
         ))),
       ]),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
-        if(rating>0)TextButton(onPressed:()async{await Store.saveRating(f.path,0);Navigator.pop(ctx);setState((){});},child:const Text('حذف')),
+        if(rating>0)TextButton(onPressed:()async{await Store.saveRating(f.path,0);Navigator.pop(ctx);setState((){});},child:const Text('حذف',style:TextStyle(color:kRed))),
         FilledButton(onPressed:()async{await Store.saveRating(f.path,rating);Navigator.pop(ctx);setState((){});},child:const Text('ذخیره')),
       ],
     )));
@@ -246,10 +277,10 @@ class _BrowserState extends State<BrowserScreen> {
   Future<void> _showNote(File f)async{
     final ctrl=TextEditingController(text:Store.notes[f.path]??'');
     await showDialog(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),
-      title:Text('یادداشت — ${p.basename(f.path)}',style:const TextStyle(fontSize:13)),
+      title:Text('یادداشت',style:const TextStyle(fontSize:14)),
       content:TextField(controller:ctrl,maxLines:5,autofocus:true,
-          decoration:const InputDecoration(hintText:'یادداشت خود را بنویسید...',border:OutlineInputBorder())),
+          decoration:const InputDecoration(hintText:'یادداشت خود را بنویسید...',
+              border:OutlineInputBorder(),contentPadding:EdgeInsets.all(12))),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
         FilledButton(onPressed:()async{await Store.saveNote(f.path,ctrl.text.trim());Navigator.pop(ctx);setState((){});},child:const Text('ذخیره')),
@@ -266,31 +297,33 @@ class _BrowserState extends State<BrowserScreen> {
     final note=Store.notes[f.path]??'';
     if(!mounted)return;
     showDialog(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),
-      title:Text(p.basename(f.path),style:const TextStyle(fontSize:13)),
+      contentPadding:const EdgeInsets.fromLTRB(20,16,20,8),
+      title:Row(children:[
+        Container(width:4,height:20,decoration:BoxDecoration(color:kAccent,borderRadius:BorderRadius.circular(2))),
+        const SizedBox(width:8),
+        Expanded(child:Text(p.basename(f.path),style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
+      ]),
       content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        _iRow(Icons.folder_outlined,'مسیر',p.dirname(f.path)),
-        _iRow(Icons.data_usage,'حجم',sizeStr(f)),
-        if(dur>0)_iRow(Icons.timer_outlined,'مدت',fmt(Duration(seconds:dur))),
-        _iRow(Icons.calendar_today,'تاریخ',modified),
-        _iRow(Icons.visibility_outlined,'وضعیت',Store.watched.contains(f.path)?'دیده شده ✓':'دیده نشده'),
-        if(rating>0)Padding(padding:const EdgeInsets.symmetric(vertical:3),child:Row(children:[
-          const Icon(Icons.star,size:15,color:Colors.amber),const SizedBox(width:6),
-          Text('امتیاز: ${'★'*rating}',style:const TextStyle(fontSize:12)),
-        ])),
-        if(note.isNotEmpty)_iRow(Icons.notes,'یادداشت',note),
-        _iRow(Icons.subtitles_outlined,'زیرنویس',sub!=null?p.basename(sub):'یافت نشد'),
+        _infoRow(Icons.folder_outlined,kTextSec,'مسیر',p.dirname(f.path)),
+        _infoRow(Icons.data_usage_outlined,kTextSec,'حجم',sizeStr(f)),
+        if(dur>0)_infoRow(Icons.timer_outlined,kCyan,'مدت',fmt(Duration(seconds:dur))),
+        _infoRow(Icons.calendar_today_outlined,kTextSec,'تاریخ',modified),
+        _infoRow(Icons.visibility_outlined,Store.watched.contains(f.path)?kGreen:kTextSec,
+            'وضعیت',Store.watched.contains(f.path)?'دیده شده':'دیده نشده'),
+        if(rating>0)_infoRow(Icons.star_rounded,kAmber,'امتیاز','★'*rating),
+        if(note.isNotEmpty)_infoRow(Icons.notes,kTextSec,'یادداشت',note),
+        if(sub!=null)_infoRow(Icons.subtitles_outlined,kGreen,'زیرنویس',p.basename(sub)),
       ]),
       actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
     ));
   }
 
-  Widget _iRow(IconData icon,String label,String val)=>Padding(
-    padding:const EdgeInsets.symmetric(vertical:3),
+  Widget _infoRow(IconData icon,Color iconColor,String label,String val)=>Padding(
+    padding:const EdgeInsets.symmetric(vertical:4),
     child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Icon(icon,size:15,color:Colors.white38),const SizedBox(width:6),
-      Text('$label: ',style:const TextStyle(color:Colors.white54,fontSize:12)),
-      Expanded(child:Text(val,style:const TextStyle(fontSize:12),overflow:TextOverflow.ellipsis,maxLines:2)),
+      Icon(icon,size:15,color:iconColor),const SizedBox(width:8),
+      Text('$label: ',style:const TextStyle(color:kTextSec,fontSize:12)),
+      Expanded(child:Text(val,style:const TextStyle(fontSize:12,height:1.4),overflow:TextOverflow.ellipsis,maxLines:2)),
     ]),
   );
 
@@ -301,12 +334,13 @@ class _BrowserState extends State<BrowserScreen> {
       canPop:_path==root&&!_selectMode&&!_searching,
       onPopInvokedWithResult:(didPop,_){
         if(!didPop){
-          if(_searching){setState((){_searching=false;_searchQuery='';_searchCtrl.clear();_searchResults=[];});}
+          if(_searching){setState((){_searching=false;_searchQuery='';_searchCtrl.clear();_searchResults=[];_recursiveSearch=false;});}
           else if(_selectMode){setState((){_selectMode=false;_selected.clear();});}
           else{_goUp();}
         }
       },
       child:Scaffold(
+        extendBody:true,
         appBar:_selectMode?_selectBar():_normalBar(isSaved),
         body:_buildBody(),
         floatingActionButtonLocation:FloatingActionButtonLocation.centerFloat,
@@ -315,121 +349,182 @@ class _BrowserState extends State<BrowserScreen> {
     );
   }
 
-  Widget _buildFABs()=>Row(mainAxisSize:MainAxisSize.min,children:[
-    _fab(Icons.history,'تاریخچه',Colors.white70,()=>_openPanel(0)),
-    const SizedBox(width:8),
-    _fab(Icons.bookmark,'نشانه‌ها',Colors.amber,()=>_openPanel(1)),
-    const SizedBox(width:8),
-    _fab(Icons.favorite,'علاقه‌مندی',Colors.redAccent,()=>_openPanel(2)),
-    const SizedBox(width:8),
-    _fab(Icons.push_pin,'پوشه‌ها',Colors.greenAccent,()=>_openPanel(3)),
-    const SizedBox(width:8),
-    _fab(Icons.settings,'تنظیمات',Colors.white54,()=>_openPanel(4)),
-  ]);
+  Widget _buildFABs(){
+    return ClipRRect(
+      borderRadius:BorderRadius.circular(28),
+      child:BackdropFilter(
+        filter:ImageFilter.blur(sigmaX:20,sigmaY:20),
+        child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+          decoration:BoxDecoration(
+            color:kSurface.withOpacity(0.85),
+            borderRadius:BorderRadius.circular(28),
+            border:Border.all(color:kBorder.withOpacity(0.7)),
+          ),
+          child:Row(mainAxisSize:MainAxisSize.min,children:[
+            _fabBtn(Icons.history_rounded,'تاریخچه',kTextSec,()=>_openPanel(0)),
+            const SizedBox(width:4),
+            _fabBtn(Icons.bookmark_rounded,'نشانه‌ها',kAmber,()=>_openPanel(1)),
+            const SizedBox(width:4),
+            _fabBtn(Icons.favorite_rounded,'علاقه‌مندی',kPink,()=>_openPanel(2)),
+            const SizedBox(width:4),
+            _fabBtn(Icons.push_pin_rounded,'پوشه‌ها',kGreen,()=>_openPanel(3)),
+            const SizedBox(width:4),
+            _fabBtn(Icons.tune_rounded,'تنظیمات',const Color(0xFF94A3B8),()=>_openPanel(4)),
+          ]),
+        ),
+      ),
+    );
+  }
 
-  Widget _fab(IconData icon,String tip,Color color,VoidCallback fn)=>
-      FloatingActionButton.small(heroTag:tip,tooltip:tip,backgroundColor:const Color(0xFF252530),
-          onPressed:fn,child:Icon(icon,size:18,color:color));
+  Widget _fabBtn(IconData icon,String tip,Color color,VoidCallback fn)=>Tooltip(
+    message:tip,
+    child:InkWell(
+      onTap:fn,borderRadius:BorderRadius.circular(20),
+      child:Padding(
+        padding:const EdgeInsets.all(10),
+        child:Icon(icon,size:22,color:color),
+      ),
+    ),
+  );
 
   PreferredSizeWidget _normalBar(bool isSaved)=>AppBar(
+    automaticallyImplyLeading:false,
+    leading:_path!=root?IconButton(
+      icon:const Icon(Icons.arrow_back_ios_new_rounded,size:18),onPressed:_goUp,
+    ):null,
     title:_searching
         ?Row(children:[
             Expanded(child:TextField(controller:_searchCtrl,autofocus:true,
-                decoration:const InputDecoration(hintText:'جستجو...',border:InputBorder.none),
-                onChanged:(v){
-                  setState(()=>_searchQuery=v);
-                  if(_recursiveSearch)_runRecursiveSearch(v);
-                })),
-            if(_searchRunning)const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2)),
+                style:const TextStyle(fontSize:15),
+                decoration:InputDecoration(
+                  hintText:_recursiveSearch?'جستجوی کامل در همه پوشه‌ها...':'جستجو در این پوشه...',
+                  border:InputBorder.none,hintStyle:TextStyle(color:kTextDim,fontSize:14)),
+                onChanged:(v){setState(()=>_searchQuery=v);if(_recursiveSearch)_runRecursiveSearch(v);})),
+            IconButton(
+              icon:Icon(_recursiveSearch?Icons.manage_search_rounded:Icons.search_rounded,
+                  color:_recursiveSearch?kAccent:kTextSec,size:20),
+              tooltip:'جستجوی بازگشتی',
+              onPressed:(){setState(()=>_recursiveSearch=!_recursiveSearch);if(_recursiveSearch&&_searchQuery.isNotEmpty)_runRecursiveSearch(_searchQuery);else setState(()=>_searchResults=[]);},
+            ),
           ])
-        :Text(_path==root?'حافظه داخلی':p.basename(_path),overflow:TextOverflow.ellipsis),
-    leading:_path!=root?IconButton(icon:const Icon(Icons.arrow_upward),onPressed:_goUp):null,
+        :Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+            Text(_path==root?'حافظه داخلی':p.basename(_path),overflow:TextOverflow.ellipsis,
+                style:const TextStyle(fontSize:16,fontWeight:FontWeight.w600)),
+            if(_path!=root)Text(p.dirname(_path),overflow:TextOverflow.ellipsis,
+                style:const TextStyle(fontSize:11,color:kTextDim,height:1.2)),
+          ]),
     actions:[
-      if(_searching)IconButton(
-        icon:Icon(_recursiveSearch?Icons.manage_search:Icons.search,
-            color:_recursiveSearch?Colors.amber:null),
-        tooltip:'جستجوی بازگشتی در همه زیرپوشه‌ها',
-        onPressed:(){
-          setState(()=>_recursiveSearch=!_recursiveSearch);
-          if(_recursiveSearch&&_searchQuery.isNotEmpty)_runRecursiveSearch(_searchQuery);
-          else setState(()=>_searchResults=[]);
-        },
-      ),
-      IconButton(icon:Icon(_searching?Icons.close:Icons.search),
+      IconButton(icon:Icon(_searching?Icons.close_rounded:Icons.search_rounded,size:20),
           onPressed:(){setState((){_searching=!_searching;if(!_searching){_searchQuery='';_searchCtrl.clear();_searchResults=[];_recursiveSearch=false;}});}),
-      // دکمه رفتن به حافظه‌های دیگه و مسیر دلخواه
-      PopupMenuButton<String>(
-        icon:const Icon(Icons.storage),
-        tooltip:'انتخاب حافظه',
-        onSelected:(path){
-          if(path=='__custom__'){
-            final ctrl=TextEditingController(text:_path);
-            showDialog(context:context,builder:(ctx)=>AlertDialog(
-              backgroundColor:const Color(0xFF1C1C22),title:const Text('مسیر دلخواه'),
-              content:TextField(controller:ctrl,autofocus:true,
-                  decoration:const InputDecoration(hintText:'/storage/emulated/0/...')),
-              actions:[
-                TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
-                FilledButton(onPressed:(){final p=ctrl.text.trim();Navigator.pop(ctx);if(p.isNotEmpty)_loadDir(p);},child:const Text('برو')),
-              ],
-            ));
-          } else {
-            _loadDir(path);
-          }
-        },
-        itemBuilder:(_){
-          final items = <PopupMenuEntry<String>>[
-            const PopupMenuItem(value:'/storage/emulated/0',child:Text('📱 حافظه داخلی')),
-            const PopupMenuItem(value:'/storage/emulated/0/Download',child:Text('⬇ دانلودها')),
-            const PopupMenuItem(value:'/storage/emulated/0/Movies',child:Text('🎬 فیلم‌ها')),
-          ];
-          for(final d in _getStorageDevices()){
-            items.add(PopupMenuItem(value:d.path,child:Text('💾 کارت SD: \${p.basename(d.path)}')));
-          }
-          items.add(const PopupMenuDivider());
-          items.add(const PopupMenuItem(value:'__custom__',child:Text('📂 مسیر دلخواه...')));
-          return items;
-        },
-      ),
-      if(_path!=root)IconButton(
-        icon:Icon(isSaved?Icons.push_pin:Icons.push_pin_outlined,color:isSaved?Colors.amber:null),
-        onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
-      ),
-      PopupMenuButton<_SortBy>(
-        icon:const Icon(Icons.sort),
-        onSelected:(v)=>setState((){if(_sortBy==v)_sortDesc=!_sortDesc;else{_sortBy=v;_sortDesc=false;}}),
-        itemBuilder:(_)=>[
-          PopupMenuItem(value:_SortBy.name,child:Text('نام${_sortBy==_SortBy.name?(_sortDesc?' ↑':' ↓'):''}',)),
-          PopupMenuItem(value:_SortBy.date,child:Text('تاریخ${_sortBy==_SortBy.date?(_sortDesc?' ↑':' ↓'):''}',)),
-          PopupMenuItem(value:_SortBy.size,child:Text('حجم${_sortBy==_SortBy.size?(_sortDesc?' ↑':' ↓'):''}',)),
-          PopupMenuItem(value:_SortBy.type,child:Text('نوع${_sortBy==_SortBy.type?(_sortDesc?' ↑':' ↓'):''}',)),
-        ],
-      ),
+      if(!_searching)...[
+        if(_path!=root)IconButton(
+          icon:Icon(isSaved?Icons.push_pin_rounded:Icons.push_pin_outlined,
+              color:isSaved?kAmber:kTextSec,size:20),
+          onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
+        ),
+        // ذخیره‌سازی + حافظه‌ها
+        PopupMenuButton<String>(
+          icon:const Icon(Icons.storage_rounded,size:20),
+          tooltip:'انتخاب حافظه',
+          itemBuilder:(_){
+            final items=<PopupMenuEntry<String>>[
+              _pmItem(Icons.phone_android_rounded,'/storage/emulated/0','📱 حافظه داخلی'),
+              _pmItem(Icons.download_rounded,'/storage/emulated/0/Download','⬇ دانلودها'),
+              _pmItem(Icons.movie_rounded,'/storage/emulated/0/Movies','🎬 فیلم‌ها'),
+            ];
+            for(final d in _getStorageDevices()){
+              items.add(_pmItem(Icons.sd_card_rounded,d.path,'💾 ${p.basename(d.path)}'));
+            }
+            items..add(const PopupMenuDivider())
+                 ..add(_pmItem(Icons.edit_rounded,'__custom__','📂 مسیر دلخواه...'));
+            return items;
+          },
+          onSelected:(v){
+            if(v=='__custom__'){
+              final ctrl=TextEditingController(text:_path);
+              showDialog(context:context,builder:(ctx)=>AlertDialog(
+                title:const Text('مسیر دلخواه'),
+                content:TextField(controller:ctrl,autofocus:true,
+                    decoration:const InputDecoration(hintText:'/storage/emulated/0/...',border:OutlineInputBorder())),
+                actions:[
+                  TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
+                  FilledButton(onPressed:(){final pt=ctrl.text.trim();Navigator.pop(ctx);if(pt.isNotEmpty)_loadDir(pt);},child:const Text('برو')),
+                ],
+              ));
+            }else{_loadDir(v);}
+          },
+        ),
+        PopupMenuButton<_SortBy>(
+          icon:const Icon(Icons.sort_rounded,size:20),
+          tooltip:'مرتب‌سازی',
+          itemBuilder:(_)=>[
+            _pmItem2(Icons.sort_by_alpha_rounded,_SortBy.name,'نام${_sortBy==_SortBy.name?(_sortDesc?' ↑':' ↓'):''}'),
+            _pmItem2(Icons.access_time_rounded,_SortBy.date,'تاریخ${_sortBy==_SortBy.date?(_sortDesc?' ↑':' ↓'):''}'),
+            _pmItem2(Icons.data_usage_rounded,_SortBy.size,'حجم${_sortBy==_SortBy.size?(_sortDesc?' ↑':' ↓'):''}'),
+            _pmItem2(Icons.video_file_rounded,_SortBy.type,'نوع${_sortBy==_SortBy.type?(_sortDesc?' ↑':' ↓'):''}'),
+          ],
+          onSelected:(v)=>setState((){if(_sortBy==v)_sortDesc=!_sortDesc;else{_sortBy=v;_sortDesc=false;}}),
+        ),
+      ],
     ],
   );
 
+  PopupMenuItem<String> _pmItem(IconData icon,String v,String t)=>PopupMenuItem(
+    value:v,height:40,
+    child:Row(children:[Icon(icon,size:16,color:kTextSec),const SizedBox(width:10),Text(t,style:const TextStyle(fontSize:13))]),
+  );
+  PopupMenuItem<_SortBy> _pmItem2(IconData icon,_SortBy v,String t)=>PopupMenuItem(
+    value:v,height:40,
+    child:Row(children:[Icon(icon,size:16,color:_sortBy==v?kAccent:kTextSec),const SizedBox(width:10),
+      Text(t,style:TextStyle(fontSize:13,color:_sortBy==v?kAccent:Colors.white))]),
+  );
+
   PreferredSizeWidget _selectBar()=>AppBar(
-    leading:IconButton(icon:const Icon(Icons.close),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
-    title:Text('${_selected.length} انتخاب‌شده'),
+    automaticallyImplyLeading:false,
+    backgroundColor:kAccent.withOpacity(0.15),
+    leading:IconButton(icon:const Icon(Icons.close_rounded,size:20),
+        onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
+    title:Text('${_selected.length} فایل انتخاب شد',style:const TextStyle(fontSize:15)),
     actions:[
-      IconButton(icon:const Icon(Icons.select_all),onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path)))),
-      IconButton(icon:const Icon(Icons.delete_outline,color:Colors.redAccent),
-          onPressed:_selected.isEmpty?null:()=>_confirmDelete(_selected.map((s)=>File(s)).toList())),
+      TextButton.icon(
+        icon:const Icon(Icons.select_all_rounded,size:18),
+        label:const Text('همه',style:TextStyle(fontSize:13)),
+        onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path))),
+      ),
+      IconButton(
+        icon:const Icon(Icons.delete_outline_rounded,color:kRed,size:22),
+        onPressed:_selected.isEmpty?null:()=>_confirmDelete(_selected.map((s)=>File(s)).toList()),
+      ),
     ],
   );
 
   Widget _buildBody(){
     if(_checking)return const Center(child:CircularProgressIndicator());
     if(!_granted)return Center(child:Padding(padding:const EdgeInsets.all(32),child:Column(mainAxisSize:MainAxisSize.min,children:[
-      const Icon(Icons.folder_off,size:64,color:Colors.white38),const SizedBox(height:16),
-      const Text('اپ به دسترسی فایل‌ها نیاز دارد.',textAlign:TextAlign.center),const SizedBox(height:20),
-      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Icons.lock_open),label:const Text('اجازه دسترسی')),
+      Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder)),
+          child:const Icon(Icons.folder_off_rounded,size:48,color:kTextSec)),
+      const SizedBox(height:20),
+      const Text('برای مرور فیلم‌ها، اپ به دسترسی فایل‌ها نیاز دارد.',textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
+      const SizedBox(height:20),
+      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Icons.lock_open_rounded),label:const Text('اجازه دسترسی')),
+      const SizedBox(height:8),
       TextButton(onPressed:openAppSettings,child:const Text('تنظیمات اپ')),
     ])));
+
     return Column(children:[
-      Container(width:double.infinity,padding:const EdgeInsets.symmetric(horizontal:16,vertical:5),
-          color:const Color(0xFF1A1A22),
-          child:Text(_path,style:const TextStyle(fontSize:11,color:Colors.white38),overflow:TextOverflow.ellipsis)),
+      // نوار مسیر
+      Container(
+        width:double.infinity,
+        padding:const EdgeInsets.symmetric(horizontal:16,vertical:7),
+        color:kSurface,
+        child:Row(children:[
+          Icon(Icons.folder_open_rounded,size:13,color:kAccent.withOpacity(0.7)),
+          const SizedBox(width:6),
+          Expanded(child:Text(_path,style:const TextStyle(fontSize:11,color:kTextDim),overflow:TextOverflow.ellipsis)),
+          if(_searchRunning)const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.5)),
+        ]),
+      ),
       Expanded(child:_buildList()),
     ]);
   }
@@ -438,53 +533,29 @@ class _BrowserState extends State<BrowserScreen> {
     final fDirs=_filteredDirs, fVids=_filteredVideos;
     final total=fDirs.length+fVids.length;
     if(total==0&&_searchRunning)return const Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      CircularProgressIndicator(),SizedBox(height:12),Text('جستجو...',style:TextStyle(color:Colors.white54)),
+      CircularProgressIndicator(),SizedBox(height:16),
+      Text('در حال جستجو...',style:TextStyle(color:kTextSec)),
     ]));
-    if(total==0)return const Center(child:Text('نتیجه‌ای یافت نشد'));
-    return ListView.separated(
-      padding:EdgeInsets.only(bottom:MediaQuery.of(context).viewPadding.bottom+90,top:4),itemCount:total,
-      separatorBuilder:(_,__)=>const Divider(height:1,color:Color(0xFF222230)),
+    if(total==0)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Icon(Icons.video_library_outlined,size:48,color:kTextDim),const SizedBox(height:12),
+      const Text('فایلی یافت نشد',style:TextStyle(color:kTextSec)),
+    ]));
+
+    return ListView.builder(
+      padding:EdgeInsets.only(bottom:MediaQuery.of(context).viewPadding.bottom+90,top:8,left:12,right:12),
+      itemCount:total,
       itemBuilder:(ctx,i){
         if(i<fDirs.length){
           final d=fDirs[i];
-          return ListTile(
-            leading:Container(width:44,height:44,decoration:BoxDecoration(color:const Color(0xFF2A2520),borderRadius:BorderRadius.circular(10)),child:const Icon(Icons.folder,color:Color(0xFFFFCB6B))),
-            title:Text(p.basename(d.path),maxLines:1,overflow:TextOverflow.ellipsis),
-            subtitle:_recursiveSearch?Text(d.path,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:Colors.white38)):null,
-            trailing:const Icon(Icons.chevron_left,color:Colors.white38),
-            onTap:()=>_loadDir(d.path),
-          );
+          return _DirTile(dir:d,onTap:()=>_loadDir(d.path));
         }
         final v=fVids[i-fDirs.length];
-        final seen=Store.watched.contains(v.path),bkm=Store.bookmarked.contains(v.path);
-        final fav=Store.favorited.contains(v.path),hasSub=matchSubtitle(v.path)!=null;
-        final sel=_selected.contains(v.path);
-        final rating=Store.ratings[v.path]??0;
-        final hasNote=Store.notes.containsKey(v.path);
-        return ListTile(
-          selected:sel,selectedTileColor:const Color(0xFF2A2A4A),
-          leading:_selectMode
-              ?Checkbox(value:sel,onChanged:(_)=>setState(()=>sel?_selected.remove(v.path):_selected.add(v.path)))
-              :Container(width:44,height:44,decoration:BoxDecoration(color:const Color(0xFF1E2433),borderRadius:BorderRadius.circular(10)),
-                  child:Icon(seen?Icons.check_circle:Icons.movie,color:seen?Colors.greenAccent:const Color(0xFF82AAFF))),
-          title:Text(p.basename(v.path),maxLines:1,overflow:TextOverflow.ellipsis,
-              style:TextStyle(color:seen?Colors.greenAccent:Colors.white,fontWeight:seen?FontWeight.w500:FontWeight.normal)),
-          subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-            Row(children:[
-              Text(sizeStr(v),style:const TextStyle(fontSize:11,color:Colors.white38)),
-              if(hasSub)const Text(' • sub ✓',style:TextStyle(fontSize:11,color:Colors.greenAccent)),
-              if(rating>0)Text(' ${'★'*rating}',style:const TextStyle(fontSize:11,color:Colors.amber)),
-            ]),
-            if(_recursiveSearch)Text(p.dirname(v.path),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:Colors.white38)),
-          ]),
-          trailing:_selectMode?null:Row(mainAxisSize:MainAxisSize.min,children:[
-            if(hasNote)const Icon(Icons.notes,color:Colors.white54,size:16),
-            if(fav)const Icon(Icons.favorite,color:Colors.redAccent,size:17),
-            if(bkm)const Icon(Icons.bookmark,color:Colors.amber,size:17),
-            const SizedBox(width:4),const Icon(Icons.play_circle_outline,size:24),
-          ]),
-          onTap:_selectMode?()=>setState(()=>sel?_selected.remove(v.path):_selected.add(v.path)):()=>_openVideo(v,fVids,i-fDirs.length),
+        return _VideoTile(
+          file:v, selectMode:_selectMode,
+          selected:_selected.contains(v.path),
+          onTap:_selectMode?()=>setState(()=>_selected.contains(v.path)?_selected.remove(v.path):_selected.add(v.path)):()=>_openVideo(v,fVids,i-fDirs.length),
           onLongPress:_selectMode?null:()=>_showVideoMenu(v),
+          showPath:_recursiveSearch,
         );
       },
     );
@@ -492,8 +563,8 @@ class _BrowserState extends State<BrowserScreen> {
 
   void _openPanel(int page){
     showModalBottomSheet(
-      context:context,isScrollControlled:true,backgroundColor:const Color(0xFF1C1C22),
-      shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
+      context:context,isScrollControlled:true,
+      shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
       builder:(ctx)=>SizedBox(height:MediaQuery.of(context).size.height*0.65,
           child:BottomPanel(initialPage:page,
               onVideoTap:(path){Navigator.pop(ctx);_openVideoByPath(path);},
@@ -503,7 +574,130 @@ class _BrowserState extends State<BrowserScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// منوی ویدیو (long press)
+// تایل پوشه
+// ─────────────────────────────────────────────────────────────────────────────
+class _DirTile extends StatelessWidget {
+  final Directory dir;
+  final VoidCallback onTap;
+  const _DirTile({required this.dir,required this.onTap});
+  @override
+  Widget build(BuildContext context){
+    return GestureDetector(
+      onTap:onTap,
+      child:Container(
+        margin:const EdgeInsets.only(bottom:6),
+        padding:const EdgeInsets.symmetric(horizontal:14,vertical:12),
+        decoration:BoxDecoration(
+          color:kCard,borderRadius:BorderRadius.circular(12),
+          border:Border.all(color:kBorder.withOpacity(0.6)),
+        ),
+        child:Row(children:[
+          Container(
+            width:42,height:42,
+            decoration:BoxDecoration(
+              gradient:const LinearGradient(colors:[Color(0xFF78350F),Color(0xFFB45309)],begin:Alignment.topLeft,end:Alignment.bottomRight),
+              borderRadius:BorderRadius.circular(10),
+            ),
+            child:const Icon(Icons.folder_rounded,color:Colors.white,size:22),
+          ),
+          const SizedBox(width:12),
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(p.basename(dir.path),style:const TextStyle(fontWeight:FontWeight.w500,fontSize:14),maxLines:1,overflow:TextOverflow.ellipsis),
+          ])),
+          const Icon(Icons.chevron_left_rounded,color:kTextDim,size:20),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// تایل ویدیو
+// ─────────────────────────────────────────────────────────────────────────────
+class _VideoTile extends StatelessWidget {
+  final File file;
+  final bool selectMode,selected,showPath;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  const _VideoTile({required this.file,required this.selectMode,required this.selected,required this.onTap,this.onLongPress,this.showPath=false});
+
+  @override
+  Widget build(BuildContext context){
+    final name=p.basename(file.path);
+    final ext=p.extension(file.path).toLowerCase().replaceAll('.','');
+    final seen=Store.watched.contains(file.path);
+    final bkm=Store.bookmarked.contains(file.path);
+    final fav=Store.favorited.contains(file.path);
+    final hasSub=matchSubtitle(file.path)!=null;
+    final rating=Store.ratings[file.path]??0;
+    final hasNote=Store.notes.containsKey(file.path);
+    final grad=_extGrad(ext);
+
+    return GestureDetector(
+      onTap:onTap, onLongPress:onLongPress,
+      child:AnimatedContainer(
+        duration:const Duration(milliseconds:150),
+        margin:const EdgeInsets.only(bottom:6),
+        decoration:BoxDecoration(
+          color:selected?kAccent.withOpacity(0.15):kCard,
+          borderRadius:BorderRadius.circular(12),
+          border:Border.all(color:selected?kAccent.withOpacity(0.5):kBorder.withOpacity(0.6)),
+        ),
+        child:Padding(
+          padding:const EdgeInsets.all(12),
+          child:Row(children:[
+            // آیکون فایل
+            selectMode
+                ?AnimatedContainer(duration:const Duration(milliseconds:150),
+                    width:44,height:44,
+                    decoration:BoxDecoration(
+                      color:selected?kAccent:kBorder,
+                      borderRadius:BorderRadius.circular(10),
+                    ),
+                    child:Icon(selected?Icons.check_rounded:Icons.circle_outlined,color:Colors.white,size:20))
+                :Container(
+                    width:44,height:44,
+                    decoration:BoxDecoration(gradient:grad,borderRadius:BorderRadius.circular(10)),
+                    child:seen
+                        ?const Icon(Icons.check_rounded,color:Colors.white,size:22)
+                        :Center(child:Text(ext.toUpperCase().substring(0,ext.length>3?3:ext.length),
+                            style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800,color:Colors.white))),
+                  ),
+            const SizedBox(width:12),
+            // اطلاعات
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text(name,style:TextStyle(fontSize:14,fontWeight:FontWeight.w500,
+                  color:seen?kGreen:Colors.white,height:1.3),maxLines:1,overflow:TextOverflow.ellipsis),
+              if(showPath)Text(p.dirname(file.path),style:const TextStyle(fontSize:10,color:kTextDim),maxLines:1,overflow:TextOverflow.ellipsis),
+              const SizedBox(height:5),
+              Row(children:[
+                Text(sizeStr(file),style:const TextStyle(fontSize:11,color:kTextDim)),
+                if(hasSub)...[const SizedBox(width:6),_badge('SUB',kGreen)],
+                if(bkm)...[const SizedBox(width:6),_badge('★',kAmber)],
+                if(fav)...[const SizedBox(width:6),_badge('❤',kPink)],
+                if(hasNote)...[const SizedBox(width:6),_badge('📝',kTextSec)],
+                if(rating>0)...[const SizedBox(width:6),Text('${'★'*rating}',style:const TextStyle(fontSize:10,color:kAmber))],
+              ]),
+            ])),
+            // دکمه پخش
+            if(!selectMode)Container(
+              width:36,height:36,
+              decoration:BoxDecoration(
+                color:seen?kGreen.withOpacity(0.15):kAccent.withOpacity(0.1),
+                borderRadius:BorderRadius.circular(18),
+                border:Border.all(color:seen?kGreen.withOpacity(0.3):kAccent.withOpacity(0.2)),
+              ),
+              child:Icon(Icons.play_arrow_rounded,color:seen?kGreen:kAccent,size:20),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// منوی ویدیو
 // ─────────────────────────────────────────────────────────────────────────────
 class VideoMenu extends StatefulWidget {
   final File file;
@@ -516,24 +710,44 @@ class VideoMenu extends StatefulWidget {
 class _VideoMenuState extends State<VideoMenu>{
   late bool _bkm=Store.bookmarked.contains(widget.file.path);
   late bool _fav=Store.favorited.contains(widget.file.path);
+
   @override Widget build(BuildContext context)=>SafeArea(top:false,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-    const SizedBox(height:8),
-    Center(child:Container(width:40,height:4,decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2)))),
-    const SizedBox(height:4),
-    ListTile(leading:const Icon(Icons.info_outline),title:const Text('اطلاعات فایل'),onTap:widget.onInfo),
-    ListTile(leading:Icon(_bkm?Icons.bookmark:Icons.bookmark_border,color:Colors.amber),title:Text(_bkm?'حذف نشانه':'نشانه‌گذاری'),
-        onTap:()async{await Store.toggleBookmark(widget.file.path);setState(()=>_bkm=!_bkm);widget.onDone();}),
-    ListTile(leading:Icon(_fav?Icons.favorite:Icons.favorite_border,color:Colors.redAccent),title:Text(_fav?'حذف از علاقه‌مندی':'علاقه‌مندی'),
-        onTap:()async{await Store.toggleFavorite(widget.file.path);setState(()=>_fav=!_fav);widget.onDone();}),
-    ListTile(leading:const Icon(Icons.star_outline,color:Colors.amber),title:const Text('امتیازدهی'),onTap:widget.onRate),
-    ListTile(leading:const Icon(Icons.notes),title:const Text('یادداشت'),onTap:widget.onNote),
-    ListTile(leading:const Icon(Icons.copy_outlined),title:const Text('کپی به پوشه'),onTap:widget.onCopy),
-    ListTile(leading:const Icon(Icons.drive_file_move_outline),title:const Text('انتقال به پوشه'),onTap:widget.onMove),
-    ListTile(leading:const Icon(Icons.edit_outlined),title:const Text('تغییر نام'),onTap:widget.onRename),
-    ListTile(leading:const Icon(Icons.delete_outline,color:Colors.redAccent),title:const Text('حذف',style:TextStyle(color:Colors.redAccent)),onTap:widget.onDelete),
-    ListTile(leading:const Icon(Icons.select_all),title:const Text('انتخاب گروهی'),onTap:widget.onSelect),
+    const SizedBox(height:12),
+    Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kBorder,borderRadius:BorderRadius.circular(2)))),
+    const SizedBox(height:12),
+    Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Row(children:[
+      Container(padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(10),border:Border.all(color:kBorder)),
+          child:Icon(_extGrad(p.extension(widget.file.path).toLowerCase().replaceAll('.',''))!=null?Icons.video_file_rounded:Icons.video_file_rounded,color:kAccent,size:20)),
+      const SizedBox(width:12),
+      Expanded(child:Text(p.basename(widget.file.path),style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13),maxLines:2)),
+    ])),
+    const SizedBox(height:12),
+    const Divider(height:1),
+    _menuItem(Icons.info_outline_rounded,kTextSec,'اطلاعات فایل',widget.onInfo),
+    _menuToggle(Icons.bookmark_rounded,_bkm?kAmber:kTextSec,_bkm?'حذف نشانه':'نشانه‌گذاری',()async{
+      await Store.toggleBookmark(widget.file.path);setState(()=>_bkm=!_bkm);widget.onDone();
+    }),
+    _menuToggle(Icons.favorite_rounded,_fav?kPink:kTextSec,_fav?'حذف از علاقه‌مندی':'افزودن به علاقه‌مندی',()async{
+      await Store.toggleFavorite(widget.file.path);setState(()=>_fav=!_fav);widget.onDone();
+    }),
+    _menuItem(Icons.star_outline_rounded,kAmber,'امتیازدهی',widget.onRate),
+    _menuItem(Icons.notes_rounded,kTextSec,'یادداشت',widget.onNote),
+    const Divider(height:1),
+    _menuItem(Icons.copy_rounded,kTextSec,'کپی به پوشه',widget.onCopy),
+    _menuItem(Icons.drive_file_move_outline,kTextSec,'انتقال',widget.onMove),
+    _menuItem(Icons.edit_rounded,kTextSec,'تغییر نام',widget.onRename),
+    _menuItem(Icons.select_all_rounded,kTextSec,'انتخاب گروهی',widget.onSelect),
+    _menuItem(Icons.delete_outline_rounded,kRed,'حذف',widget.onDelete),
     const SizedBox(height:8),
   ])));
+
+  Widget _menuItem(IconData icon,Color iconColor,String title,VoidCallback onTap)=>ListTile(
+    leading:Container(width:32,height:32,decoration:BoxDecoration(color:iconColor.withOpacity(0.1),borderRadius:BorderRadius.circular(8)),
+        child:Icon(icon,color:iconColor,size:16)),
+    title:Text(title,style:const TextStyle(fontSize:13)),
+    dense:true,onTap:onTap,
+  );
+  Widget _menuToggle(IconData icon,Color iconColor,String title,VoidCallback onTap)=>_menuItem(icon,iconColor,title,onTap);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -550,62 +764,68 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
   @override void initState(){super.initState();_tab=TabController(length:5,vsync:this,initialIndex:widget.initialPage);}
   @override void dispose(){_tab.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Column(children:[
-    const SizedBox(height:10),
-    Center(child:Container(width:40,height:4,decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2)))),
-    TabBar(controller:_tab,isScrollable:true,tabs:const[
-      Tab(icon:Icon(Icons.history,size:17),text:'تاریخچه'),
-      Tab(icon:Icon(Icons.bookmark,size:17),text:'نشانه‌ها'),
-      Tab(icon:Icon(Icons.favorite,size:17),text:'علاقه‌مندی'),
-      Tab(icon:Icon(Icons.push_pin,size:17),text:'پوشه‌ها'),
-      Tab(icon:Icon(Icons.settings,size:17),text:'تنظیمات'),
-    ]),
+    const SizedBox(height:12),
+    Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kBorder,borderRadius:BorderRadius.circular(2)))),
+    const SizedBox(height:4),
+    TabBar(controller:_tab,isScrollable:true,
+        labelStyle:const TextStyle(fontSize:12,fontWeight:FontWeight.w600),
+        unselectedLabelStyle:const TextStyle(fontSize:12),
+        indicatorColor:kAccent,labelColor:kAccent,unselectedLabelColor:kTextSec,
+        tabs:const[
+          Tab(icon:Icon(Icons.history_rounded,size:16),text:'تاریخچه'),
+          Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:'نشانه‌ها'),
+          Tab(icon:Icon(Icons.favorite_rounded,size:16),text:'علاقه‌مندی'),
+          Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:'پوشه‌ها'),
+          Tab(icon:Icon(Icons.settings_rounded,size:16),text:'اپ'),
+        ]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _historyTab(),
-      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark,Colors.amber),
-      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite,Colors.redAccent),
-      _folderList(),
-      _settingsTab(),
+      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber),
+      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink),
+      _folderList(),_settingsTab(),
     ])),
   ]);
 
-  Widget _historyTab(){
-    return Column(children:[
-      if(Store.watchHistory.isNotEmpty)Padding(
-        padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
-        child:Row(children:[
-          const Expanded(child:Text('آخرین مشاهده‌ها',style:TextStyle(fontWeight:FontWeight.bold))),
-          TextButton.icon(icon:const Icon(Icons.delete_sweep,size:16),label:const Text('حذف همه'),
-            style:TextButton.styleFrom(foregroundColor:Colors.redAccent),
-            onPressed:()async{
-              final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-                backgroundColor:const Color(0xFF1C1C22),title:const Text('حذف همه تاریخچه؟'),
-                actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('لغو')),
-                  FilledButton(style:FilledButton.styleFrom(backgroundColor:Colors.red),
+  Widget _historyTab()=>Column(children:[
+    if(Store.watchHistory.isNotEmpty)Padding(
+      padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+      child:Row(children:[
+        const Expanded(child:Text('آخرین مشاهده‌ها',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
+        TextButton.icon(
+          icon:const Icon(Icons.delete_sweep_rounded,size:15,color:kRed),
+          label:const Text('حذف همه',style:TextStyle(fontSize:12,color:kRed)),
+          onPressed:()async{
+            final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+              title:const Text('حذف همه تاریخچه؟'),
+              actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('لغو')),
+                FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),
                     onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))],
-              ));
-              if(ok==true){await Store.clearHistory();setState((){}); }
-            }),
-        ]),
-      ),
-      Expanded(child:_vList(Store.watchHistory,Icons.history,Colors.white70,
-          onLongPress:(path)async{await Store.removeFromHistory(path);setState((){}); })),
-    ]);
-  }
+            ));
+            if(ok==true){await Store.clearHistory();setState((){});}
+          },
+        ),
+      ]),
+    ),
+    Expanded(child:_vList(Store.watchHistory,Icons.history_rounded,kTextSec,
+        onLongPress:(path)async{await Store.removeFromHistory(path);setState((){});})),
+  ]);
 
-  Widget _vList(List<String> paths,IconData icon,Color color,{Function(String)? onLongPress}){
+  Widget _vList(List<String> paths,IconData icon,Color color,{Function(String)?onLongPress}){
     if(paths.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      Icon(icon,size:48,color:color.withOpacity(0.3)),const SizedBox(height:12),
-      const Text('هنوز چیزی نیست',style:TextStyle(color:Colors.white54)),
+      Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+          child:Icon(icon,size:32,color:color.withOpacity(0.4))),
+      const SizedBox(height:12),const Text('هنوز چیزی نیست',style:TextStyle(color:kTextSec)),
     ]));
     return ListView.builder(itemCount:paths.length,padding:const EdgeInsets.only(bottom:8),itemBuilder:(_,i){
-      final path=paths[i];
-      final exists=File(path).existsSync();
+      final path=paths[i]; final exists=File(path).existsSync();
       return ListTile(
-        leading:Icon(icon,color:exists?color:Colors.white24,size:20),
+        dense:true,
+        leading:Container(width:32,height:32,decoration:BoxDecoration(color:color.withOpacity(0.1),borderRadius:BorderRadius.circular(8)),
+            child:Icon(icon,color:exists?color:kTextDim,size:16)),
         title:Text(p.basename(path),maxLines:1,overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:exists?Colors.white:Colors.white38)),
+            style:TextStyle(fontSize:13,color:exists?Colors.white:kTextDim)),
         subtitle:Text(p.dirname(path),maxLines:1,overflow:TextOverflow.ellipsis,
-            style:const TextStyle(fontSize:11,color:Colors.white38)),
+            style:const TextStyle(fontSize:10,color:kTextDim)),
         onTap:exists?()=>widget.onVideoTap(path):null,
         onLongPress:onLongPress!=null?()=>onLongPress(path):null,
       );
@@ -614,29 +834,46 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
   Widget _folderList(){
     final folders=Store.savedFolders;
-    if(folders.isEmpty)return const Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      Icon(Icons.push_pin_outlined,size:48,color:Colors.white24),SizedBox(height:12),
-      Text('پوشه‌ای ذخیره نشده',style:TextStyle(color:Colors.white54)),
-      SizedBox(height:6),Text('در مرورگر آیکون 📌 را بزنید',style:TextStyle(fontSize:12,color:Colors.white38)),
+    if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+          child:const Icon(Icons.push_pin_outlined,size:32,color:kTextDim)),
+      const SizedBox(height:12),const Text('پوشه‌ای ذخیره نشده',style:TextStyle(color:kTextSec)),
+      const SizedBox(height:6),const Text('در مرورگر آیکون 📌 را بزنید',style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
     return ListView.builder(itemCount:folders.length,itemBuilder:(_,i){
-      final folder=folders[i];
-      final exists=Directory(folder).existsSync();
-      return ListTile(
-        leading:Icon(Icons.folder,color:exists?const Color(0xFFFFCB6B):Colors.white24),
-        title:Text(p.basename(folder),maxLines:1,overflow:TextOverflow.ellipsis),
-        subtitle:Text(folder,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11,color:Colors.white38)),
-        trailing:IconButton(icon:const Icon(Icons.push_pin,color:Colors.amber,size:18),
-            onPressed:()async{await Store.toggleSavedFolder(folder);setState((){}); }),
+      final folder=folders[i]; final exists=Directory(folder).existsSync();
+      return ListTile(dense:true,
+        leading:Container(width:32,height:32,decoration:BoxDecoration(color:kAmber.withOpacity(0.1),borderRadius:BorderRadius.circular(8)),
+            child:Icon(Icons.folder_rounded,color:exists?kAmber:kTextDim,size:16)),
+        title:Text(p.basename(folder),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13)),
+        subtitle:Text(folder,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
+        trailing:IconButton(icon:const Icon(Icons.push_pin_rounded,size:16,color:kRed),
+            onPressed:()async{await Store.toggleSavedFolder(folder);setState((){});}),
         onTap:exists?()=>widget.onFolderTap(folder):null,
       );
     });
   }
 
   Widget _settingsTab()=>ListView(padding:const EdgeInsets.all(16),children:[
-    const ListTile(leading:Icon(Icons.info_outline),title:Text('اطلاعات توسعه‌دهنده'),subtitle:Text('نسخه ۱.۰.۰')),
-    const Divider(),
-    const ListTile(leading:Icon(Icons.code),title:Text('Flutter + media_kit'),subtitle:Text('Anthropic Claude')),
+    Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(
+      gradient:LinearGradient(colors:[kAccent.withOpacity(0.15),kCyan.withOpacity(0.08)]),
+      borderRadius:BorderRadius.circular(12),border:Border.all(color:kAccent.withOpacity(0.2))),
+      child:Row(children:[
+        Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:kAccent.withOpacity(0.2),borderRadius:BorderRadius.circular(8)),
+            child:const Icon(Icons.play_circle_rounded,color:kAccent,size:24)),
+        const SizedBox(width:12),
+        const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text('پلیر زیرنویس',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
+          Text('نسخه ۱.۰.۰ — Flutter + media_kit',style:TextStyle(fontSize:11,color:kTextSec)),
+        ])),
+      ])),
+    const SizedBox(height:12),
+    Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
+        child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text('توسعه‌دهنده',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),
+          SizedBox(height:6),
+          Text('ساخته شده با Anthropic Claude',style:TextStyle(fontSize:12,color:kTextSec)),
+        ])),
   ]);
 }
 
