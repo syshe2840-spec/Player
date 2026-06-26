@@ -396,7 +396,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       canPop: _path==root&&!_selectMode&&!_searching,
       onPopInvokedWithResult:(didPop,_){
         if(!didPop){
-          if(_searching){setState((){_searching=false;_searchQuery='';_searchCtrl.clear()});}
+          if(_searching){setState((){_searching=false;_searchQuery='';_searchCtrl.clear();});}
           else if(_selectMode){setState((){_selectMode=false;_selected.clear();});}
           else{_goUp();}
         }
@@ -693,6 +693,7 @@ class _PlayerScreenState extends State<PlayerScreen>{
   bool _sub2Visible=false;
   Color _color2=const Color(0xFFFFEB3B);
   int _subDelay2Ms=0;
+  int _audioDelayMs=0;
   String? _sub2Path;
 
   // audio tracks
@@ -877,7 +878,7 @@ class _PlayerScreenState extends State<PlayerScreen>{
 
   Future<void> _takeScreenshot()async{
     try{
-      final boundary=_videoKey.currentContext?.findRenderObject()as RenderRepaintBoundary?;
+      final boundary=_videoKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if(boundary==null)return;
       final image=await boundary.toImage(pixelRatio:2.0);
       final byteData=await image.toByteData(format:ui.ImageByteFormat.png);
@@ -1384,16 +1385,12 @@ class _PlayerScreenState extends State<PlayerScreen>{
             // دیلی صدا
             Row(children:[
               const Text('دیلی صدا (ms): '),
-              IconButton(icon:const Icon(Icons.remove),onPressed:()async{
-                await player.setAudioDelay(const Duration(milliseconds:0));
-                ch((){});
-              }),
-              Expanded(child:Text('${player.state.audioDelay.inMilliseconds} ms',textAlign:TextAlign.center)),
-              IconButton(icon:const Icon(Icons.add),onPressed:()async{
-                final cur=player.state.audioDelay;
-                await player.setAudioDelay(cur+const Duration(milliseconds:100));
-                ch((){});
-              }),
+              IconButton(icon:const Icon(Icons.remove),
+                  onPressed:()=>ch(()=>_audioDelayMs=(_audioDelayMs-100).clamp(-5000,5000))),
+              Expanded(child:Text('$_audioDelayMs ms',textAlign:TextAlign.center,
+                  style:const TextStyle(fontWeight:FontWeight.bold))),
+              IconButton(icon:const Icon(Icons.add),
+                  onPressed:()=>ch(()=>_audioDelayMs=(_audioDelayMs+100).clamp(-5000,5000))),
             ]),
 
             const Divider(height:24),
