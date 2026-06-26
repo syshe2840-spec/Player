@@ -43,6 +43,10 @@ class _PlayerState extends State<PlayerScreen>{
   bool _sub1Visible=true,_sub2Visible=false;
   String? _sub2Path;
   List<AudioTrack> _audioTracks=[];
+  List<SubtitleTrack> _subtitleTracks=[];
+  // soft-sub embedded در ویدیو
+  bool _useEmbeddedSub=false;
+  String? _embeddedSubText;
 
   // تنظیمات قابل ذخیره
   late VideoSettings _vs=VideoSettings();
@@ -111,6 +115,8 @@ class _PlayerState extends State<PlayerScreen>{
   bool get _hasNext=>_idx<widget.playlist.length-1;
 
   String? get _subText{
+    // اگه حالت embedded فعاله — متن رو از libmpv بگیر
+    if(_useEmbeddedSub)return _embeddedSubText;
     if(!_sub1Visible||_sub1.isEmpty)return null;
     final adj=_position-Duration(milliseconds:_subDelayMs);
     for(final e in _sub1){if(adj>=e.start&&adj<=e.end)return e.text;}
@@ -142,7 +148,19 @@ class _PlayerState extends State<PlayerScreen>{
       if(mounted)setState((){});
     }));
     _subs.add(player.stream.playing.listen((pl){_playing=pl;if(mounted)setState((){});}));
-    _subs.add(player.stream.tracks.listen((t){if(mounted)setState(()=>_audioTracks=t.audio);}));
+    _subs.add(player.stream.tracks.listen((t){
+      if(mounted)setState((){
+        _audioTracks=t.audio;
+        // تراک‌های زیرنویس embedded (بدون no/auto)
+        _subtitleTracks=t.subtitle.where((s)=>s.id!='no'&&s.id!='auto').toList();
+      });
+    }));
+    // متن زیرنویس embedded که libmpv می‌خونه
+    _subs.add(player.stream.subtitle.listen((lines){
+      if(!mounted)return;
+      final text=lines.where((s)=>s.trim().isNotEmpty).join('\n').trim();
+      setState(()=>_embeddedSubText=text.isEmpty?null:text);
+    }));
     _subs.add(player.stream.width.listen((w){if(mounted&&w!=null)setState(()=>_videoWidth=w);}));
     _subs.add(player.stream.height.listen((h){if(mounted&&h!=null)setState(()=>_videoHeight=h);}));
     _subs.add(player.stream.videoParams.listen((vp){if(mounted)setState(()=>_videoParams=vp);}));
@@ -236,7 +254,7 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   Future<void> _pickSub({required bool secondary})async{
-    final res=await FilePicker.platform.pickFiles(type:FileType.custom,allowedExtensions:['srt','vtt','ass','ssa']);
+    final res=await FilePicker.platform.pickFiles(type:FileType.custom,allowedExtensions:['srt','vtt','ass','ssa','sub','sbv','smi','lrc','sup','idx']);
     if(res?.files.single.path!=null)await _loadSub(res!.files.single.path!,secondary:secondary);
   }
 
@@ -333,6 +351,43 @@ class _PlayerState extends State<PlayerScreen>{
         },child:const Text('شروع')),
       ],
     )));
+  }
+
+  // انتخاب تراک زیرنویس embedded (softsub)
+  void _showEmbeddedSubPicker(){
+    final tracks=_subtitleTracks;
+    showDialog(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('زیرنویس داخلی ویدیو'),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        ListTile(dense:true,
+          leading:Icon(!_useEmbeddedSub?Icons.radio_button_checked:Icons.radio_button_unchecked,
+              color:!_useEmbeddedSub?const Color(0xFF7C3AED):null,size:18),
+          title:const Text('زیرنویس خارجی (SRT/VTT/...)'),
+          onTap:(){
+            setState(()=>_useEmbeddedSub=false);
+            Navigator.pop(ctx);
+          }),
+        const Divider(height:1),
+        if(tracks.isEmpty)const Padding(
+          padding:EdgeInsets.all(12),
+          child:Text('این ویدیو تراک زیرنویس داخلی ندارد',
+              style:TextStyle(color:Color(0xFF94A3B8)),textAlign:TextAlign.center)),
+        ...tracks.map((t)=>ListTile(dense:true,
+          leading:Icon(_useEmbeddedSub?Icons.radio_button_checked:Icons.radio_button_unchecked,
+              color:_useEmbeddedSub?const Color(0xFF7C3AED):null,size:18),
+          title:Text(t.title??t.language??'Track ${t.id}'),
+          subtitle:Text('ID: ${t.id}${t.language!=null?' — ${t.language}':''}',
+              style:const TextStyle(fontSize:11)),
+          onTap:(){
+            player.setSubtitleTrack(t);
+            setState((){_useEmbeddedSub=true;_sub1Visible=false;});
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content:Text('زیرنویس داخلی: ${t.title??t.language??t.id}')));
+          })),
+      ]),
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
+    ));
   }
 
   void _showAudioPicker(){
@@ -559,7 +614,20 @@ class _PlayerState extends State<PlayerScreen>{
           transform:Matrix4.identity()..translate(_offset.dx,_offset.dy)..scale(_scale,_scale)..rotateZ(_rotationDeg*3.14159/180),
           child:RepaintBoundary(key:_videoKey,child:Video(
             controller:controller,controls:NoVideoControls,fit:_fit,
-            subtitleViewConfiguration:const SubtitleViewConfiguration(style:TextStyle(fontSize:0,color:Colors.transparent),padding:EdgeInsets.zero),
+            // embedded→libmpv رندر کنه (PGS/VobSub/ASS/...) | external→ما رندر می‌کنیم
+            subtitleViewConfiguration:_useEmbeddedSub
+              ?SubtitleViewConfiguration(
+                style:TextStyle(
+                  fontSize:_vs.fontSize,color:Color(_vs.textColor),
+                  fontWeight:_vs.bold?FontWeight.bold:FontWeight.normal,
+                  fontFamily:_vs.fontFamily.isEmpty?null:_vs.fontFamily,
+                  height:1.4,shadows:const[Shadow(color:Colors.black,blurRadius:6)],
+                ),
+                padding:EdgeInsets.only(bottom:_vs.bottomPadding+16,left:16,right:16),
+              )
+              :const SubtitleViewConfiguration(
+                style:TextStyle(fontSize:0,color:Colors.transparent),padding:EdgeInsets.zero,
+              ),
           )),
         ))),
 
@@ -746,6 +814,28 @@ class _PlayerState extends State<PlayerScreen>{
           IconButton(icon:Icon(Store.favorited.contains(_curPath)?Icons.favorite:Icons.favorite_border,
               color:Store.favorited.contains(_curPath)?Colors.redAccent:Colors.white),
               onPressed:()async{await Store.toggleFavorite(_curPath);setState((){});}),
+          // badge تراک زیرنویس داخلی — اگه موجود باشه نشون میده
+          if(_subtitleTracks.isNotEmpty||_useEmbeddedSub)
+            GestureDetector(
+              onTap:_showEmbeddedSubPicker,
+              child:Container(
+                margin:const EdgeInsets.symmetric(horizontal:2,vertical:10),
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                decoration:BoxDecoration(
+                  color:_useEmbeddedSub?const Color(0xFF7C3AED):const Color(0xFF7C3AED).withOpacity(0.15),
+                  borderRadius:BorderRadius.circular(6),
+                  border:Border.all(color:const Color(0xFF7C3AED).withOpacity(_useEmbeddedSub?0:0.4)),
+                ),
+                child:Row(mainAxisSize:MainAxisSize.min,children:[
+                  Icon(Icons.subtitles_outlined,size:12,
+                      color:_useEmbeddedSub?Colors.white:const Color(0xFF7C3AED)),
+                  const SizedBox(width:3),
+                  Text('${_subtitleTracks.length} داخلی',
+                      style:TextStyle(fontSize:10,fontWeight:FontWeight.w600,
+                          color:_useEmbeddedSub?Colors.white:const Color(0xFF7C3AED))),
+                ]),
+              ),
+            ),
           IconButton(icon:const Icon(Icons.subtitles),onPressed:()=>showModalBottomSheet(
             context:context,isScrollControlled:true,backgroundColor:const Color(0xFF1C1C22),
             shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
@@ -777,6 +867,7 @@ class _PlayerState extends State<PlayerScreen>{
                 case 'lock':setState((){_locked=true;_controlsVisible=false;});break;
                 case 'mute':if(_muted){player.setVolume(_savedVol);setState(()=>_muted=false);}
                     else{_savedVol=player.state.volume;player.setVolume(0);setState(()=>_muted=true);}break;
+                case 'embsub':_showEmbeddedSubPicker();break;
                 case 'audio':_showAudioPicker();break;
                 case 'sleep':_showSleepDialog();break;
                 case 'screenshot':_takeScreenshot();break;
@@ -790,6 +881,7 @@ class _PlayerState extends State<PlayerScreen>{
               PopupMenuItem(value:'repeat',child:Text('تکرار: ${_repeatMode==_Repeat.none?"خاموش":_repeatMode==_Repeat.all?"همه":"یک"}')),
               PopupMenuItem(value:'night',child:Text(_vs.nightOpacity>0?'خاموش حالت شب':'حالت شب')),
               PopupMenuItem(value:'mute',child:Text(_muted?'لغو بی‌صدا':'بی‌صدا')),
+              const PopupMenuItem(value:'embsub',child:Text('زیرنویس داخلی (Softsub)')),
               const PopupMenuItem(value:'audio',child:Text('تراک صوتی')),
               const PopupMenuItem(value:'sleep',child:Text('تایمر خواب')),
               const PopupMenuItem(value:'screenshot',child:Text('اسکرین‌شات')),
