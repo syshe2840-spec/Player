@@ -516,8 +516,14 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   Future<void> _enterPip()async{
-    try{await _pipCh.invokeMethod('enterPip',{'playing':_playing,'title':p.basename(_curPath)});}
-    catch(_){}
+    try{
+      final ok=await _pipCh.invokeMethod<bool>('enterPip',{'playing':_playing,'title':p.basename(_curPath)});
+      if(ok!=true&&mounted){
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PiP پشتیبانی نمی‌شه — نیاز به Android 8+ و تنظیم Manifest دارد')));
+      }
+    }catch(e){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PiP error: $e')));
+    }
   }
 
   // thumbnail پیش‌نمایش seek — با timeMs دقیق
@@ -531,8 +537,11 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   void _notifUpdate(){
-    try{_pipCh.invokeMethod('updateState',{'playing':_playing,'title':p.basename(_curPath)});}
-    catch(_){}
+    try{
+      _pipCh.invokeMethod('updateState',{'playing':_playing,'title':p.basename(_curPath)});
+    }catch(e){
+      debugPrint('Notification error: $e');
+    }
   }
 
   void _startFastSeek(bool forward){
