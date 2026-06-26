@@ -17,6 +17,9 @@ class PlayerSettings extends StatefulWidget {
   final VoidCallback onPickSub1, onPickSub2, onPickFont, onSaveForVideo;
   final double speed, ampVolume;
   final ValueChanged<double> onSpeed, onAmpVolume;
+  final bool hwDecode;
+  final ValueChanged<bool> onHwDecode;
+  final int? videoWidth, videoHeight;
 
   const PlayerSettings({
     super.key,
@@ -48,6 +51,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   final List<Color> _textColors=const[Colors.white,Color(0xFFFFEB3B),Color(0xFF69F0AE),Color(0xFF40C4FF),Color(0xFFFF8A65),Color(0xFFFF80AB)];
   final List<Color> _bgColors=const[Colors.black,Color(0xFF0D1B2A),Color(0xFF1B2E1B),Color(0xFF2A1B1B),Color(0xFF1B1B2E),Colors.transparent];
 
+  bool _hwDecode=true;
   final TextEditingController _d1Ctrl=TextEditingController();
   final TextEditingController _d2Ctrl=TextEditingController();
   final TextEditingController _adCtrl=TextEditingController();
@@ -59,6 +63,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     _vs=widget.vs;_sd1=widget.subDelayMs;_sd2=widget.subDelay2Ms;_ad=widget.audioDelayMs;
     _c2=widget.color2;_speed=widget.speed;_amp=widget.ampVolume;
     _s1v=widget.sub1Visible;_s2v=widget.sub2Visible;
+    _hwDecode=widget.hwDecode;
     _d1Ctrl.text='$_sd1';_d2Ctrl.text='$_sd2';_adCtrl.text='$_ad';
   }
   @override void dispose(){_tab.dispose();_d1Ctrl.dispose();_d2Ctrl.dispose();_adCtrl.dispose();super.dispose();}
@@ -254,6 +259,23 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     _helpRow('دو ضربه راست','۱۰ ثانیه جلو'),
     _helpRow('دو ضربه وسط','پخش / توقف'),
     _helpRow('نگه داشتن','پخش / توقف'),
+    const Divider(height:24),
+    const Text('دیکودر',style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
+    SegmentedButton<bool>(
+      segments:const[
+        ButtonSegment(value:true,label:Text('HW'),icon:Icon(Icons.memory,size:16)),
+        ButtonSegment(value:false,label:Text('SW'),icon:Icon(Icons.computer,size:16)),
+      ],
+      selected:{_hwDecode},
+      onSelectionChanged:(s){setState(()=>_hwDecode=s.first);widget.onHwDecode(s.first);},
+    ),
+    const SizedBox(height:4),
+    const Text('HW: سریع‌تر. SW: سازگاری بیشتر.',style:TextStyle(fontSize:11,color:Colors.white54)),
+    if(widget.videoWidth!=null&&widget.videoHeight!=null)...[
+      const Divider(height:18),
+      const Text('رزولوشن:',style:TextStyle(fontSize:12,color:Colors.white54)),const SizedBox(height:4),
+      Text('${widget.videoWidth}×${widget.videoHeight}',style:const TextStyle(fontSize:14,color:Colors.greenAccent,fontWeight:FontWeight.bold)),
+    ],
   ]));
 
   Widget _helpRow(String key,String val)=>Padding(
