@@ -68,7 +68,12 @@ class MainActivity : FlutterActivity() {
         pipCh = MethodChannel(fe.dartExecutor.binaryMessenger, PIP_CH).also { ch ->
             ch.setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "enterPip" -> { playing = call.argument<Boolean>("playing") ?: false; title = call.argument<String>("title") ?: title; enterPip(); result.success(true) }
+                    "enterPip" -> {
+                        playing = call.argument<Boolean>("playing") ?: false
+                        title = call.argument<String>("title") ?: title
+                        val ok = try { enterPip(); true } catch (e: Exception) { android.util.Log.e("PiP","enterPip failed: $e"); false }
+                        result.success(ok)
+                    }
                     "updateState" -> { playing = call.argument<Boolean>("playing") ?: false; title = call.argument<String>("title") ?: title; showNotif(); if (Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode) updatePipParams(); result.success(null) }
                     "hideNotif" -> { nm().cancel(NOTIF_ID); result.success(null) }
                     else -> result.notImplemented()
@@ -110,9 +115,10 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun enterPip() {
-        if (Build.VERSION.SDK_INT < 26) return
+        if (Build.VERSION.SDK_INT < 26) throw RuntimeException("API < 26, PiP not supported")
         val p = PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).also { if (Build.VERSION.SDK_INT >= 26) it.setActions(buildActions()) }.build()
-        enterPictureInPictureMode(p)
+        val result = enterPictureInPictureMode(p)
+        android.util.Log.d("PiP","enterPictureInPictureMode result: $result")
     }
 
     private fun buildActions(): List<android.app.RemoteAction> {
@@ -133,9 +139,15 @@ class MainActivity : FlutterActivity() {
         pipCh?.invokeMethod("pipModeChanged", mapOf("inPip" to inPip))
     }
 
+    override fun onStart() {
+        super.onStart()
+        // نوتیفیکیشن رو از onStart بزن (بعد از اینکه permission درخواست شد)
+        if (playing) showNotif()
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (playing && Build.VERSION.SDK_INT >= 26) enterPip()
+        if (playing && Build.VERSION.SDK_INT >= 26) try { enterPip() } catch (_: Exception) {}
     }
 
     override fun onDestroy() {
@@ -159,3 +171,4 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
