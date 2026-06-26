@@ -313,12 +313,14 @@ class _PlayerState extends State<PlayerScreen>{
     ]),
   );
 
-  void _startFastSeek(bool right){
+  void _startFastSeek(bool forward){
+    // forward=true → جلو (چپ صفحه)، forward=false → عقب (راست صفحه)
     if(_locked)return;
     _fastSeekTimer?.cancel();
-    setState((){_fastSeeking=true;_fastSeekRight=right;_fastSeekBaseSpeed=_fastSeekSpeed;});
+    // نوار سمت راست = وقتی عقب میریم، سمت چپ = وقتی جلو
+    setState((){_fastSeeking=true;_fastSeekRight=!forward;_fastSeekBaseSpeed=_fastSeekSpeed;});
     _fastSeekTimer=Timer.periodic(const Duration(milliseconds:80),(t){
-      final delta=(_fastSeekSpeed*(right?1:-1)*80).round();
+      final delta=(_fastSeekSpeed*(forward?1:-1)*80).round();
       final ms=(_position.inMilliseconds+delta).clamp(0,_duration.inMilliseconds);
       player.seek(Duration(milliseconds:ms));
     });
@@ -509,8 +511,9 @@ class _PlayerState extends State<PlayerScreen>{
           onScaleEnd:_onScaleEnd,
           onLongPressStart:(d){
             final x=d.localPosition.dx;
-            if(x<_size.width/3)_startFastSeek(false);
-            else if(x>_size.width*2/3)_startFastSeek(true);
+            // RTL: راست = عقب، چپ = جلو
+            if(x>_size.width*2/3)_startFastSeek(false);  // راست → عقب
+            else if(x<_size.width/3)_startFastSeek(true); // چپ → جلو
           },
           onLongPressMoveUpdate:(d){
             if(_fastSeeking)_adjustFastSeekSpeed(d.offsetFromOrigin.dy);
@@ -524,12 +527,11 @@ class _PlayerState extends State<PlayerScreen>{
           Positioned(
             right:8,
             bottom:_vs.bottomPadding+navBottom+_vs.fontSize*0.4,
-            child:GestureDetector(
+            child:Listener(
               behavior:HitTestBehavior.opaque,
-              onVerticalDragStart:(_){_subPaddingStart=_vs.bottomPadding;},
-              onVerticalDragUpdate:(d)=>setState(()=>
-                _vs.bottomPadding=(_subPaddingStart-d.delta.dy).clamp(0.0,_size.height*0.85)),
-              onVerticalDragEnd:(_){},
+              onPointerDown:(_){_subPaddingStart=_vs.bottomPadding;},
+              onPointerMove:(e)=>setState(()=>
+                _vs.bottomPadding=(_vs.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
               child:Container(
                 padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
                 decoration:BoxDecoration(
@@ -574,7 +576,7 @@ class _PlayerState extends State<PlayerScreen>{
               decoration:BoxDecoration(color:Colors.black.withOpacity(0.7),borderRadius:BorderRadius.circular(26)),
               padding:const EdgeInsets.symmetric(vertical:12,horizontal:6),
               child:Column(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
-                Icon(_fastSeekRight?Icons.fast_forward:Icons.fast_rewind,color:Colors.orange,size:20),
+                Icon(_fastSeekRight?Icons.fast_rewind:Icons.fast_forward,color:Colors.orange,size:20),
                 // نوار سرعت (بکش بالا/پایین روی ویدیو تغییر می‌کنه)
                 Expanded(child:Container(
                   margin:const EdgeInsets.symmetric(vertical:8,horizontal:8),
@@ -745,4 +747,3 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
-
