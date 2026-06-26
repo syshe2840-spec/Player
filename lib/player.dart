@@ -1,9 +1,7 @@
-
 // lib/player.dart — پلیر ویدیو
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -14,7 +12,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:volume_controller/volume_controller.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path/path.dart' as p;
 import 'store.dart';
 import 'settings.dart';
@@ -73,7 +70,6 @@ class _PlayerState extends State<PlayerScreen>{
   // اسلایدر پیش‌نمایش
   bool _seekDragging=false;
   double _seekDragMs=0;
-  Uint8List? _thumbData;
   Timer? _thumbTimer;
 
   // UI
@@ -240,15 +236,13 @@ class _PlayerState extends State<PlayerScreen>{
     if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تنظیمات برای این ویدیو ذخیره شد')));
   }
 
-  // ── Thumbnail preview ──
-  Future<void> _fetchThumb(int ms)async{
-    try{
-      final data=await VideoThumbnail.thumbnailData(
-        video:_curPath,imageFormat:ImageFormat.JPEG,
-        timeMs:ms,maxHeight:90,maxWidth:160,quality:50,
-      );
-      if(mounted&&_seekDragging)setState(()=>_thumbData=data);
-    }catch(_){}
+  // ── Thumbnail preview — فقط timestamp نمایش داده می‌شه ──
+  void _onSeekDragUpdate(double ms) {
+    setState(() => _seekDragMs = ms);
+    _thumbTimer?.cancel();
+    _thumbTimer = Timer(const Duration(milliseconds: 100), () {
+      // در آینده می‌توان frame واقعی را اینجا نمایش داد
+    });
   }
 
   void _showSleepDialog(){
@@ -506,23 +500,23 @@ class _PlayerState extends State<PlayerScreen>{
         )),
 
         // ── thumbnail preview روی اسلایدر ──
+        // ── نمایش timestamp هنگام کشیدن اسلایدر ──
         if(_seekDragging)
           Positioned(
             left:0,right:0,
-            bottom:navBottom+44,
-            child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-              if(_thumbData!=null)ClipRRect(
+            bottom:navBottom+52,
+            child:Center(child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:16,vertical:8),
+              decoration:BoxDecoration(
+                color:Colors.black.withOpacity(0.75),
                 borderRadius:BorderRadius.circular(8),
-                child:Image.memory(_thumbData!,width:160,height:90,fit:BoxFit.cover),
+                border:Border.all(color:Colors.white24,width:1),
               ),
-              Container(
-                margin:const EdgeInsets.only(top:4),
-                padding:const EdgeInsets.symmetric(horizontal:10,vertical:4),
-                decoration:BoxDecoration(color:Colors.black.withOpacity(0.7),borderRadius:BorderRadius.circular(6)),
-                child:Text(fmt(Duration(milliseconds:_seekDragMs.round())),
-                    style:const TextStyle(fontSize:14,fontWeight:FontWeight.bold)),
+              child:Text(
+                fmt(Duration(milliseconds:_seekDragMs.round())),
+                style:const TextStyle(fontSize:16,fontWeight:FontWeight.bold,color:Colors.white),
               ),
-            ])),
+            )),
           ),
 
         // ── پیام وسط ──
@@ -642,17 +636,15 @@ class _PlayerState extends State<PlayerScreen>{
             value:(_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
                 .clamp(0,_duration.inMilliseconds<=0?0:_duration.inMilliseconds.toDouble()),
             onChangeStart:(v){
-              setState((){_seekDragging=true;_seekDragMs=v;_thumbData=null;});
+              setState((){_seekDragging=true;_seekDragMs=v;});
             },
             onChanged:(v){
               setState(()=>_seekDragMs=v);
-              _thumbTimer?.cancel();
-              _thumbTimer=Timer(const Duration(milliseconds:200),()=>_fetchThumb(v.round()));
             },
             onChangeEnd:(v){
               player.seek(Duration(milliseconds:v.round()));
               _thumbTimer?.cancel();
-              setState((){_seekDragging=false;_thumbData=null;});
+              setState((){_seekDragging=false;});
               _startHideTimer();
             },
           )),
@@ -683,3 +675,4 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
+
