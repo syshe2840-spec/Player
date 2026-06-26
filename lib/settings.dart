@@ -19,6 +19,8 @@ class PlayerSettings extends StatefulWidget {
   final ValueChanged<double> onSpeed, onAmpVolume;
   final bool hwDecode;
   final ValueChanged<bool> onHwDecode;
+  final bool embeddedSubEnabled;
+  final ValueChanged<bool> onEmbeddedSubEnabled;
   final int? videoWidth, videoHeight;
 
   const PlayerSettings({
@@ -36,6 +38,7 @@ class PlayerSettings extends StatefulWidget {
     required this.speed, required this.onSpeed,
     required this.ampVolume, required this.onAmpVolume,
     required this.hwDecode, required this.onHwDecode,
+    required this.embeddedSubEnabled, required this.onEmbeddedSubEnabled,
     this.videoWidth, this.videoHeight,
   });
 
@@ -267,6 +270,14 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     _helpRow('دو ضربه وسط','پخش / توقف'),
     _helpRow('نگه داشتن','پخش / توقف'),
     const Divider(height:24),
+    // کنترل زیرنویس داخلی
+    SwitchListTile(contentPadding:EdgeInsets.zero,
+      title:const Text('زیرنویس داخلی (Embedded)'),
+      subtitle:const Text('libmpv تراک‌های داخلی را نمایش دهد'),
+      value:widget.embeddedSubEnabled,
+      onChanged:widget.onEmbeddedSubEnabled,
+    ),
+    const Divider(height:16),
     const Text('دیکودر',style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
     SegmentedButton<bool>(
       segments:const[
