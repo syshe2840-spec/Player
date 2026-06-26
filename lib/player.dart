@@ -70,6 +70,12 @@ class _PlayerState extends State<PlayerScreen>{
   // اسلایدر پیش‌نمایش
   bool _seekDragging=false;
   double _seekDragMs=0;
+  // Fast seek (long press)
+  bool _fastSeeking=false;
+  bool _fastSeekRight=false;
+  double _fastSeekSpeed=3.0; // ثانیه در ثانیه
+  double _fastSeekBaseSpeed=3.0;
+  Timer? _fastSeekTimer;
   Timer? _thumbTimer;
 
   // UI
@@ -307,6 +313,27 @@ class _PlayerState extends State<PlayerScreen>{
     ]),
   );
 
+  void _startFastSeek(bool right){
+    if(_locked)return;
+    _fastSeekTimer?.cancel();
+    setState((){_fastSeeking=true;_fastSeekRight=right;_fastSeekBaseSpeed=_fastSeekSpeed;});
+    _fastSeekTimer=Timer.periodic(const Duration(milliseconds:80),(t){
+      final delta=(_fastSeekSpeed*(right?1:-1)*80).round();
+      final ms=(_position.inMilliseconds+delta).clamp(0,_duration.inMilliseconds);
+      player.seek(Duration(milliseconds:ms));
+    });
+  }
+
+  void _stopFastSeek(){
+    _fastSeekTimer?.cancel();
+    setState(()=>_fastSeeking=false);
+  }
+
+  void _adjustFastSeekSpeed(double dy){
+    // بالا = سریع‌تر، پایین = کندتر
+    setState(()=>_fastSeekSpeed=(_fastSeekBaseSpeed-dy/60).clamp(1.0,20.0));
+  }
+
   @override
   void dispose(){
     Store.savePos(_curPath,_position);
@@ -458,22 +485,6 @@ class _PlayerState extends State<PlayerScreen>{
           )),
         ),
 
-        // ── دستگیره جابجایی زیرنویس (drag handle) ──
-        if(_sub1Visible&&_controlsVisible&&!_locked)
-          Positioned(
-            right:8,
-            bottom:_vs.bottomPadding+navBottom+_vs.fontSize*0.5,
-            child:GestureDetector(
-              onVerticalDragStart:(_)=>_subPaddingStart=_vs.bottomPadding,
-              onVerticalDragUpdate:(d)=>setState(()=>
-                _vs.bottomPadding=(_subPaddingStart-d.delta.dy).clamp(0.0,_size.height*0.85)),
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:8,vertical:6),
-                decoration:BoxDecoration(color:Colors.black.withOpacity(0.55),borderRadius:BorderRadius.circular(16)),
-                child:const Icon(Icons.drag_indicator,color:Colors.white60,size:20),
-              ),
-            ),
-          ),
 
         // ── A-B indicator ──
         if(_repeatA!=null||_repeatB!=null)
@@ -496,8 +507,40 @@ class _PlayerState extends State<PlayerScreen>{
           onScaleStart:_onScaleStart,
           onScaleUpdate:_onScaleUpdate,
           onScaleEnd:_onScaleEnd,
+          onLongPressStart:(d){
+            final x=d.localPosition.dx;
+            if(x<_size.width/3)_startFastSeek(false);
+            else if(x>_size.width*2/3)_startFastSeek(true);
+          },
+          onLongPressMoveUpdate:(d){
+            if(_fastSeeking)_adjustFastSeekSpeed(d.offsetFromOrigin.dy);
+          },
+          onLongPressEnd:(_)=>_stopFastSeek(),
+          onLongPressCancel:()=>_stopFastSeek(),
           child:const SizedBox.expand(),
         )),
+        // ── دستگیره جابجایی زیرنویس (بعد از GestureDetector تا z-index درست باشه) ──
+        if(_sub1Visible&&!_locked)
+          Positioned(
+            right:8,
+            bottom:_vs.bottomPadding+navBottom+_vs.fontSize*0.4,
+            child:GestureDetector(
+              behavior:HitTestBehavior.opaque,
+              onVerticalDragStart:(_){_subPaddingStart=_vs.bottomPadding;},
+              onVerticalDragUpdate:(d)=>setState(()=>
+                _vs.bottomPadding=(_subPaddingStart-d.delta.dy).clamp(0.0,_size.height*0.85)),
+              onVerticalDragEnd:(_){},
+              child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
+                decoration:BoxDecoration(
+                  color:Colors.black.withOpacity(0.6),
+                  borderRadius:BorderRadius.circular(20),
+                  border:Border.all(color:Colors.white24,width:1),
+                ),
+                child:const Icon(Icons.drag_indicator,color:Colors.white70,size:22),
+              ),
+            ),
+          ),
 
         // ── thumbnail preview روی اسلایدر ──
         // ── نمایش timestamp هنگام کشیدن اسلایدر ──
@@ -517,6 +560,33 @@ class _PlayerState extends State<PlayerScreen>{
                 style:const TextStyle(fontSize:16,fontWeight:FontWeight.bold,color:Colors.white),
               ),
             )),
+          ),
+
+        // ── نوار fast seek ──
+        if(_fastSeeking)
+          Positioned(
+            left:_fastSeekRight?null:8,
+            right:_fastSeekRight?8:null,
+            top:_size.height*0.15,
+            bottom:_size.height*0.15,
+            width:52,
+            child:Container(
+              decoration:BoxDecoration(color:Colors.black.withOpacity(0.7),borderRadius:BorderRadius.circular(26)),
+              padding:const EdgeInsets.symmetric(vertical:12,horizontal:6),
+              child:Column(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
+                Icon(_fastSeekRight?Icons.fast_forward:Icons.fast_rewind,color:Colors.orange,size:20),
+                // نوار سرعت (بکش بالا/پایین روی ویدیو تغییر می‌کنه)
+                Expanded(child:Container(
+                  margin:const EdgeInsets.symmetric(vertical:8,horizontal:8),
+                  decoration:BoxDecoration(color:Colors.white12,borderRadius:BorderRadius.circular(4)),
+                  child:Align(alignment:Alignment.bottomCenter,child:FractionallySizedBox(
+                    heightFactor:((_fastSeekSpeed-1)/19).clamp(0.0,1.0),
+                    child:Container(decoration:BoxDecoration(color:Colors.orange,borderRadius:BorderRadius.circular(4))),
+                  )),
+                )),
+                Text('${_fastSeekSpeed.toStringAsFixed(1)}x',style:const TextStyle(fontSize:11,color:Colors.white,fontWeight:FontWeight.bold)),
+              ]),
+            ),
           ),
 
         // ── پیام وسط ──
