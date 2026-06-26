@@ -33,15 +33,15 @@ jobs:
           mkdir -p android/app/src/main/kotlin/ir/subteam/subtitle_player/
           cp android_files/MainActivity.kt android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt
 
-      - name: Add storage permissions and PiP support
+      - name: Add storage permissions, PiP and notifications
         run: |
           set -e
           M=android/app/src/main/AndroidManifest.xml
-          # PiP support
-          sed -i 's/android:hardwareAccelerated="true"/android:hardwareAccelerated="true"\n            android:supportsPictureInPicture="true"/' $M || true
-          sed -i 's#<application#<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <application#' "$M"
-          echo "===== MANIFEST ====="
-          cat "$M"
+          # permissions
+          sed -i 's#<application#<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application#' "$M"
+          # PiP: supportsPictureInPicture
+          sed -i 's/android:launchMode="singleTop"/android:launchMode="singleTop"\n            android:supportsPictureInPicture="true"/' "$M" || true
+          cat "$M" | grep -i "pip\|NOTIF\|STORAGE" || true
 
       - name: Force compileSdk 36 everywhere
         run: |
