@@ -266,11 +266,13 @@ class VideoSettings {
     this.fontSize=30,this.bold=true,this.textColor=0xFFFFFFFF,
     this.bgColor=0xFF000000,this.bgOpacity=0.5,this.textAlign=2,
     this.bottomPadding=50,this.fontFamily='',this.speed=1.0,this.nightOpacity=0,
+    this.showSubToolbar=true,
   });
 
   Map<String,dynamic> toMap()=>{'fontSize':fontSize,'bold':bold,'textColor':textColor,
     'bgColor':bgColor,'bgOpacity':bgOpacity,'textAlign':textAlign,
-    'bottomPadding':bottomPadding,'fontFamily':fontFamily,'speed':speed,'nightOpacity':nightOpacity};
+    'bottomPadding':bottomPadding,'fontFamily':fontFamily,'speed':speed,'nightOpacity':nightOpacity,
+    'showSubToolbar':showSubToolbar};
 
   factory VideoSettings.fromMap(Map<String,dynamic> m)=>VideoSettings(
     fontSize:(m['fontSize']as num? ??30).toDouble(),
