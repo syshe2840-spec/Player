@@ -58,6 +58,7 @@ class _PlayerState extends State<PlayerScreen>{
   bool _landscape=false;
   _Repeat _repeatMode=_Repeat.none;
   bool _muted=false,_hwDecode=true;
+  double _currentAmpVolume=100.0;
   double _savedVol=100;
   double _rotationDeg=0;
 
@@ -700,7 +701,7 @@ class _PlayerState extends State<PlayerScreen>{
         // ── سربرگ زیرنویس: فقط وقتی متن زیرنویس روی صفحه هست ──
         // شامل: دکمه کپی + drag handle برای جابجایی
         // بالای متن قرار می‌گیره تا روی متن نیاد
-        if(sub!=null&&!_locked)
+        if(sub!=null&&!_locked&&_vs.showSubToolbar)
           Positioned(
             right:8,
             bottom:_vs.bottomPadding+navBottom+_vs.fontSize*1.8+10,
@@ -851,7 +852,7 @@ class _PlayerState extends State<PlayerScreen>{
               onPickSub1:()=>_pickSub(secondary:false),onPickSub2:()=>_pickSub(secondary:true),
               onPickFont:_pickFont,
               speed:_vs.speed,onSpeed:(s){setState(()=>_vs.speed=s);player.setRate(s);},
-              ampVolume:100,onAmpVolume:(v)=>player.setVolume(v),
+              ampVolume:_currentAmpVolume,onAmpVolume:(v){setState(()=>_currentAmpVolume=v);player.setVolume(v);},
               onSaveForVideo:_saveVsForVideo,
               hwDecode:_hwDecode,onHwDecode:(v)=>setState(()=>_hwDecode=v),
               videoWidth:_videoWidth,videoHeight:_videoHeight,
