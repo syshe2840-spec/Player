@@ -570,7 +570,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
       const Text('فایلی یافت نشد',style:TextStyle(color:kTextSec)),
     ]));
 
-    return ListView.builder(
+    return RefreshIndicator(
+      onRefresh:()async{if(!_globalSearch){_loadDir(_path);}else if(_searchQuery.isNotEmpty){_runGlobalSearch(_searchQuery);}},
+      color:kAccent,
+      backgroundColor:kCard,
+      child:ListView.builder(
+      physics:const AlwaysScrollableScrollPhysics(),
       padding:EdgeInsets.only(bottom:MediaQuery.of(context).viewPadding.bottom+90,top:8,left:12,right:12),
       itemCount:total,
       itemBuilder:(ctx,i){
@@ -586,7 +591,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           showPath:_globalSearch,
         );
       },
-    );
+    ),);
   }
 
   void _openPanel(int page){
