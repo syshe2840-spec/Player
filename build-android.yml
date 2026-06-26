@@ -50,14 +50,17 @@ jobs:
             printf '\nsubprojects {\n    def forceSdk = {\n        if (project.hasProperty("android")) { project.android.compileSdkVersion 36 }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle
           fi
 
-      - name: Patch jcenter to mavenCentral
-        run: |
-          find /root/.pub-cache/hosted/pub.dev -name "*.gradle" 2>/dev/null | while read f; do
-            grep -q "jcenter()" "$f" 2>/dev/null && sed -i 's/jcenter()/mavenCentral()/g' "$f" && echo "Patched: $f"
-          done || true
-
       - name: Get packages
         run: flutter pub get
+
+      - name: Patch jcenter to mavenCentral (after pub get)
+        run: |
+          find /root/.pub-cache/hosted/pub.dev -name "*.gradle" 2>/dev/null | while read f; do
+            if grep -q "jcenter()" "$f" 2>/dev/null; then
+              sed -i 's/jcenter()/mavenCentral()/g' "$f"
+              echo "Patched: $f"
+            fi
+          done || true
 
       - name: Build APK
         run: flutter build apk --release
@@ -67,3 +70,4 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
