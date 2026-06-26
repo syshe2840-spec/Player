@@ -58,6 +58,29 @@ class _PlayerState extends State<PlayerScreen>{
 
   // اطلاعات ویدیو
   int? _videoWidth,_videoHeight;
+  VideoParams? _videoParams;
+
+  // HDR detection
+  bool get _isHDR {
+    if(_videoParams==null) return false;
+    final pf=(_videoParams!.pixelformat??'').toLowerCase();
+    final vf=(_videoParams!.videoformat??'').toLowerCase();
+    return pf.contains('p10')||pf.contains('p12')||pf.contains('10le')||
+           vf.contains('dvh')||vf.contains('dovi');
+  }
+  String get _codecStr => _videoParams?.videoformat?.toUpperCase()??'';
+  String get _fpsStr {
+    final fps=_videoParams?.fps;
+    if(fps==null||fps<=0) return '';
+    return '${fps.round()}fps';
+  }
+  String get _bitrateStr {
+    final br=_videoParams?.bitrate;
+    if(br==null||br<=0) return '';
+    if(br>1000000) return '${(br/1000000).toStringAsFixed(1)}Mbps';
+    return '${(br/1000).toStringAsFixed(0)}Kbps';
+  }
+  String get _resStr => (_videoWidth!=null&&_videoHeight!=null)?'${_videoWidth}×${_videoHeight}':'';
 
   // A-B
   Duration? _repeatA,_repeatB;
@@ -131,6 +154,7 @@ class _PlayerState extends State<PlayerScreen>{
     _subs.add(player.stream.tracks.listen((t){if(mounted)setState(()=>_audioTracks=t.audio);}));
     _subs.add(player.stream.width.listen((w){if(mounted&&w!=null)setState(()=>_videoWidth=w);}));
     _subs.add(player.stream.height.listen((h){if(mounted&&h!=null)setState(()=>_videoHeight=h);}));
+    _subs.add(player.stream.videoParams.listen((vp){if(mounted)setState(()=>_videoParams=vp);}));
     _subs.add(player.stream.completed.listen((done){
       if(!done)return;
       switch(_repeatMode){
@@ -289,28 +313,42 @@ class _PlayerState extends State<PlayerScreen>{
 
   void _showVideoInfo(){
     showDialog(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),
       title:Text(p.basename(_curPath),style:const TextStyle(fontSize:13)),
       content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        if(_videoWidth!=null&&_videoHeight!=null)
-          _infoRow(Icons.aspect_ratio,'رزولوشن','${_videoWidth}×${_videoHeight}'),
-        _infoRow(Icons.timer_outlined,'مدت',fmt(_duration)),
-        _infoRow(Icons.speed,'سرعت','${_vs.speed}x'),
-        _infoRow(Icons.memory,'دیکودر',_hwDecode?'سخت‌افزاری (HW)':'نرم‌افزاری (SW)'),
+        if(_resStr.isNotEmpty)_infoRow(Icons.aspect_ratio_rounded,const Color(0xFF0EA5E9),'رزولوشن',_resStr),
+        if(_fpsStr.isNotEmpty)_infoRow(Icons.speed_rounded,const Color(0xFF7C3AED),'فریم ریت',_fpsStr),
+        if(_codecStr.isNotEmpty)_infoRow(Icons.code_rounded,const Color(0xFF10B981),'کدک',_codecStr),
+        if(_bitrateStr.isNotEmpty)_infoRow(Icons.network_check_rounded,const Color(0xFFF59E0B),'بیت‌ریت',_bitrateStr),
+        if(_isHDR)_infoRow(Icons.hdr_on_rounded,const Color(0xFFEC4899),'HDR','فعال ✓'),
+        _infoRow(Icons.timer_outlined,const Color(0xFF94A3B8),'مدت',fmt(_duration)),
+        _infoRow(Icons.memory_rounded,const Color(0xFF94A3B8),'دیکودر',_hwDecode?'سخت‌افزاری (HW)':'نرم‌افزاری (SW)'),
         if(_audioTracks.isNotEmpty)
-          _infoRow(Icons.music_note,'تراک صوتی','${_audioTracks.length} تراک'),
+          _infoRow(Icons.music_note_rounded,const Color(0xFF94A3B8),'تراک صوتی','${_audioTracks.length} تراک'),
+        if(_videoParams?.hwdecCurrent!=null&&(_videoParams!.hwdecCurrent!.isNotEmpty&&_videoParams!.hwdecCurrent!='no'))
+          _infoRow(Icons.developer_board_rounded,const Color(0xFF0EA5E9),'HW Decoder',_videoParams!.hwdecCurrent!),
       ]),
       actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
     ));
   }
 
-  Widget _infoRow(IconData icon,String label,String val)=>Padding(
-    padding:const EdgeInsets.symmetric(vertical:3),
+  Widget _infoRow(IconData icon,Color iconColor,String label,String val)=>Padding(
+    padding:const EdgeInsets.symmetric(vertical:4),
     child:Row(children:[
-      Icon(icon,size:16,color:Colors.white38),const SizedBox(width:8),
-      Text('$label: ',style:const TextStyle(color:Colors.white54,fontSize:12)),
-      Text(val,style:const TextStyle(fontSize:12)),
+      Container(padding:const EdgeInsets.all(5),decoration:BoxDecoration(color:iconColor.withOpacity(0.1),borderRadius:BorderRadius.circular(6)),
+          child:Icon(icon,size:13,color:iconColor)),
+      const SizedBox(width:10),
+      Text('$label',style:const TextStyle(color:Color(0xFF94A3B8),fontSize:12)),
+      const Spacer(),
+      Text(val,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w500)),
     ]),
+  );
+
+  // badge کوچک برای top bar
+  Widget _infoBadge(String text,Color color)=>Container(
+    padding:const EdgeInsets.symmetric(horizontal:5,vertical:1),
+    decoration:BoxDecoration(color:color.withOpacity(0.15),borderRadius:BorderRadius.circular(4),
+        border:Border.all(color:color.withOpacity(0.4),width:0.5)),
+    child:Text(text,style:TextStyle(fontSize:9,color:color,fontWeight:FontWeight.w700)),
   );
 
   void _startFastSeek(bool forward){
@@ -615,7 +653,16 @@ class _PlayerState extends State<PlayerScreen>{
           begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Colors.black54,Colors.transparent])),
         child:Row(children:[
           IconButton(icon:const Icon(Icons.arrow_back),onPressed:()=>Navigator.pop(context)),
-          Expanded(child:Text(p.basename(_curPath),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13))),
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+              Text(p.basename(_curPath),maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(fontSize:13,fontWeight:FontWeight.w500)),
+              if(_isHDR||_resStr.isNotEmpty||_fpsStr.isNotEmpty)
+                Row(children:[
+                  if(_isHDR)_infoBadge('HDR',const Color(0xFFEC4899)),
+                  if(_resStr.isNotEmpty)...[const SizedBox(width:4),_infoBadge(_resStr,const Color(0xFF0EA5E9))],
+                  if(_fpsStr.isNotEmpty)...[const SizedBox(width:4),_infoBadge(_fpsStr,const Color(0xFF7C3AED))],
+                ]),
+            ])),
           if(_sleepAt!=null)GestureDetector(onTap:_showSleepDialog,child:Padding(
               padding:const EdgeInsets.symmetric(horizontal:4),
               child:Row(mainAxisSize:MainAxisSize.min,children:[
@@ -702,7 +749,16 @@ class _PlayerState extends State<PlayerScreen>{
         padding:EdgeInsets.fromLTRB(12,0,12,navBottom+4),
         child:Row(children:[
           Text(fmt(_seekDragging?Duration(milliseconds:_seekDragMs.round()):_position),style:const TextStyle(fontSize:12)),
-          Expanded(child:Slider(
+          Expanded(child:SliderTheme(
+            data:SliderTheme.of(context).copyWith(
+              activeTrackColor:const Color(0xFF7C3AED),
+              inactiveTrackColor:Colors.white.withOpacity(0.12),
+              thumbColor:Colors.white,
+              thumbShape:const RoundSliderThumbShape(enabledThumbRadius:5,elevation:0),
+              overlayShape:SliderComponentShape.noOverlay,
+              trackHeight:2.5,
+            ),
+            child:Slider(
             min:0,
             max:_duration.inMilliseconds<=0?1.0:_duration.inMilliseconds.toDouble(),
             value:(_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
@@ -719,7 +775,7 @@ class _PlayerState extends State<PlayerScreen>{
               setState((){_seekDragging=false;});
               _startHideTimer();
             },
-          )),
+          ))),  // SliderTheme
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
         ]),
       ),
@@ -747,3 +803,4 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
+
