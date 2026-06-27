@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'browser.dart';
 import 'store.dart';
 import 'api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
@@ -170,6 +171,15 @@ class _HomeWrapperState extends State<_HomeWrapper>{
   }
 
   Future<void> _showAnnounce(Map ann)async{
+    // چک تعداد نمایش
+    final annId=ann['id']?.toString()??'0';
+    final maxShows=(ann['max_shows']??1) as int;
+    final prefs=await SharedPreferences.getInstance();
+    final showKey='ann_shown_\$annId';
+    final shownCount=prefs.getInt(showKey)??0;
+    if(maxShows>0&&shownCount>=maxShows)return; // به حد رسیده
+    await prefs.setInt(showKey,shownCount+1); // یه بار دیگه نشون داده شد
+
     final cancel=(ann['cancellable']??1).toString()!='0';
     await showDialog(context:context,barrierDismissible:cancel,builder:(ctx)=>AlertDialog(
       title:Text(ann['title']??''),
