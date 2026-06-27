@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:media_kit/src/player/native/player/real.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -539,6 +540,23 @@ class _PlayerState extends State<PlayerScreen>{
     }catch(_){}
   }
 
+  // اعمال تنظیمات subtitle روی libmpv (برای embedded ASS/SSA)
+  void _applySubMpvSettings(){
+    if(!_embeddedSubEnabled)return;
+    try{
+      final native=player.platform as NativePlayer;
+      // force: تنظیمات ما جایگزین کدهای ASS بشه
+      native.setProperty('sub-ass-override','force');
+      native.setProperty('sub-font-size',_vs.fontSize.round().toString());
+      native.setProperty('sub-margin-y',_vs.bottomPadding.round().toString());
+      native.setProperty('sub-bold',_vs.bold?'yes':'no');
+      // رنگ به فرمت MPV: BBGGRR00
+      final c=Color(_vs.textColor);
+      final mpvColor='${c.blue.toRadixString(16).padLeft(2,'0')}${c.green.toRadixString(16).padLeft(2,'0')}${c.red.toRadixString(16).padLeft(2,'0')}00';
+      native.setProperty('sub-color','0x$mpvColor');
+    }catch(_){}
+  }
+
   void _notifUpdate(){
     try{
       _pipCh.invokeMethod('updateState',{'playing':_playing,'title':p.basename(_curPath)});
@@ -961,7 +979,8 @@ class _PlayerState extends State<PlayerScreen>{
               hwDecode:_hwDecode,onHwDecode:(v)=>setState(()=>_hwDecode=v),
               embeddedSubEnabled:_embeddedSubEnabled,
               onEmbeddedSubEnabled:(v){setState(()=>_embeddedSubEnabled=v);
-                if(v&&_subtitleTracks.isNotEmpty)player.setSubtitleTrack(_subtitleTracks.first);},
+                if(v&&_subtitleTracks.isNotEmpty)player.setSubtitleTrack(_subtitleTracks.first);
+                if(v)_applySubMpvSettings();},
               videoWidth:_videoWidth,videoHeight:_videoHeight,
             ),
           )),
@@ -1082,4 +1101,5 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
+
 
