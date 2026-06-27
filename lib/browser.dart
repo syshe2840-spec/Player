@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
 import 'store.dart';
+import 'api_service.dart';
 import 'player.dart';
 
 const kBg      = Color(0xFF08080F);
@@ -792,7 +793,7 @@ class BottomPanel extends StatefulWidget{
 }
 class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStateMixin{
   late TabController _tab;
-  @override void initState(){super.initState();_tab=TabController(length:6,vsync:this,initialIndex:widget.initialPage.clamp(0,5));}
+  @override void initState(){super.initState();_tab=TabController(length:7,vsync:this,initialIndex:widget.initialPage.clamp(0,5));}
   @override void dispose(){_tab.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Column(children:[
     const SizedBox(height:10),
@@ -805,12 +806,13 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           Tab(icon:Icon(Icons.favorite_rounded,size:16),text:'علاقه‌مندی'),
           Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:'پوشه‌ها'),
           Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:'پلی‌لیست'),
+          Tab(icon:Icon(Icons.star_rounded,size:16),text:'اسپانسر'),
           Tab(icon:Icon(Icons.settings_rounded,size:16),text:'اپ')]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
       _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber),
       _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink),
-      _folderList(),_playlistTab(),_settingsTab(),
+      _folderList(),_playlistTab(),_sponsorTab(),_settingsTab(),
     ])),
     SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
   ]);
@@ -932,6 +934,64 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         );
       })),
     ]);
+  }
+
+  Widget _sponsorTab(){
+    return FutureBuilder<List<Map<String,dynamic>>>(
+      future:ApiService.getSponsors(),
+      builder:(ctx,snap){
+        if(snap.connectionState==ConnectionState.waiting)
+          return const Center(child:CircularProgressIndicator());
+        final list=snap.data??[];
+        if(list.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+          Container(padding:const EdgeInsets.all(16),
+            decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+            child:const Icon(Icons.star_rounded,size:32,color:kTextDim)),
+          const SizedBox(height:12),
+          const Text('هنوز اسپانسری نیست',style:TextStyle(color:kTextSec)),
+        ]));
+        return ListView.builder(
+          padding:const EdgeInsets.all(12),
+          itemCount:list.length,
+          itemBuilder:(_,i){
+            final s=list[i];
+            final isFemale=(s['gender']??'male')=='female';
+            return Card(
+              color:kCard,
+              margin:const EdgeInsets.only(bottom:12),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16),
+                side:const BorderSide(color:kBorder,width:0.5)),
+              child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
+                // آواتار
+                Container(width:56,height:56,
+                  decoration:BoxDecoration(
+                    gradient:LinearGradient(colors:isFemale?[const Color(0xFFEC4899),const Color(0xFFF43F5E)]:[const Color(0xFF7C3AED),const Color(0xFF0EA5E9)]),
+                    borderRadius:BorderRadius.circular(28)),
+                  child:(s['avatar_url']??'').isNotEmpty
+                    ?ClipRRect(borderRadius:BorderRadius.circular(28),child:Image.network(s['avatar_url'],width:56,height:56,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(isFemale?Icons.face_3_rounded:Icons.face_rounded,color:Colors.white,size:28)))
+                    :Icon(isFemale?Icons.face_3_rounded:Icons.face_rounded,color:Colors.white,size:28)),
+                const SizedBox(width:14),
+                // متن
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Text(s['name']??'',style:const TextStyle(fontWeight:FontWeight.bold,fontSize:15)),
+                  if((s['description']??'').isNotEmpty)Padding(
+                    padding:const EdgeInsets.only(top:4),
+                    child:Text(s['description'],style:const TextStyle(fontSize:12,color:kTextSec))),
+                ])),
+                // دکمه
+                if((s['link']??'').isNotEmpty)...[
+                  const SizedBox(width:8),
+                  FilledButton(
+                    style:FilledButton.styleFrom(
+                      padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+                      minimumSize:const Size(0,36)),
+                    onPressed:()=>widget.onLinkTap(s['link']),
+                    child:const Text('مشاهده',style:TextStyle(fontSize:12))),
+                ],
+              ])),
+            );
+          });
+      });
   }
 
   Widget _settingsTab()=>ListView(padding:const EdgeInsets.all(16),children:[
