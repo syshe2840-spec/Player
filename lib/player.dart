@@ -147,16 +147,16 @@ class _PlayerState extends State<PlayerScreen>{
       _position=pos; _maybeWatched();
       if(_abActive&&_repeatA!=null&&_repeatB!=null&&_position>=_repeatB!) player.seek(_repeatA!);
       // موقع درگ اسلایدر setState نزن — مانع jump اسلایدر
-      if(mounted&&!_seekDragging)setState((){});
+      if(mounted)setState((){});
     }));
     _subs.add(player.stream.duration.listen((d){
       _duration=d;
       if(d.inSeconds>0)Store.saveDur(_curPath,d.inSeconds);
-      if(mounted&&!_seekDragging)setState((){});
+      if(mounted)setState((){});
     }));
     _subs.add(player.stream.playing.listen((pl){
       _playing=pl;
-      if(mounted){if(!_seekDragging)setState((){});_notifUpdate();}
+      if(mounted){setState((){});_notifUpdate();}
     }));
     _subs.add(player.stream.tracks.listen((t){
       if(!mounted)return;
@@ -172,8 +172,8 @@ class _PlayerState extends State<PlayerScreen>{
       }
     }));
 
-    _subs.add(player.stream.width.listen((w){if(mounted&&w!=null&&!_seekDragging)setState(()=>_videoWidth=w);}));
-    _subs.add(player.stream.height.listen((h){if(mounted&&h!=null&&!_seekDragging)setState(()=>_videoHeight=h);}));
+    _subs.add(player.stream.width.listen((w){if(mounted&&w!=null)setState(()=>_videoWidth=w);}));
+    _subs.add(player.stream.height.listen((h){if(mounted&&h!=null)setState(()=>_videoHeight=h);}));
     _subs.add(player.stream.videoParams.listen((vp){if(mounted)setState(()=>_videoParams=vp);}));
     _subs.add(player.stream.completed.listen((done){
       if(!done)return;
@@ -1018,40 +1018,31 @@ class _PlayerState extends State<PlayerScreen>{
         padding:EdgeInsets.fromLTRB(12,0,12,navBottom+4),
         child:Row(children:[
           Text(fmt(_seekDragging?Duration(milliseconds:_seekDragMs.round()):_position),style:const TextStyle(fontSize:12)),
-          Expanded(child:SliderTheme(
-            data:SliderTheme.of(context).copyWith(
-              activeTrackColor:const Color(0xFF7C3AED),
-              inactiveTrackColor:Colors.white.withOpacity(0.12),
-              thumbColor:Colors.white,
-              thumbShape:const RoundSliderThumbShape(enabledThumbRadius:5,elevation:0),
-              overlayShape:SliderComponentShape.noOverlay,
-              trackHeight:2.5,
-            ),
-            child:Slider(
-            min:0,
-            max:_duration.inMilliseconds<=0?1.0:_duration.inMilliseconds.toDouble(),
-            value:(_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
-                .clamp(0,_duration.inMilliseconds<=0?0:_duration.inMilliseconds.toDouble()),
-            onChangeStart:(v){
+          Expanded(child:_SeekBar(
+            position:_duration.inMilliseconds<=0?0.0:
+              (_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
+                .clamp(0,_duration.inMilliseconds.toDouble())/_duration.inMilliseconds,
+            onChangeStart:(ratio){
               _seekSession++;
-              setState((){_seekDragging=true;_seekDragMs=v;_seekThumbData=null;});
-              // فوری thumbnail بگیر
-              if(_vs.showSeekPreview) _fetchSeekThumb(v.round(),_seekSession);
+              final ms=(ratio*_duration.inMilliseconds).round();
+              setState((){_seekDragging=true;_seekDragMs=ms.toDouble();_seekThumbData=null;});
+              if(_vs.showSeekPreview)_fetchSeekThumb(ms,_seekSession);
             },
-            onChanged:(v){
-              setState(()=>_seekDragMs=v);
-              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:100),(){final s=_seekSession;_fetchSeekThumb(v.round(),s);});}
+            onChanged:(ratio){
+              final ms=(ratio*_duration.inMilliseconds).round();
+              _seekDragMs=ms.toDouble();
+              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:80),(){final s=_seekSession;_fetchSeekThumb(ms,s);});}
             },
-            onChangeEnd:(v){
+            onChangeEnd:(ratio){
               _seekThumbTimer?.cancel();
               _thumbTimer?.cancel();
-              // اول UI رو فوری پاک کن
-              _seekSession++; // invalidate هر fetch در راه
+              _seekSession++;
+              final ms=(ratio*_duration.inMilliseconds).round();
               setState((){_seekDragging=false;_seekThumbData=null;});
-              player.seek(Duration(milliseconds:v.round()));
+              player.seek(Duration(milliseconds:ms));
               _startHideTimer();
             },
-          ))),  // SliderTheme
+          ))
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
         ]),
       ),
@@ -1078,4 +1069,90 @@ class _PlayerState extends State<PlayerScreen>{
       child:Text(val!=null?'$label: ${fmt(val)}':label,style:const TextStyle(fontSize:12,fontWeight:FontWeight.bold)),
     ),
   );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Seek Bar — state خودشو داره، parent rebuild اثر نمیذاره
+// ─────────────────────────────────────────────────────────────────────────────
+class _SeekBar extends StatefulWidget {
+  final double position;   // 0.0 – 1.0
+  final Function(double) onChangeStart;
+  final Function(double) onChanged;
+  final Function(double) onChangeEnd;
+  const _SeekBar({required this.position,required this.onChangeStart,required this.onChanged,required this.onChangeEnd});
+  @override State<_SeekBar> createState()=>_SeekBarState();
+}
+
+class _SeekBarState extends State<_SeekBar>{
+  double? _drag; // null = نه در حال drag
+
+  double get _display => _drag ?? widget.position;
+
+  void _onDown(Offset local,Size size){
+    final v=(local.dx/size.width).clamp(0.0,1.0);
+    setState(()=>_drag=v);
+    widget.onChangeStart(v);
+  }
+  void _onMove(Offset local,Size size){
+    final v=(local.dx/size.width).clamp(0.0,1.0);
+    setState(()=>_drag=v);
+    widget.onChanged(v);
+  }
+  void _onUp(){
+    final v=_drag??widget.position;
+    setState(()=>_drag=null);
+    widget.onChangeEnd(v);
+  }
+
+  @override
+  Widget build(BuildContext ctx)=>LayoutBuilder(builder:(ctx,constraints){
+    final w=constraints.maxWidth;
+    return GestureDetector(
+      behavior:HitTestBehavior.opaque,
+      onHorizontalDragStart:(d)=>_onDown(d.localPosition,Size(w,0)),
+      onHorizontalDragUpdate:(d)=>_onMove(d.localPosition,Size(w,0)),
+      onHorizontalDragEnd:(_)=>_onUp(),
+      onTapDown:(d)=>_onDown(d.localPosition,Size(w,0)),
+      onTapUp:(_)=>_onUp(),
+      child:SizedBox(
+        height:36,
+        child:CustomPaint(
+          size:Size(w,36),
+          painter:_SeekPainter(value:_display,isDragging:_drag!=null),
+        ),
+      ),
+    );
+  });
+}
+
+class _SeekPainter extends CustomPainter{
+  final double value;
+  final bool isDragging;
+  const _SeekPainter({required this.value,required this.isDragging});
+
+  @override
+  void paint(Canvas canvas,Size size){
+    final cy=size.height/2;
+    final trackH=isDragging?3.5:2.5;
+    final trackY=cy-trackH/2;
+    final r=Radius.circular(trackH/2);
+
+    // background
+    canvas.drawRRect(RRect.fromLTRBR(0,trackY,size.width,trackY+trackH,r),
+      Paint()..color=Colors.white.withOpacity(0.18));
+
+    // played
+    final px=size.width*value;
+    if(px>0)canvas.drawRRect(RRect.fromLTRBR(0,trackY,px,trackY+trackH,r),
+      Paint()..color=const Color(0xFF7C3AED));
+
+    // thumb
+    final thumbR=isDragging?8.0:6.0;
+    final glow=Paint()..color=const Color(0xFF7C3AED).withOpacity(0.3)..maskFilter=const MaskFilter.blur(BlurStyle.normal,8);
+    if(isDragging)canvas.drawCircle(Offset(px,cy),thumbR+4,glow);
+    canvas.drawCircle(Offset(px,cy),thumbR,Paint()..color=Colors.white);
+  }
+
+  @override bool shouldRepaint(_SeekPainter o)=>o.value!=value||o.isDragging!=isDragging;
 }
