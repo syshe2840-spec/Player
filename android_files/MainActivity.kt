@@ -1,4 +1,4 @@
-package ir.subteam.subtitle_player
+package com.vezoo.player
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -28,9 +28,9 @@ class MainActivity : FlutterActivity() {
     private val PIP_CH    = "ir.subteam.subtitle_player/pip"
     private val NOTIF_CH_ID = "player_ctrl"
     private val NOTIF_ID  = 42
-    private val A_PLAY    = "ir.subteam.PLAY"
-    private val A_PAUSE   = "ir.subteam.PAUSE"
-    private val A_CLOSE   = "ir.subteam.CLOSE"
+    private val A_PLAY    = "com.vezoo.PLAY"
+    private val A_PAUSE   = "com.vezoo.PAUSE"
+    private val A_CLOSE   = "com.vezoo.CLOSE"
 
     private val executor  = Executors.newCachedThreadPool()
     private val handler   = Handler(Looper.getMainLooper())
@@ -173,4 +173,3 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
-
