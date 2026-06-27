@@ -92,6 +92,7 @@ class _PlayerState extends State<PlayerScreen>{
 
   // اسلایدر پیش‌نمایش
   bool _seekDragging=false;
+  String? _embeddedSubText; // متن embedded از stream
   double _seekDragMs=0;
   int _seekSession=0; // هر drag جدید → session جدید
   Uint8List? _seekThumbData;
@@ -159,6 +160,13 @@ class _PlayerState extends State<PlayerScreen>{
       _playing=pl;
       if(mounted){if(!_seekDragging)setState((){});_notifUpdate();}
     }));
+    // embedded subtitle text از libmpv stream
+    _subs.add(player.stream.subtitle.listen((lines){
+      if(!mounted||!_embeddedSubEnabled)return;
+      final text=lines.where((s)=>s.trim().isNotEmpty).join('\n').trim();
+      if(!_seekDragging)setState(()=>_embeddedSubText=text.isEmpty?null:text);
+    }));
+
     _subs.add(player.stream.tracks.listen((t){
       if(!mounted)return;
       final newSubTracks=t.subtitle.where((s)=>s.id!='no'&&s.id!='auto').toList();
@@ -541,19 +549,38 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   // اعمال تنظیمات subtitle روی libmpv (برای embedded ASS/SSA)
+  // تبدیل Color به فرمت MPV: 0xBBGGRRAA
+  String _toMpvColor(Color c,[double opacity=1.0]){
+    final a=(opacity*255).round();
+    return '0x\${c.blue.toRadixString(16).padLeft(2,'0')}\${c.green.toRadixString(16).padLeft(2,'0')}\${c.red.toRadixString(16).padLeft(2,'0')}\${a.toRadixString(16).padLeft(2,'0')}';
+  }
+
   void _applySubMpvSettings(){
     if(!_embeddedSubEnabled)return;
     try{
       final native=player.platform as NativePlayer;
-      // force: تنظیمات ما جایگزین کدهای ASS بشه
       native.setProperty('sub-ass-override','force');
+      // سایز
       native.setProperty('sub-font-size',_vs.fontSize.round().toString());
+      // موقعیت عمودی
       native.setProperty('sub-margin-y',_vs.bottomPadding.round().toString());
+      // موقعیت افقی
+      final align=['left','center','right'][_vs.textAlign.clamp(0,2)];
+      native.setProperty('sub-align-x',align);
+      // فونت
+      if(_vs.fontFamily.isNotEmpty)native.setProperty('sub-font',_vs.fontFamily);
+      // استایل
       native.setProperty('sub-bold',_vs.bold?'yes':'no');
-      // رنگ به فرمت MPV: BBGGRR00
-      final c=Color(_vs.textColor);
-      final mpvColor='${c.blue.toRadixString(16).padLeft(2,'0')}${c.green.toRadixString(16).padLeft(2,'0')}${c.red.toRadixString(16).padLeft(2,'0')}00';
-      native.setProperty('sub-color','0x$mpvColor');
+      // رنگ متن
+      native.setProperty('sub-color',_toMpvColor(Color(_vs.textColor)));
+      // پس‌زمینه با شفافیت
+      final bg=Color(_vs.bgColor);
+      native.setProperty('sub-back-color',_toMpvColor(bg,_vs.bgOpacity));
+      // border
+      native.setProperty('sub-border-size',_vs.borderSize.toStringAsFixed(1));
+      // سایه
+      native.setProperty('sub-shadow-offset',_vs.shadowSize.toStringAsFixed(1));
+      if(_vs.shadowSize>0)native.setProperty('sub-shadow-color','0x00000080');
     }catch(_){}
   }
 
@@ -706,14 +733,16 @@ class _PlayerState extends State<PlayerScreen>{
     if(_inPipMode){
       return Scaffold(backgroundColor:Colors.black,body:Stack(children:[
         Positioned.fill(child:Video(controller:controller,controls:NoVideoControls,fit:_fit,
-          subtitleViewConfiguration:_embeddedSubEnabled
-            ?SubtitleViewConfiguration(style:TextStyle(fontSize:_vs.fontSize*0.7,
-                color:Color(_vs.textColor),fontWeight:_vs.bold?FontWeight.bold:FontWeight.normal,
-                shadows:const[Shadow(color:Colors.black,blurRadius:8)]),
-                padding:EdgeInsets.only(bottom:8,left:8,right:8))
-            :const SubtitleViewConfiguration(style:TextStyle(fontSize:0,color:Colors.transparent),padding:EdgeInsets.zero),
+          subtitleViewConfiguration:const SubtitleViewConfiguration(
+            style:TextStyle(fontSize:0,color:Colors.transparent),padding:EdgeInsets.zero),
         )),
-        if(_subText!=null)Positioned(left:4,right:4,bottom:4,child:Container(
+        if(_embeddedSubEnabled&&_embeddedSubText!=null)Positioned(left:4,right:4,bottom:4,child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
+          color:Color(_vs.bgColor).withOpacity(_vs.bgOpacity),
+          child:Text(_embeddedSubText!,textAlign:TextAlign.center,style:TextStyle(
+            fontSize:_vs.fontSize*0.7,color:Color(_vs.textColor),fontWeight:FontWeight.bold)),
+        ))
+        else if(_subText!=null)Positioned(left:4,right:4,bottom:4,child:Container(
           padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
           color:Color(_vs.bgColor).withOpacity(_vs.bgOpacity),
           child:Text(_subText!,textAlign:TextAlign.center,style:TextStyle(
@@ -733,30 +762,41 @@ class _PlayerState extends State<PlayerScreen>{
             controller:controller,controls:NoVideoControls,fit:_fit,
             // embedded→libmpv | external→renderer خودمون
             // هر دو می‌تونن همزمان روی صفحه باشن
-            subtitleViewConfiguration:_embeddedSubEnabled
-              ?SubtitleViewConfiguration(
-                style:TextStyle(
-                  fontSize:_vs.fontSize,color:Color(_vs.textColor),
-                  fontWeight:_vs.bold?FontWeight.bold:FontWeight.normal,
-                  fontFamily:_vs.fontFamily.isEmpty?null:_vs.fontFamily,
-                  height:1.4,shadows:const[Shadow(color:Colors.black,blurRadius:8)],
-                ),
-                // بالاتر از progress bar + navigation bar
-                padding:EdgeInsets.only(
-                  bottom:navBottom+56, // بالای progress bar
-                  left:16,right:16,
-                ),
-              )
-              :const SubtitleViewConfiguration(
-                style:TextStyle(fontSize:0,color:Colors.transparent),padding:EdgeInsets.zero,
-              ),
+            // همیشه transparent — ما خودمون رندر می‌کنیم
+            subtitleViewConfiguration:const SubtitleViewConfiguration(
+              style:TextStyle(fontSize:0,color:Colors.transparent),padding:EdgeInsets.zero,
+            ),
           )),
         ))),
 
-        // ── زیرنویس ۱ ──
-        if(sub!=null)Positioned(
+        // ── زیرنویس embedded (همون موقعیت و تنظیمات sub1) ──
+        if(_embeddedSubEnabled&&_embeddedSubText!=null)Positioned(
           left:12,right:12,
           bottom:_vs.bottomPadding+navBottom,
+          child:Align(
+            alignment:_vs.textAlign==1?Alignment.bottomRight:_vs.textAlign==0?Alignment.bottomLeft:Alignment.bottomCenter,
+            child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+              decoration:BoxDecoration(
+                color:Color(_vs.bgColor).withOpacity(_vs.bgOpacity),
+                borderRadius:BorderRadius.circular(5),
+                border:_vs.borderSize>0?Border.all(color:Colors.black26,width:_vs.borderSize*0.5):null,
+              ),
+              child:Text(_embeddedSubText!,textAlign:align,style:TextStyle(
+                fontFamily:_vs.fontFamily.isEmpty?null:_vs.fontFamily,
+                fontSize:_vs.fontSize,color:Color(_vs.textColor),
+                fontWeight:_vs.bold?FontWeight.bold:FontWeight.normal,height:1.4,
+                shadows:_vs.shadowSize>0?[Shadow(color:Colors.black,blurRadius:_vs.shadowSize*2,offset:Offset(_vs.shadowSize,_vs.shadowSize))]:null,
+              )),
+            ),
+          ),
+        ),
+
+        // ── زیرنویس ۱ (خارجی) ──
+        if(sub!=null)Positioned(
+          left:12,right:12,
+          // اگه embedded هم هست، sub1 رو بالاتر بذار
+          bottom:_vs.bottomPadding+navBottom+(_embeddedSubEnabled&&_embeddedSubText!=null?_vs.fontSize*1.8+12:0),
           child:Align(
             alignment:_vs.textAlign==1?Alignment.bottomRight:_vs.textAlign==0?Alignment.bottomLeft:Alignment.bottomCenter,
             child:Container(
@@ -978,9 +1018,8 @@ class _PlayerState extends State<PlayerScreen>{
               onSaveForVideo:_saveVsForVideo,
               hwDecode:_hwDecode,onHwDecode:(v)=>setState(()=>_hwDecode=v),
               embeddedSubEnabled:_embeddedSubEnabled,
-              onEmbeddedSubEnabled:(v){setState(()=>_embeddedSubEnabled=v);
-                if(v&&_subtitleTracks.isNotEmpty)player.setSubtitleTrack(_subtitleTracks.first);
-                if(v)_applySubMpvSettings();},
+              onEmbeddedSubEnabled:(v){setState((){_embeddedSubEnabled=v;if(!v)_embeddedSubText=null;});
+                if(v&&_subtitleTracks.isNotEmpty)player.setSubtitleTrack(_subtitleTracks.first);},
               videoWidth:_videoWidth,videoHeight:_videoHeight,
             ),
           )),
