@@ -170,13 +170,13 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     // border و سایه
     Row(children:[
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('Border: \${_vs.borderSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
+        Text('Border: ${_vs.borderSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
         Slider(min:0,max:8,divisions:16,value:_vs.borderSize,
           onChanged:(v)=>_ch(()=>_vs.borderSize=v)),
       ])),
       const SizedBox(width:8),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('سایه: \${_vs.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
+        Text('سایه: ${_vs.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
         Slider(min:0,max:5,divisions:10,value:_vs.shadowSize,
           onChanged:(v)=>_ch(()=>_vs.shadowSize=v)),
       ])),
@@ -337,3 +337,4 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     ]),
   );
 }
+
