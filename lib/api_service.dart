@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 // ─── آدرس Worker خودت رو اینجا بذار ───
-const kWorkerUrl = 'https://player.lastofanarchy.workers.dev/';
+const kWorkerUrl = 'https://player.lastofanarchy.workers.dev';
 
 class ApiService {
   static String _uuid = '';
