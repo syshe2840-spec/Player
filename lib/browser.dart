@@ -995,25 +995,90 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       });
   }
 
-  Widget _settingsTab()=>ListView(padding:const EdgeInsets.all(16),children:[
-    Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(
-      gradient:LinearGradient(colors:[kAccent.withOpacity(0.15),kCyan.withOpacity(0.08)]),
-      borderRadius:BorderRadius.circular(12),border:Border.all(color:kAccent.withOpacity(0.2))),
+  Widget _settingsTab()=>FutureBuilder<Map<String,dynamic>?>(
+    future:ApiService.getConfig(),
+    builder:(ctx,snap){
+      final cfg=snap.data??{};
+      final channel=cfg['telegram_channel']??'';
+      final admin=cfg['telegram_admin']??'';
+      final reportText=cfg['report_text']??'گزارش مشکل / پیشنهاد';
+      final remoteVer=cfg['app_version']??'';
+      final hasUpdate=remoteVer.isNotEmpty&&ApiService.isNewer(remoteVer,ApiService.appVersion);
+
+      return ListView(padding:const EdgeInsets.all(16),children:[
+        // هدر اپ
+        Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(
+          gradient:LinearGradient(colors:[kAccent.withOpacity(0.15),kCyan.withOpacity(0.08)]),
+          borderRadius:BorderRadius.circular(12),border:Border.all(color:kAccent.withOpacity(0.2))),
+          child:Row(children:[
+            Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:kAccent.withOpacity(0.2),borderRadius:BorderRadius.circular(8)),
+                child:const Icon(Icons.play_circle_rounded,color:kAccent,size:24)),
+            const SizedBox(width:12),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Text('پلیر زیرنویس',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
+              Text('نسخه ${ApiService.appVersion}${remoteVer.isNotEmpty?" — سرور: \$remoteVer":""}',
+                  style:const TextStyle(fontSize:11,color:kTextSec)),
+            ])),
+            if(snap.connectionState==ConnectionState.waiting)
+              const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2)),
+          ])),
+
+        const SizedBox(height:12),
+
+        // دکمه چک آپدیت
+        _appBtn(
+          icon:hasUpdate?Icons.system_update_rounded:Icons.check_circle_rounded,
+          color:hasUpdate?kAmber:kGreen,
+          label:hasUpdate?'نسخه جدید موجود است — دانلود':'اپ بروز است',
+          onTap:hasUpdate?()async{
+            final url=cfg['download_url']??'';
+            if(url.isNotEmpty)await ul.launchUrl(Uri.parse(url),mode:ul.LaunchMode.externalApplication);
+          }:null,
+        ),
+
+        const SizedBox(height:8),
+
+        // کانال تلگرام
+        if(channel.isNotEmpty)_appBtn(
+          icon:Icons.telegram_rounded,color:kCyan,
+          label:'کانال تلگرام',
+          onTap:()=>ul.launchUrl(Uri.parse(channel),mode:ul.LaunchMode.externalApplication)),
+
+        const SizedBox(height:8),
+
+        // گزارش مشکل / پیشنهاد
+        if(admin.isNotEmpty)_appBtn(
+          icon:Icons.bug_report_rounded,color:kPink,
+          label:reportText,
+          onTap:()=>ul.launchUrl(Uri.parse(admin),mode:ul.LaunchMode.externalApplication)),
+
+        const SizedBox(height:16),
+        Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
+            child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text('ویژگی‌ها',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
+              Text('• پخش تمام فرمت‌های ویدیو\n• زیرنویس SRT, VTT, ASS, SSA\n• HDR detection\n• زیرنویس دوگانه',
+                  style:TextStyle(fontSize:12,color:kTextSec,height:1.7)),
+            ])),
+      ]);
+    });
+}
+
+Widget _appBtn({required IconData icon,required Color color,required String label,VoidCallback? onTap}){
+  return InkWell(
+    onTap:onTap,
+    borderRadius:BorderRadius.circular(12),
+    child:Container(
+      padding:const EdgeInsets.symmetric(horizontal:16,vertical:12),
+      decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),
+          border:Border.all(color:onTap!=null?color.withOpacity(0.3):kBorder)),
       child:Row(children:[
-        Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:kAccent.withOpacity(0.2),borderRadius:BorderRadius.circular(8)),
-            child:const Icon(Icons.play_circle_rounded,color:kAccent,size:24)),
+        Icon(icon,color:onTap!=null?color:kTextDim,size:20),
         const SizedBox(width:12),
-        const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('پلیر زیرنویس',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
-          Text('نسخه ۱.۰.۰ — Flutter + media_kit',style:TextStyle(fontSize:11,color:kTextSec)),
-        ])),
-      ])),
-    const SizedBox(height:12),
-    Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
-        child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('ویژگی‌ها',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
-          Text('• پخش تمام فرمت‌های ویدیو\n• زیرنویس SRT, VTT, ASS, SSA\n• HDR detection\n• زیرنویس دوگانه',style:TextStyle(fontSize:12,color:kTextSec,height:1.7)),
-        ])),
-  ]);
+        Text(label,style:TextStyle(fontSize:13,color:onTap!=null?Colors.white:kTextSec)),
+        const Spacer(),
+        if(onTap!=null)Icon(Icons.arrow_forward_ios_rounded,size:12,color:kTextDim),
+      ]),
+    ),
+  );
 }
 
