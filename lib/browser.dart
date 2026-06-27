@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
 import 'store.dart';
 import 'api_service.dart';
+import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
 
 const kBg      = Color(0xFF08080F);
@@ -985,7 +986,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                     style:FilledButton.styleFrom(
                       padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
                       minimumSize:const Size(0,36)),
-                    onPressed:()=>widget.onLinkTap(s['link']),
+                    onPressed:()=>ul.launchUrl(Uri.parse(s['link']),mode:ul.LaunchMode.externalApplication),
                     child:const Text('مشاهده',style:TextStyle(fontSize:12))),
                 ],
               ])),
