@@ -552,7 +552,8 @@ class _PlayerState extends State<PlayerScreen>{
   // تبدیل Color به فرمت MPV: 0xBBGGRRAA
   String _toMpvColor(Color c,[double opacity=1.0]){
     final a=(opacity*255).round();
-    return '0x\${c.blue.toRadixString(16).padLeft(2,'0')}\${c.green.toRadixString(16).padLeft(2,'0')}\${c.red.toRadixString(16).padLeft(2,'0')}\${a.toRadixString(16).padLeft(2,'0')}';
+    String h(int n)=>n.toRadixString(16).padLeft(2,'0');
+    return '0x${h(c.blue)}${h(c.green)}${h(c.red)}${h(a)}';
   }
 
   void _applySubMpvSettings(){
