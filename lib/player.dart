@@ -91,7 +91,6 @@ class _PlayerState extends State<PlayerScreen>{
 
   // اسلایدر پیش‌نمایش
   bool _seekDragging=false;
-  bool _wasPlayingBeforeSeek=false;
   double _seekDragMs=0;
   Uint8List? _seekThumbData;
   Timer? _seekThumbTimer;
@@ -146,7 +145,8 @@ class _PlayerState extends State<PlayerScreen>{
     _subs.add(player.stream.position.listen((pos){
       _position=pos; _maybeWatched();
       if(_abActive&&_repeatA!=null&&_repeatB!=null&&_position>=_repeatB!) player.seek(_repeatA!);
-      if(mounted)setState((){});
+      // موقع درگ اسلایدر setState نزن — مانع jump اسلایدر
+      if(mounted&&!_seekDragging)setState((){});
     }));
     _subs.add(player.stream.duration.listen((d){
       _duration=d;
@@ -1031,23 +1031,20 @@ class _PlayerState extends State<PlayerScreen>{
             value:(_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
                 .clamp(0,_duration.inMilliseconds<=0?0:_duration.inMilliseconds.toDouble()),
             onChangeStart:(v){
-              // pause موقع درگ تا ویدیو نپره
-              _wasPlayingBeforeSeek=_playing;
-              if(_playing)player.pause();
-              setState((){_seekDragging=true;_seekDragMs=v;});
+              setState((){_seekDragging=true;_seekDragMs=v;_seekThumbData=null;});
+              // فوری thumbnail بگیر
+              if(_vs.showSeekPreview) _fetchSeekThumb(v.round());
             },
             onChanged:(v){
               setState(()=>_seekDragMs=v);
-              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:50),()=>_fetchSeekThumb(v.round()));}
+              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:100),()=>_fetchSeekThumb(v.round()));}
             },
             onChangeEnd:(v){
-              // اول cancel کن بعد disappear
               _seekThumbTimer?.cancel();
               _thumbTimer?.cancel();
-              player.seek(Duration(milliseconds:v.round()));
+              // اول UI رو فوری پاک کن
               setState((){_seekDragging=false;_seekThumbData=null;});
-              // resume اگه قبلاً در حال پخش بود
-              if(_wasPlayingBeforeSeek)player.play();
+              player.seek(Duration(milliseconds:v.round()));
               _startHideTimer();
             },
           ))),  // SliderTheme
@@ -1078,3 +1075,4 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
+
