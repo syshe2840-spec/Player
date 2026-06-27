@@ -24,11 +24,11 @@ jobs:
           channel: 'stable'
 
       - name: Generate Android files
-        run: flutter create --platforms=android --org ir.subteam --project-name subtitle_player .
+        run: flutter create --platforms=android --org com.vezoo --project-name player .
 
       - name: Restore our files
         run: |
-          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart android_files/MainActivity.kt
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart android_files/MainActivity.kt android_files/icon.png
           # پیدا کردن مسیر دقیق MainActivity.kt که flutter create ساخته
           MAKT=$(find android -name "MainActivity.kt" | head -1)
           echo "=== Found MainActivity at: $MAKT ==="
@@ -48,6 +48,8 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application#' "$M"
           sed -i 's/android:launchMode="singleTop"/android:launchMode="singleTop"\n            android:supportsPictureInPicture="true"/' "$M" || true
+          # اسم نمایشی اپ
+          sed -i 's/android:label="player"/android:label="Vezoo"/' "$M" || true
           echo "=== Manifest check ==="
           cat "$M" | grep -E "pip|NOTIF|STORAGE|launchMode" || true
 
@@ -63,6 +65,14 @@ jobs:
           else
             printf '\nsubprojects {\n    def forceSdk = {\n        if (project.hasProperty("android")) { project.android.compileSdkVersion 36 }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle
           fi
+
+      - name: Set app icon
+        run: |
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p android/app/src/main/res/mipmap-$d
+            cp android_files/icon.png android/app/src/main/res/mipmap-$d/ic_launcher.png
+            cp android_files/icon.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png
+          done || true
 
       - name: Get packages
         run: flutter pub get
