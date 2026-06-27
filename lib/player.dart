@@ -585,7 +585,12 @@ class _PlayerState extends State<PlayerScreen>{
     super.dispose();
   }
 
-  void _startHideTimer(){_hideTimer?.cancel();_hideTimer=Timer(const Duration(seconds:4),(){if(mounted)setState(()=>_controlsVisible=false);});}
+  void _startHideTimer(){
+    _hideTimer?.cancel();
+    _hideTimer=Timer(const Duration(seconds:4),(){
+      if(mounted&&!_seekDragging)setState(()=>_controlsVisible=false); // موقع drag مخفی نکن!
+    });
+  }
   void _toggleControls(){if(!_locked){setState(()=>_controlsVisible=!_controlsVisible);if(_controlsVisible)_startHideTimer();}}
   void _showOverlay(String text){
     setState(()=>_overlay=text);_overlayTimer?.cancel();
@@ -1016,7 +1021,7 @@ class _PlayerState extends State<PlayerScreen>{
         decoration:const BoxDecoration(gradient:LinearGradient(
           begin:Alignment.bottomCenter,end:Alignment.topCenter,colors:[Colors.black54,Colors.transparent])),
         padding:EdgeInsets.fromLTRB(12,0,12,navBottom+4),
-        child:Directionality(textDirection:TextDirection.ltr,child:Row(children:[
+        child:Row(children:[
           Text(fmt(_seekDragging?Duration(milliseconds:_seekDragMs.round()):_position),style:const TextStyle(fontSize:12)),
           Expanded(child:SliderTheme(
             data:SliderTheme.of(context).copyWith(
@@ -1033,8 +1038,9 @@ class _PlayerState extends State<PlayerScreen>{
               value:(_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
                   .clamp(0,_duration.inMilliseconds<=0?0:_duration.inMilliseconds.toDouble()),
               onChangeStart:(v){
+                _hideTimer?.cancel(); // کنترل‌ها رو نگه دار
                 _seekSession++;
-                setState((){_seekDragging=true;_seekDragMs=v;_seekThumbData=null;});
+                setState((){_seekDragging=true;_seekDragMs=v;_seekThumbData=null;_controlsVisible=true;});
                 if(_vs.showSeekPreview)_fetchSeekThumb(v.round(),_seekSession);
               },
               onChanged:(v){
@@ -1050,7 +1056,7 @@ class _PlayerState extends State<PlayerScreen>{
               },
             ))),
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
-        ])),
+        ]),
       ),
     ]);
   }
