@@ -1042,7 +1042,7 @@ class _PlayerState extends State<PlayerScreen>{
               player.seek(Duration(milliseconds:ms));
               _startHideTimer();
             },
-          ))
+          )),
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
         ]),
       ),
