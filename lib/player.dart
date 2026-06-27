@@ -793,11 +793,10 @@ class _PlayerState extends State<PlayerScreen>{
           ),
         ),
 
-        // ── زیرنویس ۱ (خارجی) ──
-        if(sub!=null)Positioned(
+        // ── زیرنویس ۱ (خارجی) — فقط اگه embedded نداریم ──
+        if(sub!=null&&!(_embeddedSubEnabled&&_embeddedSubText!=null))Positioned(
           left:12,right:12,
-          // اگه embedded هم هست، sub1 رو بالاتر بذار
-          bottom:_vs.bottomPadding+navBottom+(_embeddedSubEnabled&&_embeddedSubText!=null?_vs.fontSize*1.8+12:0),
+          bottom:_vs.bottomPadding+navBottom,
           child:Align(
             alignment:_vs.textAlign==1?Alignment.bottomRight:_vs.textAlign==0?Alignment.bottomLeft:Alignment.bottomCenter,
             child:Container(
@@ -1141,5 +1140,4 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
-
 
