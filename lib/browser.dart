@@ -1016,7 +1016,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
             const SizedBox(width:12),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               const Text('پلیر زیرنویس',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
-              Text('نسخه ${ApiService.appVersion}${remoteVer.isNotEmpty?" — سرور: \$remoteVer":""}',
+              Text('نسخه ${ApiService.appVersion}${remoteVer.isNotEmpty?" — سرور: $remoteVer":""}',
                   style:const TextStyle(fontSize:11,color:kTextSec)),
             ])),
             if(snap.connectionState==ConnectionState.waiting)
