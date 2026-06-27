@@ -261,18 +261,19 @@ class VideoSettings {
   double speed;
   double nightOpacity;
   bool showSubToolbar;
+  bool showSeekPreview;
 
   VideoSettings({
     this.fontSize=30,this.bold=true,this.textColor=0xFFFFFFFF,
     this.bgColor=0xFF000000,this.bgOpacity=0.5,this.textAlign=2,
     this.bottomPadding=50,this.fontFamily='',this.speed=1.0,this.nightOpacity=0,
-    this.showSubToolbar=true,
+    this.showSubToolbar=true,this.showSeekPreview=true,
   });
 
   Map<String,dynamic> toMap()=>{'fontSize':fontSize,'bold':bold,'textColor':textColor,
     'bgColor':bgColor,'bgOpacity':bgOpacity,'textAlign':textAlign,
     'bottomPadding':bottomPadding,'fontFamily':fontFamily,'speed':speed,'nightOpacity':nightOpacity,
-    'showSubToolbar':showSubToolbar};
+    'showSubToolbar':showSubToolbar,'showSeekPreview':showSeekPreview};
 
   factory VideoSettings.fromMap(Map<String,dynamic> m)=>VideoSettings(
     fontSize:(m['fontSize']as num? ??30).toDouble(),
@@ -286,6 +287,7 @@ class VideoSettings {
     speed:(m['speed']as num? ??1.0).toDouble(),
     nightOpacity:(m['nightOpacity']as num? ??0).toDouble(),
     showSubToolbar:m['showSubToolbar']as bool? ??true,
+    showSeekPreview:m['showSeekPreview']as bool? ??true,
   );
 }
 
