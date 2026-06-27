@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'browser.dart';
+import 'store.dart';
+import 'api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  await Store.load();
+  await ApiService.init();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     systemNavigationBarColor: Color(0xFF08080F),
@@ -115,8 +120,78 @@ class MyApp extends StatelessWidget {
       ),
       builder: (ctx, child) =>
           Directionality(textDirection: TextDirection.rtl, child: child!),
-      home: const BrowserScreen(),
+      home: const _HomeWrapper(),
     );
   }
+}
+
+// ── Wrapper: startup check برای آپدیت و اعلان ──
+class _HomeWrapper extends StatefulWidget {
+  const _HomeWrapper();
+  @override State<_HomeWrapper> createState()=>_HomeWrapperState();
+}
+class _HomeWrapperState extends State<_HomeWrapper>{
+  @override void initState(){
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_)=>_startup());
+  }
+
+  Future<void> _startup()async{
+    ApiService.sendStat('open');
+    await Future.delayed(const Duration(seconds:2));
+    if(!mounted)return;
+    // چک آپدیت
+    final cfg=await ApiService.getConfig();
+    if(cfg!=null&&mounted){
+      final force=cfg['force_update']=='1';
+      if(ApiService.isNewer(cfg['app_version']??'',ApiService.appVersion)){
+        await _showUpdate(cfg,force);
+      }
+    }
+    if(!mounted)return;
+    // چک اعلان
+    final ann=await ApiService.getAnnouncement();
+    if(ann!=null&&mounted)await _showAnnounce(ann);
+  }
+
+  Future<void> _showUpdate(Map cfg,bool force)async{
+    await showDialog(context:context,barrierDismissible:!force,builder:(ctx)=>AlertDialog(
+      title:Text(cfg['update_title']??'بروزرسانی'),
+      content:Text(cfg['update_message']??'نسخه جدید منتشر شد'),
+      actions:[
+        if(!force)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بعداً')),
+        FilledButton(onPressed:()async{
+          final url=cfg['download_url']??'';
+          if(url.isNotEmpty)await launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication);
+          if(mounted&&!force)Navigator.pop(ctx);
+        },child:const Text('دانلود')),
+      ],
+    ));
+  }
+
+  Future<void> _showAnnounce(Map ann)async{
+    final cancel=(ann['cancellable']??1).toString()!='0';
+    await showDialog(context:context,barrierDismissible:cancel,builder:(ctx)=>AlertDialog(
+      title:Text(ann['title']??''),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        if((ann['image_url']??'').isNotEmpty)ClipRRect(
+          borderRadius:BorderRadius.circular(8),
+          child:Image.network(ann['image_url'],height:160,fit:BoxFit.cover,
+            errorBuilder:(_,__,___)=>const SizedBox())),
+        if((ann['message']??'').isNotEmpty)Padding(
+          padding:const EdgeInsets.only(top:12),child:Text(ann['message'])),
+      ]),
+      actions:[
+        if(cancel)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
+        if((ann['link']??'').isNotEmpty)FilledButton(
+          onPressed:()async{
+            await launchUrl(Uri.parse(ann['link']),mode:LaunchMode.externalApplication);
+            if(mounted)Navigator.pop(ctx);
+          },child:Text(ann['link_text']??'مشاهده')),
+      ],
+    ));
+  }
+
+  @override Widget build(BuildContext ctx)=>const BrowserScreen();
 }
 
