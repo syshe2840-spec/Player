@@ -92,6 +92,7 @@ class _PlayerState extends State<PlayerScreen>{
   // اسلایدر پیش‌نمایش
   bool _seekDragging=false;
   double _seekDragMs=0;
+  int _seekSession=0; // هر drag جدید → session جدید
   Uint8List? _seekThumbData;
   Timer? _seekThumbTimer;
   // Fast seek (long press)
@@ -151,11 +152,11 @@ class _PlayerState extends State<PlayerScreen>{
     _subs.add(player.stream.duration.listen((d){
       _duration=d;
       if(d.inSeconds>0)Store.saveDur(_curPath,d.inSeconds);
-      if(mounted)setState((){});
+      if(mounted&&!_seekDragging)setState((){});
     }));
     _subs.add(player.stream.playing.listen((pl){
       _playing=pl;
-      if(mounted){setState((){});_notifUpdate();}
+      if(mounted){if(!_seekDragging)setState((){});_notifUpdate();}
     }));
     _subs.add(player.stream.tracks.listen((t){
       if(!mounted)return;
@@ -171,8 +172,8 @@ class _PlayerState extends State<PlayerScreen>{
       }
     }));
 
-    _subs.add(player.stream.width.listen((w){if(mounted&&w!=null)setState(()=>_videoWidth=w);}));
-    _subs.add(player.stream.height.listen((h){if(mounted&&h!=null)setState(()=>_videoHeight=h);}));
+    _subs.add(player.stream.width.listen((w){if(mounted&&w!=null&&!_seekDragging)setState(()=>_videoWidth=w);}));
+    _subs.add(player.stream.height.listen((h){if(mounted&&h!=null&&!_seekDragging)setState(()=>_videoHeight=h);}));
     _subs.add(player.stream.videoParams.listen((vp){if(mounted)setState(()=>_videoParams=vp);}));
     _subs.add(player.stream.completed.listen((done){
       if(!done)return;
@@ -529,11 +530,12 @@ class _PlayerState extends State<PlayerScreen>{
 
   // thumbnail پیش‌نمایش seek — با timeMs دقیق
   static const _thumbCh=MethodChannel('ir.subteam.subtitle_player/thumbnail');
-  Future<void> _fetchSeekThumb(int ms)async{
+  Future<void> _fetchSeekThumb(int ms,int session)async{
     try{
       final data=await _thumbCh.invokeMethod<Uint8List>('getThumbnail',
           {'path':_curPath,'timeMs':ms});
-      if(mounted&&_seekDragging)setState(()=>_seekThumbData=data);
+      // فقط اگه همین session هنوز فعاله → بذار
+      if(mounted&&_seekDragging&&_seekSession==session)setState(()=>_seekThumbData=data);
     }catch(_){}
   }
 
@@ -1031,18 +1033,20 @@ class _PlayerState extends State<PlayerScreen>{
             value:(_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
                 .clamp(0,_duration.inMilliseconds<=0?0:_duration.inMilliseconds.toDouble()),
             onChangeStart:(v){
+              _seekSession++;
               setState((){_seekDragging=true;_seekDragMs=v;_seekThumbData=null;});
               // فوری thumbnail بگیر
-              if(_vs.showSeekPreview) _fetchSeekThumb(v.round());
+              if(_vs.showSeekPreview) _fetchSeekThumb(v.round(),_seekSession);
             },
             onChanged:(v){
               setState(()=>_seekDragMs=v);
-              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:100),()=>_fetchSeekThumb(v.round()));}
+              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:100),(){final s=_seekSession;_fetchSeekThumb(v.round(),s);});}
             },
             onChangeEnd:(v){
               _seekThumbTimer?.cancel();
               _thumbTimer?.cancel();
               // اول UI رو فوری پاک کن
+              _seekSession++; // invalidate هر fetch در راه
               setState((){_seekDragging=false;_seekThumbData=null;});
               player.seek(Duration(milliseconds:v.round()));
               _startHideTimer();
@@ -1075,4 +1079,3 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
-
