@@ -1016,7 +1016,7 @@ class _PlayerState extends State<PlayerScreen>{
         decoration:const BoxDecoration(gradient:LinearGradient(
           begin:Alignment.bottomCenter,end:Alignment.topCenter,colors:[Colors.black54,Colors.transparent])),
         padding:EdgeInsets.fromLTRB(12,0,12,navBottom+4),
-        child:Row(children:[
+        child:Directionality(textDirection:TextDirection.ltr,child:Row(children:[
           Text(fmt(_seekDragging?Duration(milliseconds:_seekDragMs.round()):_position),style:const TextStyle(fontSize:12)),
           Expanded(child:_SeekBar(
             position:_duration.inMilliseconds<=0?0.0:
@@ -1030,7 +1030,7 @@ class _PlayerState extends State<PlayerScreen>{
             },
             onChanged:(ratio){
               final ms=(ratio*_duration.inMilliseconds).round();
-              _seekDragMs=ms.toDouble();
+              setState(()=>_seekDragMs=ms.toDouble()); // آپدیت زمان نمایشی
               if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:80),(){final s=_seekSession;_fetchSeekThumb(ms,s);});}
             },
             onChangeEnd:(ratio){
@@ -1044,7 +1044,7 @@ class _PlayerState extends State<PlayerScreen>{
             },
           )),
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
-        ]),
+        ])),
       ),
     ]);
   }
