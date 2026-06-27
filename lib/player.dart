@@ -91,6 +91,7 @@ class _PlayerState extends State<PlayerScreen>{
 
   // اسلایدر پیش‌نمایش
   bool _seekDragging=false;
+  bool _wasPlayingBeforeSeek=false;
   double _seekDragMs=0;
   Uint8List? _seekThumbData;
   Timer? _seekThumbTimer;
@@ -1030,17 +1031,23 @@ class _PlayerState extends State<PlayerScreen>{
             value:(_seekDragging?_seekDragMs:_position.inMilliseconds.toDouble())
                 .clamp(0,_duration.inMilliseconds<=0?0:_duration.inMilliseconds.toDouble()),
             onChangeStart:(v){
+              // pause موقع درگ تا ویدیو نپره
+              _wasPlayingBeforeSeek=_playing;
+              if(_playing)player.pause();
               setState((){_seekDragging=true;_seekDragMs=v;});
             },
             onChanged:(v){
               setState(()=>_seekDragMs=v);
-              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:250),()=>_fetchSeekThumb(v.round()));}
+              if(_vs.showSeekPreview){_seekThumbTimer?.cancel();_seekThumbTimer=Timer(const Duration(milliseconds:50),()=>_fetchSeekThumb(v.round()));}
             },
             onChangeEnd:(v){
-              player.seek(Duration(milliseconds:v.round()));
-              _thumbTimer?.cancel();
-              setState((){_seekDragging=false;_seekThumbData=null;});
+              // اول cancel کن بعد disappear
               _seekThumbTimer?.cancel();
+              _thumbTimer?.cancel();
+              player.seek(Duration(milliseconds:v.round()));
+              setState((){_seekDragging=false;_seekThumbData=null;});
+              // resume اگه قبلاً در حال پخش بود
+              if(_wasPlayingBeforeSeek)player.play();
               _startHideTimer();
             },
           ))),  // SliderTheme
