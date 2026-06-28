@@ -514,7 +514,7 @@ class _PlayerState extends State<PlayerScreen>{
     if(!mounted)return;
     // نشون دادن snackbar اول - مطمئن‌ترین روش
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content:Text('VEZ: \${path.split('/').last}'),
+      SnackBar(content:Text('VEZ: ${path.split("/").last}'),
         duration:const Duration(seconds:5),backgroundColor:const Color(0xFF7C3AED)));
     await Future.delayed(const Duration(milliseconds:200));
     if(!mounted)return;
