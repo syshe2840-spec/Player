@@ -509,21 +509,23 @@ class _PlayerState extends State<PlayerScreen>{
   );
 
   Future<void> _playVez(String path)async{
+    if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content:Row(children:[const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)),
+        const SizedBox(width:12),const Text('در حال رمزگشایی...')]),
+      duration:const Duration(seconds:120),backgroundColor:const Color(0xFF7C3AED)));
     try{
-      // نشون دادن loading
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content:Text('در حال رمزگشایی...'),duration:Duration(seconds:60),
-          backgroundColor:Color(0xFF7C3AED)));
       final temp=await VezService.decryptToTemp(path);
       _vezTempPath=temp;
-      // بستن snackbar
-      if(mounted)ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      player.open(Media(temp));
+      if(mounted){
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        player.open(Media(temp));
+      }
     }catch(e){
       if(mounted){
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content:Text('خطا: $e'),backgroundColor:Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:Text('خطای رمزگشایی: \$e',style:const TextStyle(fontSize:11)),
+          duration:const Duration(seconds:10),backgroundColor:Colors.red[800]));
       }
     }
   }
