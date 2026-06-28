@@ -14,37 +14,70 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
 import android.util.Rational
 import androidx.core.app.NotificationCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.ByteArrayOutputStream
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.security.KeyStore
 import java.util.concurrent.Executors
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.Mac
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : FlutterActivity() {
     private val THUMB_CH  = "ir.subteam.subtitle_player/thumbnail"
     private val PIP_CH    = "ir.subteam.subtitle_player/pip"
+    private val VEZ_CH    = "com.vezoo.player/vezoo"
     private val NOTIF_CH_ID = "player_ctrl"
     private val NOTIF_ID  = 42
     private val A_PLAY    = "com.vezoo.PLAY"
     private val A_PAUSE   = "com.vezoo.PAUSE"
     private val A_CLOSE   = "com.vezoo.CLOSE"
 
+    // ── ثابت‌های کریپتو ──
+    private val APP_HALF = byteArrayOf(
+        0x56,0x45,0x5A,0x4F,0x4F,0x5F,0x41,0x50,
+        0x50,0x5F,0x48,0x41,0x4C,0x46,0x5F,0x32,
+        0x30,0x32,0x34,0x5F,0x56,0x31,0x5F,0x53,
+        0x45,0x43,0x52,0x45,0x54,0x21,0x21,0x21,
+    )
+    companion object {
+        init { System.loadLibrary("vezoo") }
+    }
+    // ── JNI توابع C ──
+    private external fun nativeGcmDecrypt(key: ByteArray, data: ByteArray): ByteArray?
+    private external fun nativeGcmEncrypt(key: ByteArray, data: ByteArray): ByteArray?
+    private external fun nativeHkdf(ikm: ByteArray, salt: ByteArray, info: ByteArray, outLen: Int): ByteArray?
+
+    private val HKDF_SALT = "vezoo-master-salt-v1".toByteArray()
+    private val HKDF_INFO = "vezoo-master-key-v1".toByteArray()
+    private val MAGIC = byteArrayOf(0x56,0x45,0x5A,0x4F,0x4F,0x01)
+    private val KS_ALIAS = "vezoo_wrap_key"
+    private val PREFS_NAME = "vezoo_secure"
+
     private val executor  = Executors.newCachedThreadPool()
     private val handler   = Handler(Looper.getMainLooper())
     private var pipCh: MethodChannel? = null
     private var playing   = false
-    private var title     = "پلیر"
-    private var playerActive = false  // فقط وقتی پلیر باز باشه PiP مجاز
-    // cache برای thumbnail
+    private var title     = "Vezoo"
+    private var playerActive = false
     private val thumbCache = HashMap<String, ByteArray?>()
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
             val action = when(i?.action) {
-                A_PLAY -> "play"; A_PAUSE -> "pause"; A_CLOSE -> "close"; else -> return
+                A_PLAY->"play"; A_PAUSE->"pause"; A_CLOSE->"close"; else->return
             }
             pipCh?.invokeMethod("playerAction", mapOf("action" to action))
         }
@@ -60,25 +93,58 @@ class MainActivity : FlutterActivity() {
             if (call.method != "getThumbnail") { result.notImplemented(); return@setMethodCallHandler }
             val path = call.argument<String>("path") ?: run { handler.post { result.success(null) }; return@setMethodCallHandler }
             val timeMs = call.argument<Int>("timeMs") ?: 1000
-            val cacheKey = "$path@$timeMs"
-            if (thumbCache.containsKey(cacheKey)) { handler.post { result.success(thumbCache[cacheKey]) }; return@setMethodCallHandler }
-            executor.execute { handler.post { result.success(genThumb(path, timeMs.toLong() * 1000L).also { thumbCache[cacheKey] = it }) } }
+            val key = "$path@$timeMs"
+            if (thumbCache.containsKey(key)) { handler.post { result.success(thumbCache[key]) }; return@setMethodCallHandler }
+            executor.execute { handler.post { result.success(genThumb(path, timeMs.toLong() * 1000L).also { thumbCache[key] = it }) } }
         }
 
         // ── PiP + Notification ──
         pipCh = MethodChannel(fe.dartExecutor.binaryMessenger, PIP_CH).also { ch ->
             ch.setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "enterPip" -> {
-                        playing = call.argument<Boolean>("playing") ?: false
-                        title = call.argument<String>("title") ?: title
-                        val ok = try { enterPip(); true } catch (e: Exception) { android.util.Log.e("PiP","enterPip failed: $e"); false }
-                        result.success(ok)
-                    }
+                    "enterPip" -> { playing = call.argument<Boolean>("playing") ?: false; playerActive = true; title = call.argument<String>("title") ?: title; enterPip(); result.success(true) }
                     "updateState" -> { playing = call.argument<Boolean>("playing") ?: false; playerActive = true; title = call.argument<String>("title") ?: title; showNotif(); if (Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode) updatePipParams(); result.success(null) }
                     "hideNotif" -> { nm().cancel(NOTIF_ID); playerActive = false; playing = false; result.success(null) }
                     else -> result.notImplemented()
                 }
+            }
+        }
+
+        // ── VEZ Crypto ──
+        MethodChannel(fe.dartExecutor.binaryMessenger, VEZ_CH).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "initMasterKey" -> {
+                    try {
+                        val serverHalfB64 = call.argument<String>("server_half") ?: throw Exception("server_half مقدار ندارد")
+                        val serverHalf = Base64.decode(serverHalfB64, Base64.DEFAULT)
+                        val masterKey = hkdf(serverHalf + APP_HALF, HKDF_SALT, HKDF_INFO, 32)
+                        storeMasterKey(masterKey)
+                        handler.post { result.success(true) }
+                    } catch (e: Exception) { handler.post { result.error("INIT_FAILED", e.message, null) } }
+                }
+                "hasMasterKey" -> handler.post { result.success(loadMasterKey() != null) }
+                "decryptVez" -> {
+                    val inputPath = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
+                    val outputPath = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val masterKey = loadMasterKey() ?: throw Exception("Master Key یافت نشد — اپ را ری‌استارت کنید")
+                            decryptVez(inputPath, outputPath, masterKey)
+                            handler.post { result.success(outputPath) }
+                        } catch (e: Exception) { handler.post { result.error("DECRYPT_FAILED", e.message, null) } }
+                    }
+                }
+                "getVezMeta" -> {
+                    val path = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val masterKey = loadMasterKey() ?: throw Exception("Master Key یافت نشد")
+                            val meta = readVezMeta(path, masterKey)
+                            handler.post { result.success(meta) }
+                        } catch (e: Exception) { handler.post { result.error("META_FAILED", e.message, null) } }
+                    }
+                }
+                else -> result.notImplemented()
             }
         }
 
@@ -87,41 +153,132 @@ class MainActivity : FlutterActivity() {
         else registerReceiver(receiver, f)
     }
 
+    // ── HKDF-SHA256 از C library ──
+    private fun hkdf(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray {
+        return nativeHkdf(ikm, salt, info, length)
+            ?: throw Exception("HKDF C library failed")
+    }
+
+    // ── AES-256-GCM از C library ──
+    private fun gcmDecrypt(key: ByteArray, data: ByteArray): ByteArray {
+        return nativeGcmDecrypt(key, data)
+            ?: throw Exception("GCM decrypt C library failed")
+    }
+
+    // ── Keystore ──
+    private fun ensureWrapKey() {
+        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        if (!ks.containsAlias(KS_ALIAS)) {
+            KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
+                init(KeyGenParameterSpec.Builder(KS_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())
+                generateKey()
+            }
+        }
+    }
+    private fun storeMasterKey(masterKey: ByteArray) {
+        ensureWrapKey()
+        val wk = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.getKey(KS_ALIAS, null) as SecretKey
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, wk)
+        val enc = cipher.doFinal(masterKey)
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putString("mk_iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+            .putString("mk_data", Base64.encodeToString(enc, Base64.NO_WRAP)).apply()
+    }
+    private fun loadMasterKey(): ByteArray? {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val iv   = Base64.decode(prefs.getString("mk_iv",   null) ?: return null, Base64.NO_WRAP)
+        val data = Base64.decode(prefs.getString("mk_data", null) ?: return null, Base64.NO_WRAP)
+        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        if (!ks.containsAlias(KS_ALIAS)) return null
+        val wk = ks.getKey(KS_ALIAS, null) as SecretKey
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, wk, GCMParameterSpec(128, iv))
+        return cipher.doFinal(data)
+    }
+
+    // ── VEZ File ──
+    private fun readInt(fis: FileInputStream): Int {
+        val b = ByteArray(4); fis.read(b)
+        return ((b[0].toInt() and 0xFF) shl 24) or ((b[1].toInt() and 0xFF) shl 16) or
+               ((b[2].toInt() and 0xFF) shl 8) or (b[3].toInt() and 0xFF)
+    }
+    private fun readFull(fis: FileInputStream, len: Int): ByteArray {
+        val buf = ByteArray(len); var off = 0
+        while (off < len) { val n = fis.read(buf, off, len - off); if (n == -1) break; off += n }
+        return buf
+    }
+
+    private fun parseHeader(path: String, masterKey: ByteArray): Triple<ByteArray, String, FileInputStream> {
+        val fis = FileInputStream(path)
+        val magic = readFull(fis, 6)
+        if (!magic.contentEquals(MAGIC)) throw Exception("فایل VEZOO نیست")
+        fis.read() // algo (0x01)
+        val fileKey = gcmDecrypt(masterKey, readFull(fis, readInt(fis)))
+        val metaJson = String(gcmDecrypt(fileKey, readFull(fis, readInt(fis))), Charsets.UTF_8)
+        return Triple(fileKey, metaJson, fis)
+    }
+
+    private fun readVezMeta(path: String, masterKey: ByteArray): Map<String, Any> {
+        val (_, metaJson, fis) = parseHeader(path, masterKey)
+        fis.close()
+        // parse JSON manually (simple approach)
+        val map = mutableMapOf<String, Any>()
+        metaJson.replace("{","").replace("}","").split(",").forEach { pair ->
+            val kv = pair.split(":")
+            if (kv.size >= 2) {
+                val k = kv[0].trim().replace("\"","")
+                val v = kv.drop(1).joinToString(":").trim().replace("\"","")
+                map[k] = v.toLongOrNull() ?: v.toBooleanStrictOrNull() ?: v
+            }
+        }
+        return map
+    }
+
+    private fun decryptVez(inputPath: String, outputPath: String, masterKey: ByteArray) {
+        val (fileKey, _, fis) = parseHeader(inputPath, masterKey)
+        BufferedOutputStream(FileOutputStream(outputPath), 1024 * 1024).use { out ->
+            val sizeBuf = ByteArray(4)
+            while (fis.read(sizeBuf) == 4) {
+                val chunkLen = ((sizeBuf[0].toInt() and 0xFF) shl 24) or
+                               ((sizeBuf[1].toInt() and 0xFF) shl 16) or
+                               ((sizeBuf[2].toInt() and 0xFF) shl 8) or
+                               (sizeBuf[3].toInt() and 0xFF)
+                if (chunkLen <= 0 || chunkLen > 20 * 1024 * 1024) break
+                out.write(gcmDecrypt(fileKey, readFull(fis, chunkLen)))
+            }
+        }
+        fis.close()
+    }
+
+    // ── PiP + Notification (بقیه کدهای موجود) ──
     private fun requestNotifPermission() {
         if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
-        }
     }
-
     private fun nm() = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
     private fun createNotifChannel() {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (Build.VERSION.SDK_INT >= 26)
             nm().createNotificationChannel(NotificationChannel(NOTIF_CH_ID, "کنترل پلیر", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
-        }
     }
-
     private fun pi(action: String, code: Int) = PendingIntent.getBroadcast(this, code, Intent(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
     private fun showNotif() {
-        val notif = NotificationCompat.Builder(this, NOTIF_CH_ID)
+        nm().notify(NOTIF_ID, NotificationCompat.Builder(this, NOTIF_CH_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(title).setContentText(if (playing) "در حال پخش" else "متوقف")
             .setPriority(NotificationCompat.PRIORITY_LOW).setOngoing(playing)
             .addAction(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "توقف" else "پخش", pi(if (playing) A_PAUSE else A_PLAY, 1))
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "بستن", pi(A_CLOSE, 2))
-            .build()
-        nm().notify(NOTIF_ID, notif)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "بستن", pi(A_CLOSE, 2)).build())
     }
-
     private fun enterPip() {
-        if (Build.VERSION.SDK_INT < 26) throw RuntimeException("API < 26, PiP not supported")
+        if (Build.VERSION.SDK_INT < 26) return
         val p = PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).also { if (Build.VERSION.SDK_INT >= 26) it.setActions(buildActions()) }.build()
-        val result = enterPictureInPictureMode(p)
-        android.util.Log.d("PiP","enterPictureInPictureMode result: $result")
+        enterPictureInPictureMode(p)
     }
-
     private fun buildActions(): List<android.app.RemoteAction> {
         if (Build.VERSION.SDK_INT < 26) return emptyList()
         return listOf(
@@ -129,34 +286,11 @@ class MainActivity : FlutterActivity() {
             android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel), "بستن", "", pi(A_CLOSE, 4))
         )
     }
-
-    private fun updatePipParams() {
-        if (Build.VERSION.SDK_INT < 26) return
-        setPictureInPictureParams(PictureInPictureParams.Builder().setActions(buildActions()).build())
-    }
-
-    override fun onPictureInPictureModeChanged(inPip: Boolean, cfg: android.content.res.Configuration?) {
-        super.onPictureInPictureModeChanged(inPip, cfg)
-        pipCh?.invokeMethod("pipModeChanged", mapOf("inPip" to inPip))
-    }
-
-    override fun onStart() {
-        super.onStart()
-        // نوتیفیکیشن رو از onStart بزن (بعد از اینکه permission درخواست شد)
-        if (playing) showNotif()
-    }
-
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        // فقط وقتی پلیر باز و در حال پخش است PiP فعال شود
-        if (playing && playerActive && Build.VERSION.SDK_INT >= 26) try { enterPip() } catch (_: Exception) {}
-    }
-
-    override fun onDestroy() {
-        try { unregisterReceiver(receiver) } catch (_: Exception) {}
-        nm().cancel(NOTIF_ID)
-        super.onDestroy()
-    }
+    private fun updatePipParams() { if (Build.VERSION.SDK_INT >= 26) setPictureInPictureParams(PictureInPictureParams.Builder().setActions(buildActions()).build()) }
+    override fun onPictureInPictureModeChanged(inPip: Boolean, cfg: android.content.res.Configuration?) { super.onPictureInPictureModeChanged(inPip, cfg); pipCh?.invokeMethod("pipModeChanged", mapOf("inPip" to inPip)) }
+    override fun onUserLeaveHint() { super.onUserLeaveHint(); if (playing && playerActive && Build.VERSION.SDK_INT >= 26) try { enterPip() } catch (_: Exception) {} }
+    override fun onStart() { super.onStart(); if (playing) showNotif() }
+    override fun onDestroy() { try { unregisterReceiver(receiver) } catch (_: Exception) {}; nm().cancel(NOTIF_ID); super.onDestroy() }
 
     private fun genThumb(path: String, timeUs: Long): ByteArray? {
         val r = MediaMetadataRetriever()
@@ -164,10 +298,9 @@ class MainActivity : FlutterActivity() {
             if (!File(path).exists()) return null
             r.setDataSource(applicationContext, Uri.fromFile(File(path)))
             var bmp: Bitmap? = null
-            val times = if (timeUs > 0) longArrayOf(timeUs, 0L) else longArrayOf(500_000L, 0L)
-            for (t in times) { bmp = r.getFrameAtTime(t, MediaMetadataRetriever.OPTION_CLOSEST_SYNC); if (bmp != null) break }
+            for (t in longArrayOf(timeUs, 0L)) { bmp = r.getFrameAtTime(t, MediaMetadataRetriever.OPTION_CLOSEST_SYNC); if (bmp != null) break }
             bmp ?: return null
-            val out = ByteArrayOutputStream()
+            val out = java.io.ByteArrayOutputStream()
             Bitmap.createScaledBitmap(bmp, 160, 90, true).compress(Bitmap.CompressFormat.JPEG, 75, out)
             out.toByteArray()
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
