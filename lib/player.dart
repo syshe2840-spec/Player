@@ -559,8 +559,7 @@ class _PlayerState extends State<PlayerScreen>{
       barrierDismissible:false,
       builder:(ctx)=>AlertDialog(
         title:const Text('VEZ Diagnostic'),
-        content:SingleChildScrollView(child:SelectableText(log.join('
-'),style:const TextStyle(fontSize:11,fontFamily:'monospace'))),
+        content:SingleChildScrollView(child:SelectableText(log.join('\n'),style:const TextStyle(fontSize:11,fontFamily:'monospace'))),
         actions:[
           TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
           if(tempPath!=null)FilledButton(onPressed:(){
@@ -1208,4 +1207,3 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
-
