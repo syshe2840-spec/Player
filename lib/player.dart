@@ -1033,6 +1033,24 @@ class _PlayerState extends State<PlayerScreen>{
 
         if(_controlsVisible&&!_locked)_buildControls(bkm,navBottom),
 
+        // ── VEZ debug — همیشه نشون داده میشه ──
+        Positioned(
+          top:60,left:8,right:8,
+          child:GestureDetector(
+            onTap:_vezDiagnostic2,
+            child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+              decoration:BoxDecoration(
+                color:_curPath.toLowerCase().endsWith('.vez')?const Color(0xFF7C3AED):Colors.red,
+                borderRadius:BorderRadius.circular(16)),
+              child:Text(
+                _curPath.toLowerCase().endsWith('.vez')?'🔓 VEZ — بزن':'⚠ نه VEZ — path: ${_curPath.split('/').last}',
+                style:const TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.bold),
+                overflow:TextOverflow.ellipsis),
+            ),
+          ),
+        ),
+
         if(_locked)Positioned(top:16,left:16,child:SafeArea(child:FloatingActionButton.small(
           backgroundColor:Colors.black54,onPressed:()=>setState(()=>_locked=false),child:const Icon(Icons.lock),
         ))),
