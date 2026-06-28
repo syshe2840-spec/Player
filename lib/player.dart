@@ -17,6 +17,7 @@ import 'package:volume_controller/volume_controller.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
+import 'vez_service.dart';
 import 'settings.dart';
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
@@ -63,6 +64,7 @@ class _PlayerState extends State<PlayerScreen>{
   // ── PiP + Notification ──
   static const _pipCh=MethodChannel('ir.subteam.subtitle_player/pip');
   bool _inPipMode=false;
+  String? _vezTempPath; // مسیر temp فایل رمزگشایی‌شده
   double _savedVol=100;
   double _rotationDeg=0;
 
@@ -506,6 +508,26 @@ class _PlayerState extends State<PlayerScreen>{
     child:Text(text,style:TextStyle(fontSize:9,color:color,fontWeight:FontWeight.w700)),
   );
 
+  Future<void> _playVez(String path)async{
+    try{
+      // نشون دادن loading
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('در حال رمزگشایی...'),duration:Duration(seconds:60),
+          backgroundColor:Color(0xFF7C3AED)));
+      final temp=await VezService.decryptToTemp(path);
+      _vezTempPath=temp;
+      // بستن snackbar
+      if(mounted)ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      player.open(Media(temp));
+    }catch(e){
+      if(mounted){
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content:Text('خطا: $e'),backgroundColor:Colors.red));
+      }
+    }
+  }
+
   void _initPipChannel(){
     _pipCh.setMethodCallHandler((call)async{
       if(!mounted)return;
@@ -621,6 +643,7 @@ class _PlayerState extends State<PlayerScreen>{
     Store.savePos(_curPath,_position);
     for(final s in _subs)s.cancel();
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
+    VezService.cleanup(_vezTempPath);
     try{_pipCh.invokeMethod('hideNotif');}catch(_){}
     WakelockPlus.disable();
     try{ScreenBrightness().resetApplicationScreenBrightness();}catch(_){}
@@ -1140,4 +1163,3 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
-
