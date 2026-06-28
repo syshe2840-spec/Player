@@ -63,6 +63,7 @@ class _PlayerState extends State<PlayerScreen>{
   double _currentAmpVolume=100.0;
   // ── PiP + Notification ──
   static const _pipCh=MethodChannel('ir.subteam.subtitle_player/pip');
+  static const _thumbCh=MethodChannel('ir.subteam.subtitle_player/thumbnail');
   bool _inPipMode=false;
   String? _vezTempPath; // مسیر temp فایل رمزگشایی‌شده
   double _savedVol=100;
@@ -518,7 +519,7 @@ class _PlayerState extends State<PlayerScreen>{
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content:Row(children:[
         const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)),
-        const SizedBox(width:12),Text('رمزگشایی: \${path.split('/').last}'),
+        const SizedBox(width:12),Text('رمزگشایی: \${path.split("/").last}'),
       ]),
       duration:const Duration(seconds:120),backgroundColor:const Color(0xFF7C3AED)));
     try{
@@ -541,6 +542,37 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
 
+
+  void _initPipChannel(){
+    _pipCh.setMethodCallHandler((call)async{
+      if(!mounted)return;
+      switch(call.method){
+        case 'playerAction':
+          final a=call.arguments['action']as String?;
+          if(a=='play')player.play();
+          else if(a=='pause')player.pause();
+          else if(a=='close'){
+            await _pipCh.invokeMethod('hideNotif');
+            if(mounted)Navigator.pop(context);
+          }
+          break;
+        case 'pipModeChanged':
+          if(mounted)setState(()=>_inPipMode=call.arguments['inPip']as bool? ??false);
+          break;
+      }
+    });
+  }
+
+  Future<void> _enterPip()async{
+    try{
+      final ok=await _pipCh.invokeMethod<bool>('enterPip',{'playing':_playing,'title':p.basename(_curPath)});
+      if(ok!=true&&mounted){
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PiP پشتیبانی نمیشه')));
+      }
+    }catch(e){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PiP: \$e')));
+    }
+  }
 
   Future<void> _fetchSeekThumb(int ms,int session)async{
     try{
