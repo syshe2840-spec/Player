@@ -199,6 +199,11 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   Future<void> _start()async{
+    // اگه فایل .vez هست رمزگشایی کن
+    if(VezService.isVez(_curPath)){
+      WidgetsBinding.instance.addPostFrameCallback((_)=>_playVez(_curPath));
+      return;
+    }
     await player.open(Media(_curPath));
     await Store.addToHistory(_curPath);
     final saved=await Store.getPos(_curPath);
@@ -509,127 +514,34 @@ class _PlayerState extends State<PlayerScreen>{
   );
 
   Future<void> _playVez(String path)async{
-    // صبر برای render کامل
-    await Future.delayed(const Duration(milliseconds:600));
     if(!mounted)return;
-    // نشون دادن snackbar اول - مطمئن‌ترین روش
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content:Text('VEZ: ${path.split("/").last}'),
-        duration:const Duration(seconds:5),backgroundColor:const Color(0xFF7C3AED)));
-    await Future.delayed(const Duration(milliseconds:200));
-    if(!mounted)return;
-    await _vezDiagnostic(path);
-  }
-
-  void _vezDiagnostic2(){
-    showDialog(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text('VEZ Info'),
-      content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('مسیر: $_curPath'),
-        const SizedBox(height:8),
-        Text('tempPath: ${_vezTempPath??'null'}'),
-        const SizedBox(height:8),
-        Text('isVez: ${_curPath.toLowerCase().endsWith('.vez')}'),
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content:Row(children:[
+        const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)),
+        const SizedBox(width:12),Text('رمزگشایی: \${path.split('/').last}'),
       ]),
-      actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
-        FilledButton(onPressed:(){Navigator.pop(ctx);_vezDiagnostic(_curPath);}
-          ,child:const Text('اجرای تشخیص')),
-      ],
-    ));
-  }
-
-  Future<void> _vezDiagnostic(String path)async{
-    final log=<String>[];
-    String? tempPath;
-
-    void add(String s){log.add(s);debugPrint('[VEZ] \$s');}
-
-    // مرحله ۱: مسیر فایل
-    add('① مسیر: \$path');
-    add('   isVez: \${VezService.isVez(path)}');
-
-    // مرحله ۲: چک Master Key
+      duration:const Duration(seconds:120),backgroundColor:const Color(0xFF7C3AED)));
     try{
-      final has=await const MethodChannel('com.vezoo.player/vezoo').invokeMethod<bool>('hasMasterKey')??false;
-      add('② hasMasterKey: \$has');
-    }catch(e){add('② hasMasterKey خطا: \$e');}
-
-    // مرحله ۳: getCacheDir
-    try{
-      final dir=await const MethodChannel('com.vezoo.player/vezoo').invokeMethod<String>('getCacheDir');
-      add('③ cacheDir: \$dir');
-    }catch(e){add('③ getCacheDir خطا: \$e');}
-
-    // مرحله ۴: ensureMasterKey
-    try{
-      final ok=await VezService.ensureMasterKey();
-      add('④ ensureMasterKey: \$ok');
-    }catch(e){add('④ ensureMasterKey خطا: \$e');}
-
-    // مرحله ۵: decrypt
-    try{
-      add('⑤ شروع decrypt...');
-      tempPath=await VezService.decryptToTemp(path);
-      final size=File(tempPath).lengthSync();
-      add('⑤ decrypt موفق: \$size بایت');
-      add('   temp: \$tempPath');
-    }catch(e){add('⑤ decrypt خطا: \$e');}
-
-    if(!mounted)return;
-
-    // نمایش نتیجه
-    await showDialog(
-      context:context,
-      barrierDismissible:false,
-      builder:(ctx)=>AlertDialog(
-        title:const Text('VEZ Diagnostic'),
-        content:SingleChildScrollView(child:SelectableText(log.join('\n'),style:const TextStyle(fontSize:11,fontFamily:'monospace'))),
-        actions:[
-          TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
-          if(tempPath!=null)FilledButton(onPressed:(){
-            Navigator.pop(ctx);
-            _vezTempPath=tempPath;
-            player.open(Media(tempPath!));
-          },child:const Text('پخش')),
-        ],
-      ),
-    );
-  }
-
-  void _initPipChannel(){
-    _pipCh.setMethodCallHandler((call)async{
-      if(!mounted)return;
-      switch(call.method){
-        case 'playerAction':
-          final a=call.arguments['action']as String?;
-          if(a=='play')player.play();
-          else if(a=='pause')player.pause();
-          else if(a=='close'){
-            await _pipCh.invokeMethod('hideNotif');
-            if(mounted)Navigator.pop(context);
-          }
-          break;
-        case 'pipModeChanged':
-          if(mounted)setState(()=>_inPipMode=call.arguments['inPip']as bool? ??false);
-          break;
-      }
-    });
-  }
-
-  Future<void> _enterPip()async{
-    try{
-      final ok=await _pipCh.invokeMethod<bool>('enterPip',{'playing':_playing,'title':p.basename(_curPath)});
-      if(ok!=true&&mounted){
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PiP پشتیبانی نمی‌شه — نیاز به Android 8+ و تنظیم Manifest دارد')));
+      final temp=await VezService.decryptToTemp(path);
+      _vezTempPath=temp;
+      if(mounted){
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        player.open(Media(temp));
       }
     }catch(e){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PiP error: $e')));
+      if(mounted){
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        showDialog(context:context,builder:(ctx)=>AlertDialog(
+          title:const Text('خطای رمزگشایی'),
+          content:SingleChildScrollView(child:Text(e.toString())),
+          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
+        ));
+      }
     }
   }
 
-  // thumbnail پیش‌نمایش seek — با timeMs دقیق
-  static const _thumbCh=MethodChannel('ir.subteam.subtitle_player/thumbnail');
+
+
   Future<void> _fetchSeekThumb(int ms,int session)async{
     try{
       final data=await _thumbCh.invokeMethod<Uint8List>('getThumbnail',
@@ -1033,23 +945,6 @@ class _PlayerState extends State<PlayerScreen>{
 
         if(_controlsVisible&&!_locked)_buildControls(bkm,navBottom),
 
-        // ── VEZ debug — همیشه نشون داده میشه ──
-        Positioned(
-          top:60,left:8,right:8,
-          child:GestureDetector(
-            onTap:_vezDiagnostic2,
-            child:Container(
-              padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
-              decoration:BoxDecoration(
-                color:_curPath.toLowerCase().endsWith('.vez')?const Color(0xFF7C3AED):Colors.red,
-                borderRadius:BorderRadius.circular(16)),
-              child:Text(
-                _curPath.toLowerCase().endsWith('.vez')?'🔓 VEZ — بزن':'⚠ نه VEZ — path: ${_curPath.split('/').last}',
-                style:const TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.bold),
-                overflow:TextOverflow.ellipsis),
-            ),
-          ),
-        ),
 
         if(_locked)Positioned(top:16,left:16,child:SafeArea(child:FloatingActionButton.small(
           backgroundColor:Colors.black54,onPressed:()=>setState(()=>_locked=false),child:const Icon(Icons.lock),
