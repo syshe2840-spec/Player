@@ -9,18 +9,7 @@ class VezService {
   static String? _cacheDir;
 
   static bool isVez(String path) {
-    if (!path.toLowerCase().endsWith('.vez')) return false;
-    try {
-      final f = File(path);
-      if (!f.existsSync()) return false;
-      final raf = f.openSync();
-      final header = raf.readSync(6);
-      raf.closeSync();
-      for (int i = 0; i < 6; i++) {
-        if (header[i] != _magic[i]) return false;
-      }
-      return true;
-    } catch (_) { return false; }
+    return path.toLowerCase().endsWith('.vez');
   }
 
   static Future<String> getCacheDir() async {
