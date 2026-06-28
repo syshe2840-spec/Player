@@ -523,9 +523,11 @@ class _PlayerState extends State<PlayerScreen>{
     }catch(e){
       if(mounted){
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:Text('خطای رمزگشایی: \$e',style:const TextStyle(fontSize:11)),
-          duration:const Duration(seconds:10),backgroundColor:Colors.red[800]));
+        showDialog(context:context,builder:(ctx)=>AlertDialog(
+          title:const Text('خطای رمزگشایی'),
+          content:SingleChildScrollView(child:Text('\$e')),
+          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
+        ));
       }
     }
   }
@@ -1165,3 +1167,4 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
+
