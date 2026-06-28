@@ -34,23 +34,33 @@ class ApiService {
         '${h(b[10])}${h(b[11])}${h(b[12])}${h(b[13])}${h(b[14])}${h(b[15])}';
   }
 
+  // ── GET raw (returns dynamic) ──
+  static Future<dynamic> getRaw(String path) async => await _get(path);
+
   // ── GET helper ──
   static Future<dynamic> _get(String path) async {
+    if (kWorkerUrl.contains('YOUR_WORKER')) {
+      throw Exception('آدرس Worker تنظیم نشده — kWorkerUrl را در api_service.dart عوض کن');
+    }
+    final uri = Uri.parse('$kWorkerUrl$path');
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
-      final req = await client.getUrl(Uri.parse('$kWorkerUrl$path'));
+      final req = await client.getUrl(uri);
+      req.headers.set('Accept', 'application/json');
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
-      client.close();
+      if (res.statusCode != 200) throw Exception('HTTP \${res.statusCode}: \$body');
       return json.decode(body);
-    } catch (_) {
-      return null;
+    } catch (e) {
+      throw Exception('\$e');
+    } finally {
+      client.close();
     }
   }
 
   // ── اسپانسرها ──
   static Future<List<Map<String, dynamic>>> getSponsors() async {
-    final data = await _get('/sponsors');
+    final data = await _get('/sponsors'); // خطا throw میشه
     if (data is List) return data.cast<Map<String, dynamic>>();
     return [];
   }
@@ -104,4 +114,3 @@ class ApiService {
 
   static String get appVersion => _appVersion;
 }
-
