@@ -28,19 +28,40 @@ jobs:
 
       - name: Restore our files
         run: |
-          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart android_files/MainActivity.kt android_files/icon.png
-          # پیدا کردن مسیر دقیق MainActivity.kt که flutter create ساخته
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt
           MAKT=$(find android -name "MainActivity.kt" | head -1)
           echo "=== Found MainActivity at: $MAKT ==="
           if [ -n "$MAKT" ]; then
             cp android_files/MainActivity.kt "$MAKT"
             echo "=== Replaced! ==="
           else
-            mkdir -p android/app/src/main/kotlin/ir/subteam/subtitle_player/
-            cp android_files/MainActivity.kt android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt
-            echo "=== Created in kotlin dir ==="
+            mkdir -p android/app/src/main/kotlin/com/vezoo/player/
+            cp android_files/MainActivity.kt android/app/src/main/kotlin/com/vezoo/player/MainActivity.kt
           fi
-          head -3 "${MAKT:-android/app/src/main/kotlin/ir/subteam/subtitle_player/MainActivity.kt}"
+          head -3 "${MAKT:-android/app/src/main/kotlin/com/vezoo/player/MainActivity.kt}"
+
+      - name: Setup C crypto library
+        run: |
+          mkdir -p android/app/src/main/cpp
+          cp android_files/cpp/vezoo.h android/app/src/main/cpp/
+          cp android_files/cpp/vezoo.c android/app/src/main/cpp/
+          cp android_files/cpp/vezoo_jni.c android/app/src/main/cpp/
+          cp android_files/cpp/CMakeLists.txt android/app/src/main/cpp/
+          ls android/app/src/main/cpp/
+          # patch build.gradle.kts برای NDK
+          APP=android/app/build.gradle.kts
+          if [ ! -f "$APP" ]; then APP=android/app/build.gradle; fi
+          if ! grep -q "externalNativeBuild" "$APP"; then
+            sed -i "/^android {/a\\    externalNativeBuild { cmake { path(\\\"src/main/cpp/CMakeLists.txt\\\"); version = \\\"3.22.1\\\" } }" "$APP" || true
+          fi
+
+      - name: Set app icon
+        run: |
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p android/app/src/main/res/mipmap-$d
+            cp android_files/icon.png android/app/src/main/res/mipmap-$d/ic_launcher.png
+            cp android_files/icon.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png
+          done || true
 
       - name: Add storage permissions, PiP and notifications
         run: |
@@ -48,10 +69,10 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application#' "$M"
           sed -i 's/android:launchMode="singleTop"/android:launchMode="singleTop"\n            android:supportsPictureInPicture="true"/' "$M" || true
-          # اسم نمایشی اپ
-          sed -i 's/android:label="player"/android:label="Vezoo"/' "$M" || true
-          echo "=== Manifest check ==="
-          cat "$M" | grep -E "pip|NOTIF|STORAGE|launchMode" || true
+          sed -i 's/android:label="[^"]*"/android:label="Vezoo"/g' "$M" || true
+          S=android/app/src/main/res/values/strings.xml
+          sed -i 's|<string name="app_name">.*</string>|<string name="app_name">Vezoo</string>|' "$S" || true
+          echo "=== Manifest check ==="; cat "$M" | grep -E "pip|NOTIF|STORAGE|INTERNET|label" || true
 
       - name: Force compileSdk 36 everywhere
         run: |
@@ -65,14 +86,6 @@ jobs:
           else
             printf '\nsubprojects {\n    def forceSdk = {\n        if (project.hasProperty("android")) { project.android.compileSdkVersion 36 }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle
           fi
-
-      - name: Set app icon
-        run: |
-          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-            mkdir -p android/app/src/main/res/mipmap-$d
-            cp android_files/icon.png android/app/src/main/res/mipmap-$d/ic_launcher.png
-            cp android_files/icon.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png
-          done || true
 
       - name: Get packages
         run: flutter pub get
@@ -94,4 +107,3 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
