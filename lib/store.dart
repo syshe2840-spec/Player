@@ -9,6 +9,7 @@ import 'dart:io';
 const Set<String> kVideoExt = {
   '.mp4','.mkv','.avi','.mov','.webm','.m4v',
   '.3gp','.flv','.ts','.m2ts','.wmv','.mpg','.mpeg',
+  '.vez', // فرمت رمزشده Vezoo
 };
 const List<String> kSubExt = ['.srt','.ass','.ssa','.vtt','.sub','.sbv','.smi','.lrc'];
 
@@ -429,4 +430,3 @@ class Store {
     return _durCache[path]=p.getInt('dur:$path')??0;
   }
 }
-
