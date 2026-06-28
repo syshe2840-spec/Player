@@ -134,6 +134,7 @@ class MainActivity : FlutterActivity() {
                         } catch (e: Exception) { handler.post { result.error("DECRYPT_FAILED", e.message, null) } }
                     }
                 }
+                "getCacheDir" -> handler.post { result.success(cacheDir.absolutePath) }
                 "getVezMeta" -> {
                     val path = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
                     executor.execute {
