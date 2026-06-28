@@ -521,6 +521,24 @@ class _PlayerState extends State<PlayerScreen>{
     await _vezDiagnostic(path);
   }
 
+  void _vezDiagnostic2(){
+    showDialog(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('VEZ Info'),
+      content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text('مسیر: $_curPath'),
+        const SizedBox(height:8),
+        Text('tempPath: ${_vezTempPath??'null'}'),
+        const SizedBox(height:8),
+        Text('isVez: ${_curPath.toLowerCase().endsWith('.vez')}'),
+      ]),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
+        FilledButton(onPressed:(){Navigator.pop(ctx);_vezDiagnostic(_curPath);}
+          ,child:const Text('اجرای تشخیص')),
+      ],
+    ));
+  }
+
   Future<void> _vezDiagnostic(String path)async{
     final log=<String>[];
     String? tempPath;
