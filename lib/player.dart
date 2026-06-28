@@ -509,27 +509,68 @@ class _PlayerState extends State<PlayerScreen>{
   );
 
   Future<void> _playVez(String path)async{
-    if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content:Row(children:[const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)),
-        const SizedBox(width:12),const Text('در حال رمزگشایی...')]),
-      duration:const Duration(seconds:120),backgroundColor:const Color(0xFF7C3AED)));
+    await Future.delayed(const Duration(milliseconds:400));
+    if(!mounted)return;
+    await _vezDiagnostic(path);
+  }
+
+  Future<void> _vezDiagnostic(String path)async{
+    final log=<String>[];
+    String? tempPath;
+
+    void add(String s){log.add(s);debugPrint('[VEZ] \$s');}
+
+    // مرحله ۱: مسیر فایل
+    add('① مسیر: \$path');
+    add('   isVez: \${VezService.isVez(path)}');
+
+    // مرحله ۲: چک Master Key
     try{
-      final temp=await VezService.decryptToTemp(path);
-      _vezTempPath=temp;
-      if(mounted){
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        player.open(Media(temp));
-      }
-    }catch(e){
-      if(mounted){
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        showDialog(context:context,builder:(ctx)=>AlertDialog(
-          title:const Text('خطای رمزگشایی'),
-          content:SingleChildScrollView(child:Text('\$e')),
-          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
-        ));
-      }
-    }
+      final has=await const MethodChannel('com.vezoo.player/vezoo').invokeMethod<bool>('hasMasterKey')??false;
+      add('② hasMasterKey: \$has');
+    }catch(e){add('② hasMasterKey خطا: \$e');}
+
+    // مرحله ۳: getCacheDir
+    try{
+      final dir=await const MethodChannel('com.vezoo.player/vezoo').invokeMethod<String>('getCacheDir');
+      add('③ cacheDir: \$dir');
+    }catch(e){add('③ getCacheDir خطا: \$e');}
+
+    // مرحله ۴: ensureMasterKey
+    try{
+      final ok=await VezService.ensureMasterKey();
+      add('④ ensureMasterKey: \$ok');
+    }catch(e){add('④ ensureMasterKey خطا: \$e');}
+
+    // مرحله ۵: decrypt
+    try{
+      add('⑤ شروع decrypt...');
+      tempPath=await VezService.decryptToTemp(path);
+      final size=File(tempPath).lengthSync();
+      add('⑤ decrypt موفق: \$size بایت');
+      add('   temp: \$tempPath');
+    }catch(e){add('⑤ decrypt خطا: \$e');}
+
+    if(!mounted)return;
+
+    // نمایش نتیجه
+    await showDialog(
+      context:context,
+      barrierDismissible:false,
+      builder:(ctx)=>AlertDialog(
+        title:const Text('VEZ Diagnostic'),
+        content:SingleChildScrollView(child:SelectableText(log.join('
+'),style:const TextStyle(fontSize:11,fontFamily:'monospace'))),
+        actions:[
+          TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
+          if(tempPath!=null)FilledButton(onPressed:(){
+            Navigator.pop(ctx);
+            _vezTempPath=tempPath;
+            player.open(Media(tempPath!));
+          },child:const Text('پخش')),
+        ],
+      ),
+    );
   }
 
   void _initPipChannel(){
