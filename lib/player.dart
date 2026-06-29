@@ -18,6 +18,7 @@ import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'vez_service.dart';
+import 'ai_subtitle_sheet.dart';
 import 'settings.dart';
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
