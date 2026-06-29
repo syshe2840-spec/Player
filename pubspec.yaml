@@ -36,6 +36,8 @@ dependencies:
   # کنترل صدای سیستم گوشی
   volume_controller: ^3.6.0
   url_launcher: ^6.2.5
+  whisper_ggml_plus: ^1.1.0
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_test:
