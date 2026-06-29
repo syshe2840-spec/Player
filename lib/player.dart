@@ -1037,6 +1037,16 @@ class _PlayerState extends State<PlayerScreen>{
                 ]),
               ),
             ),
+          IconButton(icon:const Icon(Icons.auto_awesome),color:const Color(0xFF7C3AED),
+            tooltip:'زیرنویس AI',
+            onPressed:()=>AiSubtitleSheet.show(context,_curPath,(srt){
+              setState(()=>_sub1=srt);
+              _loadSubtitle(srt);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:Text('زیرنویس AI بارگذاری شد'),
+                backgroundColor:Color(0xFF7C3AED)));
+            }),
+          ),
           IconButton(icon:const Icon(Icons.subtitles),onPressed:()=>showModalBottomSheet(
             context:context,isScrollControlled:true,backgroundColor:const Color(0xFF1C1C22),
             shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
