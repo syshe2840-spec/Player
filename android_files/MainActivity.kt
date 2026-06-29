@@ -22,7 +22,11 @@ import androidx.core.app.NotificationCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import java.io.BufferedOutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -39,6 +43,8 @@ class MainActivity : FlutterActivity() {
     private val THUMB_CH  = "ir.subteam.subtitle_player/thumbnail"
     private val PIP_CH    = "ir.subteam.subtitle_player/pip"
     private val VEZ_CH    = "com.vezoo.player/vezoo"
+    private val WHISPER_CH = "com.vezoo.player/whisper"
+    private val extractCancel = AtomicBoolean(false)
     private val NOTIF_CH_ID = "player_ctrl"
     private val NOTIF_ID  = 42
     private val A_PLAY    = "com.vezoo.PLAY"
@@ -107,6 +113,28 @@ class MainActivity : FlutterActivity() {
                     "hideNotif" -> { nm().cancel(NOTIF_ID); playerActive = false; playing = false; result.success(null) }
                     else -> result.notImplemented()
                 }
+            }
+        }
+
+        // ── Whisper Audio Extraction ──
+        MethodChannel(fe.dartExecutor.binaryMessenger, WHISPER_CH).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "extractAudio" -> {
+                    val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
+                    val output = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
+                    extractCancel.set(false)
+                    executor.execute {
+                        try {
+                            extractAudioWav(input, output, extractCancel)
+                            handler.post { result.success(output) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("EXTRACT_FAILED", e.message, null) }
+                        }
+                    }
+                }
+                "cancelExtraction" -> { extractCancel.set(true); result.success(null) }
+                "getCacheDir" -> result.success(cacheDir.absolutePath)
+                else -> result.notImplemented()
             }
         }
 
@@ -200,6 +228,80 @@ class MainActivity : FlutterActivity() {
         cipher.init(Cipher.DECRYPT_MODE, wk, GCMParameterSpec(128, iv))
         return cipher.doFinal(data)
     }
+
+    // ── Audio Extraction for Whisper ──
+    private fun extractAudioWav(videoPath: String, outputPath: String, cancel: AtomicBoolean) {
+        val extractor = MediaExtractor()
+        extractor.setDataSource(videoPath)
+        var audioIdx = -1
+        lateinit var audioFmt: MediaFormat
+        for (i in 0 until extractor.trackCount) {
+            val fmt = extractor.getTrackFormat(i)
+            val mime = fmt.getString(MediaFormat.KEY_MIME) ?: continue
+            if (mime.startsWith("audio/")) { audioIdx = i; audioFmt = fmt; break }
+        }
+        require(audioIdx >= 0) { "No audio track found" }
+        extractor.selectTrack(audioIdx)
+        val origRate = audioFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+        val channels = audioFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        val mime = audioFmt.getString(MediaFormat.KEY_MIME)!!
+        val codec = MediaCodec.createDecoderByType(mime)
+        codec.configure(audioFmt, null, null, 0); codec.start()
+        val bufInfo = MediaCodec.BufferInfo()
+        val pcm = mutableListOf<Short>()
+        var inputDone = false
+        try {
+            while (!cancel.get()) {
+                if (!inputDone) {
+                    val inIdx = codec.dequeueInputBuffer(10_000)
+                    if (inIdx >= 0) {
+                        val buf = codec.getInputBuffer(inIdx)!!
+                        val sz = extractor.readSampleData(buf, 0)
+                        if (sz < 0) { codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true }
+                        else { codec.queueInputBuffer(inIdx, 0, sz, extractor.sampleTime, 0); extractor.advance() }
+                    }
+                }
+                val outIdx = codec.dequeueOutputBuffer(bufInfo, 10_000)
+                if (outIdx >= 0) {
+                    val buf = codec.getOutputBuffer(outIdx)!!
+                    val s = ShortArray(bufInfo.size / 2)
+                    buf.order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s)
+                    codec.releaseOutputBuffer(outIdx, false)
+                    if (channels >= 2) { var i = 0; while (i + 1 < s.size) { pcm.add(((s[i].toInt() + s[i+1].toInt()) / 2).toShort()); i += channels } }
+                    else s.forEach { pcm.add(it) }
+                    if (bufInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                }
+            }
+        } finally { codec.stop(); codec.release(); extractor.release() }
+        if (cancel.get()) throw Exception("cancelled")
+        val out = if (origRate == 16000) pcm.toShortArray() else resamplePcm(pcm.toShortArray(), origRate, 16000)
+        writeWav(outputPath, out, 16000)
+    }
+
+    private fun resamplePcm(src: ShortArray, from: Int, to: Int): ShortArray {
+        val out = ShortArray((src.size.toLong() * to / from).toInt())
+        val ratio = from.toDouble() / to.toDouble()
+        for (i in out.indices) {
+            val pos = i * ratio; val idx = pos.toInt().coerceIn(0, src.size - 1)
+            val a = src[idx].toDouble(); val b = src.getOrElse(idx + 1) { src.last() }.toDouble()
+            out[i] = (a + (b - a) * (pos - idx)).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
+        return out
+    }
+
+    private fun writeWav(path: String, pcm: ShortArray, rate: Int) {
+        val dataSize = pcm.size * 2
+        java.io.RandomAccessFile(path, "rw").use { f ->
+            f.write(byteArrayOf(82,73,70,70)); f.wLe32(dataSize + 36)
+            f.write(byteArrayOf(87,65,86,69)); f.write(byteArrayOf(102,109,116,32))
+            f.wLe32(16); f.wLe16(1); f.wLe16(1)
+            f.wLe32(rate); f.wLe32(rate * 2); f.wLe16(2); f.wLe16(16)
+            f.write(byteArrayOf(100,97,116,97)); f.wLe32(dataSize)
+            for (s in pcm) { f.write(s.toInt() and 0xFF); f.write((s.toInt() shr 8) and 0xFF) }
+        }
+    }
+    private fun java.io.RandomAccessFile.wLe32(v: Int) { write(v and 0xFF); write((v shr 8) and 0xFF); write((v shr 16) and 0xFF); write((v shr 24) and 0xFF) }
+    private fun java.io.RandomAccessFile.wLe16(v: Int) { write(v and 0xFF); write((v shr 8) and 0xFF) }
 
     // ── VEZ File ──
     private fun readInt(fis: FileInputStream): Int {
@@ -307,3 +409,4 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
