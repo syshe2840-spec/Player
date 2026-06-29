@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
 import 'store.dart';
+import 'ai_models_screen.dart';
 import 'api_service.dart';
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
@@ -1081,3 +1082,4 @@ Widget _appBtn({required IconData icon,required Color color,required String labe
     ),
   );
 }
+
