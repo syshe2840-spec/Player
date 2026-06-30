@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -59,6 +60,9 @@ const kWhisperModels = [
   WhisperModelDef(id:'large-v3-turbo',        base:WhisperModel.largeV3Turbo, name:'Large Turbo',    variant:'',     sizeMb:798,  speedStars:2, accStars:5, desc:'سریع‌تر از Large'),
   WhisperModelDef(id:'large-v3-turbo-q5_0',   base:WhisperModel.largeV3Turbo, name:'Turbo Q5',       variant:'q5_0', sizeMb:531,  speedStars:2, accStars:5, desc:'فشرده — بهترین تعادل'),
 ];
+
+// ── موتور تشخیص گفتار — کاربر انتخاب می‌کند، هر دو همیشه در دسترس‌اند ──
+enum WhisperEngine { v1, v2 }
 
 const kLanguages = {
   'fa':'فارسی','en':'English','ar':'عربی','tr':'ترکی','fr':'فرانسه',
@@ -277,8 +281,30 @@ class WhisperService {
     try { await _ch.invokeMethod('cancelExtraction'); } catch (_) {}
   }
 
-  // ── Transcribe ──
+  // ── انتخاب موتور (v1 / v2) — کاربر تعیین می‌کند ──
+  static Future<WhisperEngine> getActiveEngine() async {
+    final s = (await SharedPreferences.getInstance()).getString('whisper_engine');
+    return s == 'v2' ? WhisperEngine.v2 : WhisperEngine.v1;
+  }
+  static Future<void> setActiveEngine(WhisperEngine e) async =>
+      (await SharedPreferences.getInstance()).setString('whisper_engine', e == WhisperEngine.v2 ? 'v2' : 'v1');
+
+  // ── Transcribe — مسیریابی بر اساس engine انتخابی ──
   static Future<String> transcribe({
+    required String videoPath,
+    required String language,
+    required WhisperModelDef model,
+    required bool useVad,
+    required WhisperEngine engine,
+    required void Function(String, double) onStatus,
+  }) async {
+    return engine == WhisperEngine.v2
+      ? _transcribeV2(videoPath: videoPath, language: language, model: model, onStatus: onStatus)
+      : _transcribeV1(videoPath: videoPath, language: language, model: model, useVad: useVad, onStatus: onStatus);
+  }
+
+  // ── V1: whisper_ggml_plus (پایدار، پکیج Flutter) ──
+  static Future<String> _transcribeV1({
     required String videoPath,
     required String language,
     required WhisperModelDef model,
@@ -303,7 +329,7 @@ class WhisperService {
     }
 
     // ۲. Transcribe
-    onStatus('تبدیل گفتار به متن (${model.name})...', 0.3);
+    onStatus('تبدیل گفتار به متن (V1 — ${model.name})...', 0.3);
     final whisper = Whisper(model: model.base);
     final result = await whisper.transcribe(
       transcribeRequest: TranscribeRequest(
@@ -333,6 +359,85 @@ class WhisperService {
 
     onStatus('✓ ذخیره شد', 1.0);
     return out;
+  }
+
+  // ── V2: whisper.cpp بومی (سریع‌تر، آزمایشی) ──
+  static Future<String> _transcribeV2({
+    required String videoPath,
+    required String language,
+    required WhisperModelDef model,
+    required void Function(String, double) onStatus,
+  }) async {
+    _trCancelled = false;
+
+    final root = await _modelsRoot();
+    final mPath = model.filePath(root);
+    if (!File(mPath).existsSync()) {
+      throw Exception('مدل ${model.name} پیدا نشد\nدوباره دانلود کنید');
+    }
+
+    // ۱. استخراج صدا (همون مسیر/کش مشترک با V1)
+    onStatus('استخراج صدا...', 0.05);
+    final wav = await extractAudio(videoPath);
+    if (_trCancelled) throw Exception('لغو شد');
+    if (!File(wav).existsSync() || File(wav).lengthSync() == 0) {
+      throw Exception('استخراج صدا ناموفق');
+    }
+
+    int? ctx;
+    try {
+      // ۲. بارگذاری مدل در whisper.cpp بومی
+      onStatus('بارگذاری مدل (V2 — ${model.name})...', 0.25);
+      final ctxResult = await _ch.invokeMethod<dynamic>('v2InitContext', {'modelPath': mPath});
+      if (ctxResult == null) throw Exception('بارگذاری مدل ناموفق');
+      ctx = (ctxResult as num).toInt();
+      if (ctx == 0) throw Exception('بارگذاری مدل ناموفق (ctx=0)');
+      if (_trCancelled) throw Exception('لغو شد');
+
+      // ۳. Transcribe بومی
+      onStatus('تبدیل گفتار به متن (V2 — native)...', 0.4);
+      final threads = Platform.numberOfProcessors.clamp(2, 8);
+      final raw = await _ch.invokeMethod<String>('v2Transcribe', {
+        'ctx': ctx, 'wavPath': wav, 'lang': language, 'threads': threads,
+      });
+      if (_trCancelled) throw Exception('لغو شد');
+      if (raw == null || raw.trim().isEmpty) throw Exception('خروجی خالی از موتور V2');
+
+      // ۴. تبدیل خروجی خام (start_ms|end_ms|text) به SRT
+      onStatus('ساخت فایل SRT...', 0.9);
+      final srt = _v2RawToSrt(raw);
+
+      final out = srtPath(videoPath, language);
+      File(out).writeAsStringSync(srt, encoding: utf8);
+
+      onStatus('✓ ذخیره شد', 1.0);
+      return out;
+    } finally {
+      if (ctx != null && ctx != 0) {
+        try { await _ch.invokeMethod('v2FreeContext', {'ctx': ctx}); } catch (_) {}
+      }
+    }
+  }
+
+  /// تبدیل خروجی خام موتور V2 (هر خط: start_ms|end_ms|text) به فرمت SRT
+  static String _v2RawToSrt(String raw) {
+    final lines = raw.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final b = StringBuffer();
+    int idx = 1;
+    for (final line in lines) {
+      final parts = line.split('|');
+      if (parts.length < 3) continue;
+      final fromMs = int.tryParse(parts[0]) ?? 0;
+      final toMs = int.tryParse(parts[1]) ?? (fromMs + 2000);
+      final text = parts.sublist(2).join('|').trim();
+      if (text.isEmpty) continue;
+      b.writeln('$idx');
+      b.writeln('${_d(Duration(milliseconds: fromMs))} --> ${_d(Duration(milliseconds: toMs))}');
+      b.writeln(text);
+      b.writeln();
+      idx++;
+    }
+    return b.toString();
   }
 
   // ══════════════════════════════════════════════════════════
@@ -486,4 +591,3 @@ class _Seg {
   final String text;
   const _Seg(this.from, this.to, this.text);
 }
-
