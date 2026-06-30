@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'api_service.dart';
 
 // ── ثابت‌ها ──
-const String _osApiKey = '0cVNQX84gIY4Nm0VvReFL7DTNMnLeINO';
 const String _osBaseUrl = 'https://api.opensubtitles.com/api/v1';
 const String _osUserAgent = 'Vezoo v1.0';
 
@@ -65,8 +66,35 @@ class ParsedFileInfo {
 
 // ── سرویس — کاملاً بدون نیاز به یوزر/پسورد، فقط API Key ──
 class OpenSubtitlesService {
-  static Map<String, String> _baseHeaders() => {
-        'Api-Key': _osApiKey,
+  static String? _cachedKey;
+
+  /// گرفتن کلید API از سرور Cloudflare — با کش محلی برای دفعات بعد
+  static Future<String> _getApiKey() async {
+    if (_cachedKey != null && _cachedKey!.isNotEmpty) return _cachedKey!;
+
+    try {
+      final data = await ApiService.getRaw('/opensubtitles-key');
+      final key = (data as Map?)?['api_key'] as String?;
+      if (key != null && key.isNotEmpty) {
+        _cachedKey = key;
+        (await SharedPreferences.getInstance()).setString('os_api_key_cache', key);
+        return key;
+      }
+    } catch (_) {
+      // اینترنت نبود یا سرور جواب نداد — برو سراغ کش محلی
+    }
+
+    final cached = (await SharedPreferences.getInstance()).getString('os_api_key_cache');
+    if (cached != null && cached.isNotEmpty) {
+      _cachedKey = cached;
+      return cached;
+    }
+
+    throw Exception('دریافت کلید سرویس زیرنویس ناموفق بود — اتصال اینترنت را بررسی کنید');
+  }
+
+  static Future<Map<String, String>> _baseHeaders() async => {
+        'Api-Key': await _getApiKey(),
         'User-Agent': _osUserAgent,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -91,7 +119,7 @@ class OpenSubtitlesService {
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);
-      _baseHeaders().forEach((k, v) => req.headers.set(k, v));
+      (await _baseHeaders()).forEach((k, v) => req.headers.set(k, v));
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
       if (res.statusCode != 200) throw Exception(_friendlyError(res.statusCode, body));
@@ -149,7 +177,7 @@ class OpenSubtitlesService {
     String? link;
     try {
       final req = await client.postUrl(Uri.parse('$_osBaseUrl/download'));
-      _baseHeaders().forEach((k, v) => req.headers.set(k, v));
+      (await _baseHeaders()).forEach((k, v) => req.headers.set(k, v));
       req.write(jsonEncode({'file_id': sub.fileId}));
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
