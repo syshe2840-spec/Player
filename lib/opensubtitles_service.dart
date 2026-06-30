@@ -19,9 +19,11 @@ class OsFeature {
 
   factory OsFeature.fromJson(Map<String, dynamic> j) {
     final a = (j['attributes'] as Map?)?.cast<String, dynamic>() ?? {};
+    // نکته مهم: فیلد بیرونی j['type'] همیشه "feature" است (تأیید شده از تیم OpenSubtitles)
+    // نوع واقعی (Movie/TvShow/Episode) داخل attributes.feature_type است
     return OsFeature(
       id: int.tryParse('${j['id']}') ?? 0,
-      type: (j['type'] ?? '').toString().toLowerCase(),
+      type: (a['feature_type'] ?? '').toString().toLowerCase(),
       title: (a['title'] ?? '').toString(),
       year: a['year']?.toString(),
       imdbId: int.tryParse('${a['imdb_id']}'),
