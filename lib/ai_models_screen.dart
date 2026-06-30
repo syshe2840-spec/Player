@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
+import 'whisper_v2_test_screen.dart';
 
 class AiModelsScreen extends StatefulWidget {
   const AiModelsScreen({super.key});
@@ -65,6 +66,13 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       backgroundColor:const Color(0xFF1C1C22),
       title:const Text('مدل‌های AI زیرنویس',style:TextStyle(color:Colors.white,fontSize:16)),
       leading:IconButton(icon:const Icon(Icons.arrow_back,color:Colors.white),onPressed:()=>Navigator.pop(ctx)),
+      actions:[
+        IconButton(
+          icon:const Icon(Icons.science_outlined,color:Color(0xFF7C3AED)),
+          tooltip:'تست AI v2 (آزمایشی)',
+          onPressed:()=>Navigator.push(ctx,MaterialPageRoute(builder:(_)=>const WhisperV2TestScreen())),
+        ),
+      ],
     ),
     body: _loading
       ? const Center(child:CircularProgressIndicator(color:Color(0xFF7C3AED)))
