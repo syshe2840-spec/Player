@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'whisper_service.dart';
 import 'ai_models_screen.dart';
+import 'srt_editor_screen.dart';
 
 class AiSubtitleSheet extends StatefulWidget {
   final String videoPath;
   final void Function(String srtPath) onDone;
-  const AiSubtitleSheet({super.key, required this.videoPath, required this.onDone});
+  final void Function(String srtPath)? onPreview;
+  const AiSubtitleSheet({super.key, required this.videoPath, required this.onDone, this.onPreview});
 
-  static Future<void> show(BuildContext ctx, String videoPath, void Function(String) onDone) =>
+  static Future<void> show(
+    BuildContext ctx, String videoPath, void Function(String) onDone, {
+    void Function(String)? onPreview,
+  }) =>
     showModalBottomSheet(
       context:ctx, isScrollControlled:true,
       backgroundColor:const Color(0xFF1C1C22),
       shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
-      builder:(_)=>AiSubtitleSheet(videoPath:videoPath, onDone:onDone),
+      builder:(_)=>AiSubtitleSheet(videoPath:videoPath, onDone:onDone, onPreview:onPreview),
     );
 
   @override State<AiSubtitleSheet> createState() => _State();
@@ -33,6 +39,7 @@ class _State extends State<AiSubtitleSheet> {
   List<String> _existingLangs = [];
   String _mode = 'pick'; // pick | new | running | done
   WhisperEngine _engine = WhisperEngine.v1;
+  bool _translate = false;
 
   @override void initState(){ super.initState(); _load(); }
 
@@ -61,6 +68,7 @@ class _State extends State<AiSubtitleSheet> {
         model: _selected!,
         useVad: _useVad,
         engine: _engine,
+        isTranslate: _translate,
         onStatus:(s,p){ if(mounted) setState((){ _status=s; _progress=p; }); },
       );
       if(mounted) setState((){ _running=false; _mode='done'; _srtPath=path; });
@@ -254,6 +262,21 @@ class _State extends State<AiSubtitleSheet> {
     )),
     const SizedBox(height:10),
 
+    // ── ترجمه به انگلیسی (همیشه در دسترس) ──
+    Container(
+      padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+      decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(12)),
+      child:Row(children:[
+        const Icon(Icons.translate,color:Color(0xFF7C3AED),size:18),
+        const SizedBox(width:10),
+        const Expanded(child:Text('ترجمه به انگلیسی (به‌جای زیرنویس هم‌زبان)',
+          style:TextStyle(color:Colors.white,fontSize:12))),
+        Switch(value:_translate,activeColor:const Color(0xFF7C3AED),
+          onChanged:(v)=>setState(()=>_translate=v)),
+      ]),
+    ),
+    const SizedBox(height:10),
+
     // ── انتخاب موتور — V1 و V2 همیشه هر دو در دسترس‌اند ──
     Container(
       padding:const EdgeInsets.all(10),
@@ -378,6 +401,47 @@ class _State extends State<AiSubtitleSheet> {
         shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)),
       ),
     )),
+    const SizedBox(height:8),
+
+    // ── اشتراک‌گذاری / ویرایش / پیش‌نمایش ──
+    Row(children:[
+      Expanded(child:OutlinedButton.icon(
+        onPressed:()=>SharePlus.instance.share(ShareParams(files:[XFile(_srtPath!)],text:'زیرنویس Vezoo')),
+        icon:const Icon(Icons.share,size:15,color:Colors.white70),
+        label:const Text('اشتراک',style:TextStyle(color:Colors.white70,fontSize:12)),
+        style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24),
+          padding:const EdgeInsets.symmetric(vertical:10),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
+      )),
+      const SizedBox(width:8),
+      Expanded(child:OutlinedButton.icon(
+        onPressed:()async{
+          await Navigator.push(context,MaterialPageRoute(builder:(_)=>SrtEditorScreen(srtPath:_srtPath!)));
+          if(mounted)setState((){}); // رفرش بعد از برگشت از ویرایشگر
+        },
+        icon:const Icon(Icons.edit,size:15,color:Colors.white70),
+        label:const Text('ویرایش',style:TextStyle(color:Colors.white70,fontSize:12)),
+        style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24),
+          padding:const EdgeInsets.symmetric(vertical:10),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
+      )),
+      if(widget.onPreview!=null)...[
+        const SizedBox(width:8),
+        Expanded(child:OutlinedButton.icon(
+          onPressed:(){
+            widget.onPreview!(_srtPath!);
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content:Text('روی پلیر بارگذاری شد برای پیش‌نمایش'),
+              backgroundColor:Color(0xFF7C3AED),duration:Duration(seconds:2)));
+          },
+          icon:const Icon(Icons.visibility,size:15,color:Colors.white70),
+          label:const Text('پیش‌نمایش',style:TextStyle(color:Colors.white70,fontSize:12)),
+          style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24),
+            padding:const EdgeInsets.symmetric(vertical:10),
+            shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
+        )),
+      ],
+    ]),
     const SizedBox(height:8),
 
     SizedBox(width:double.infinity,child:FilledButton.icon(
