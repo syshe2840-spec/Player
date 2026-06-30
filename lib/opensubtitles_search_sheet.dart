@@ -83,11 +83,6 @@ class _State extends State<OpenSubtitlesSheet> {
   }
 
   Future<void> _download(OsSubtitle sub) async {
-    // چک اطلاعات ورود
-    if (!await OpenSubtitlesService.hasCredentials()) {
-      final ok = await _showCredentialsDialog();
-      if (ok != true) return;
-    }
     setState((){ _loading = true; _error = null; });
     try {
       int? remaining;
@@ -105,33 +100,6 @@ class _State extends State<OpenSubtitlesSheet> {
     } catch (e) {
       if (mounted) setState((){ _error = '$e'; _loading = false; });
     }
-  }
-
-  Future<bool?> _showCredentialsDialog() {
-    final uCtrl = TextEditingController();
-    final pCtrl = TextEditingController();
-    return showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      backgroundColor: const Color(0xFF1C1C22),
-      title: const Text('ورود به OpenSubtitles', style: TextStyle(color: Colors.white, fontSize: 15)),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('برای دانلود نیاز به حساب رایگان OpenSubtitles.com دارید (۲۰ دانلود رایگان در روز)',
-          style: TextStyle(color: Colors.white60, fontSize: 12)),
-        const SizedBox(height: 12),
-        TextField(controller: uCtrl, style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(labelText: 'نام کاربری', labelStyle: TextStyle(color: Colors.white54))),
-        const SizedBox(height: 8),
-        TextField(controller: pCtrl, obscureText: true, style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(labelText: 'رمز عبور', labelStyle: TextStyle(color: Colors.white54))),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('لغو')),
-        FilledButton(onPressed: () async {
-          if (uCtrl.text.isEmpty || pCtrl.text.isEmpty) return;
-          await OpenSubtitlesService.setCredentials(uCtrl.text.trim(), pCtrl.text);
-          if (ctx.mounted) Navigator.pop(ctx, true);
-        }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)), child: const Text('ذخیره')),
-      ],
-    ));
   }
 
   @override
