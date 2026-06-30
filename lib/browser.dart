@@ -1039,6 +1039,15 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         const SizedBox(height:8),
 
+        // زیرنویس AI
+        _appBtn(
+          icon:Icons.auto_awesome_rounded,color:const Color(0xFF7C3AED),
+          label:'زیرنویس AI (آفلاین) — مدیریت مدل‌ها',
+          onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AiModelsScreen())),
+        ),
+
+        const SizedBox(height:8),
+
         // کانال تلگرام
         if(channel.isNotEmpty)_appBtn(
           icon:Icons.telegram_rounded,color:kCyan,
