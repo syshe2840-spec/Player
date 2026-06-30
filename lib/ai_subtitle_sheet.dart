@@ -92,6 +92,21 @@ class _State extends State<AiSubtitleSheet> {
     }
   }
 
+  String? _improvingLang;
+  Future<void> _improveLang(String lang) async {
+    setState(()=>_improvingLang=lang);
+    try {
+      await WhisperService.improveSrt(WhisperService.bestSrtPath(widget.videoPath, lang));
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:Text('✨ زیرنویس بهبود یافت'), backgroundColor:Color(0xFF7C3AED)));
+    } catch(e){
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content:Text('خطا: $e'), backgroundColor:Colors.red));
+    } finally {
+      if(mounted) setState((){ _existingLangs=WhisperService.existingLanguages(widget.videoPath); _improvingLang=null; });
+    }
+  }
+
   Future<void> _deleteLang(String lang) async {
     final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),
@@ -166,14 +181,15 @@ class _State extends State<AiSubtitleSheet> {
 
     ..._existingLangs.map((lang){
       final improved = WhisperService.improvedExists(widget.videoPath, lang);
+      final improving = _improvingLang==lang;
       return Container(
         margin:const EdgeInsets.only(bottom:8),
         padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
         decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(12)),
-        child:Row(children:[
-          const Icon(Icons.star,color:Colors.amber,size:16),
-          const SizedBox(width:8),
-          Expanded(child:Row(children:[
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[
+            const Icon(Icons.star,color:Colors.amber,size:16),
+            const SizedBox(width:8),
             Text(kLanguages[lang]??lang,style:const TextStyle(color:Colors.white,fontSize:14)),
             if(improved)...[
               const SizedBox(width:6),
@@ -181,31 +197,54 @@ class _State extends State<AiSubtitleSheet> {
                 decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.2),borderRadius:BorderRadius.circular(6)),
                 child:const Text('بهبودیافته',style:TextStyle(color:Color(0xFF7C3AED),fontSize:10))),
             ],
-          ])),
-          IconButton(
-            icon:const Icon(Icons.share,color:Color(0xFF7C3AED),size:18),
-            tooltip:'اشتراک‌گذاری',
-            onPressed:()=>SharePlus.instance.share(ShareParams(
-              files:[XFile(WhisperService.bestSrtPath(widget.videoPath, lang))],
-              text:'زیرنویس Vezoo')),
-            constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
-          ),
-          IconButton(
-            icon:const Icon(Icons.delete_outline,color:Colors.red,size:18),
-            onPressed:()=>_deleteLang(lang),
-            constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
-          ),
-          const SizedBox(width:4),
-          FilledButton(
-            onPressed:(){
-              widget.onDone(WhisperService.bestSrtPath(widget.videoPath, lang));
-              Navigator.pop(context);
-            },
-            style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED),
-              minimumSize:const Size(0,32),padding:const EdgeInsets.symmetric(horizontal:14),
-              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8))),
-            child:const Text('استفاده',style:TextStyle(fontSize:12)),
-          ),
+          ]),
+          const SizedBox(height:8),
+          Row(children:[
+            IconButton(
+              icon:const Icon(Icons.share,color:Color(0xFF7C3AED),size:18),
+              tooltip:'اشتراک‌گذاری',
+              onPressed:()=>SharePlus.instance.share(ShareParams(
+                files:[XFile(WhisperService.bestSrtPath(widget.videoPath, lang))],
+                text:'زیرنویس Vezoo')),
+              constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
+            ),
+            IconButton(
+              icon:const Icon(Icons.edit,color:Colors.white70,size:18),
+              tooltip:'ویرایش',
+              onPressed:()async{
+                await Navigator.push(context,MaterialPageRoute(
+                  builder:(_)=>SrtEditorScreen(srtPath:WhisperService.bestSrtPath(widget.videoPath, lang))));
+                if(mounted)setState((){});
+              },
+              constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
+            ),
+            improving
+              ? const Padding(padding:EdgeInsets.all(8),
+                  child:SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Color(0xFF7C3AED))))
+              : IconButton(
+                  icon:const Icon(Icons.auto_fix_high,color:Color(0xFF7C3AED),size:18),
+                  tooltip:'بهبود زیرنویس',
+                  onPressed:()=>_improveLang(lang),
+                  constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
+                ),
+            IconButton(
+              icon:const Icon(Icons.delete_outline,color:Colors.red,size:18),
+              tooltip:'حذف',
+              onPressed:()=>_deleteLang(lang),
+              constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
+            ),
+            const Spacer(),
+            FilledButton(
+              onPressed:(){
+                widget.onDone(WhisperService.bestSrtPath(widget.videoPath, lang));
+                Navigator.pop(context);
+              },
+              style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED),
+                minimumSize:const Size(0,32),padding:const EdgeInsets.symmetric(horizontal:14),
+                shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8))),
+              child:const Text('استفاده',style:TextStyle(fontSize:12)),
+            ),
+          ]),
         ]),
       );
     }),
