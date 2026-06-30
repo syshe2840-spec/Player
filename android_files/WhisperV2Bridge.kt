@@ -30,7 +30,7 @@ object WhisperV2Bridge {
         wavPath: String,
         language: String,
         threads: Int,
-        useVad: Boolean
+        translate: Boolean
     ): String
 
     /** اطلاعات سیستم (CPU features: NEON, AVX, ...) — برای دیباگ */
