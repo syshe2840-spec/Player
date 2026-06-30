@@ -32,6 +32,7 @@ class _State extends State<AiSubtitleSheet> {
   bool _improving = false;
   List<String> _existingLangs = [];
   String _mode = 'pick'; // pick | new | running | done
+  WhisperEngine _engine = WhisperEngine.v1;
 
   @override void initState(){ super.initState(); _load(); }
 
@@ -39,11 +40,13 @@ class _State extends State<AiSubtitleSheet> {
     final list = await WhisperService.downloadedModels();
     final active = await WhisperService.getActiveModel();
     final existing = WhisperService.existingLanguages(widget.videoPath);
+    final engine = await WhisperService.getActiveEngine();
     if(mounted) setState((){
       _downloaded = list;
       _selected = active ?? (list.isNotEmpty ? list.first : null);
       _existingLangs = existing;
       _mode = existing.isNotEmpty ? 'pick' : 'new';
+      _engine = engine;
       _loading = false;
     });
   }
@@ -57,6 +60,7 @@ class _State extends State<AiSubtitleSheet> {
         language: _lang,
         model: _selected!,
         useVad: _useVad,
+        engine: _engine,
         onStatus:(s,p){ if(mounted) setState((){ _status=s; _progress=p; }); },
       );
       if(mounted) setState((){ _running=false; _mode='done'; _srtPath=path; });
@@ -250,6 +254,26 @@ class _State extends State<AiSubtitleSheet> {
     )),
     const SizedBox(height:10),
 
+    // ── انتخاب موتور — V1 و V2 همیشه هر دو در دسترس‌اند ──
+    Container(
+      padding:const EdgeInsets.all(10),
+      decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(12)),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Row(children:const [
+          Icon(Icons.settings_suggest,color:Color(0xFF7C3AED),size:16),
+          SizedBox(width:8),
+          Text('موتور تشخیص گفتار',style:TextStyle(color:Colors.white70,fontSize:12)),
+        ]),
+        const SizedBox(height:8),
+        Row(children:[
+          Expanded(child:_engineChip(WhisperEngine.v1,'V1','پایدار')),
+          const SizedBox(width:8),
+          Expanded(child:_engineChip(WhisperEngine.v2,'V2','آزمایشی، سریع‌تر')),
+        ]),
+      ]),
+    ),
+    const SizedBox(height:10),
+
     Container(
       padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
       decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(12)),
@@ -367,6 +391,29 @@ class _State extends State<AiSubtitleSheet> {
       ),
     )),
   ];
+
+  Widget _engineChip(WhisperEngine e, String label, String sub){
+    final active = _engine==e;
+    return GestureDetector(
+      onTap:()async{
+        setState(()=>_engine=e);
+        await WhisperService.setActiveEngine(e);
+      },
+      child:Container(
+        padding:const EdgeInsets.symmetric(vertical:8,horizontal:8),
+        decoration:BoxDecoration(
+          color:active?const Color(0xFF7C3AED):const Color(0xFF1C1C22),
+          borderRadius:BorderRadius.circular(10),
+          border:Border.all(color:active?const Color(0xFF7C3AED):Colors.white12),
+        ),
+        child:Column(children:[
+          Text(label,style:TextStyle(color:active?Colors.white:Colors.white70,fontSize:13,fontWeight:FontWeight.bold)),
+          const SizedBox(height:2),
+          Text(sub,style:TextStyle(color:active?Colors.white70:Colors.white38,fontSize:10)),
+        ]),
+      ),
+    );
+  }
 
   Widget _row({required IconData icon, required Widget child, Widget? trailing})=>Container(
     padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
