@@ -38,6 +38,7 @@ dependencies:
   url_launcher: ^6.2.5
   whisper_ggml_plus: ^1.1.0
   path_provider: ^2.1.2
+  share_plus: ^11.0.0
 
 dev_dependencies:
   flutter_test:
