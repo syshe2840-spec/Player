@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -460,9 +461,16 @@ class WhisperService {
       throw Exception('مدل ${model.name} پیدا نشد\nدوباره دانلود کنید');
     }
 
+    final sw = Stopwatch()..start();
+    void logStage(String stage) {
+      debugPrint('[Whisper V1] $stage: ${sw.elapsedMilliseconds}ms');
+      sw.reset();
+    }
+
     // ۱. استخراج صدا (با کش)
     onStatus('استخراج صدا...', 0.05);
     final wav = await extractAudio(videoPath);
+    logStage('Extract Audio');
     if (_trCancelled) throw Exception('لغو شد');
     if (!File(wav).existsSync() || File(wav).lengthSync() == 0) {
       throw Exception('استخراج صدا ناموفق');
@@ -482,6 +490,7 @@ class WhisperService {
       ),
       modelPath: mPath,
     );
+    logStage('Transcribe (load+infer)');
     if (_trCancelled) throw Exception('لغو شد');
 
     // ۳. SRT
@@ -518,9 +527,16 @@ class WhisperService {
       throw Exception('مدل ${model.name} پیدا نشد\nدوباره دانلود کنید');
     }
 
+    final sw = Stopwatch()..start();
+    void logStage(String stage) {
+      debugPrint('[Whisper V2] $stage: ${sw.elapsedMilliseconds}ms');
+      sw.reset();
+    }
+
     // ۱. استخراج صدا (همون مسیر/کش مشترک با V1)
     onStatus('استخراج صدا...', 0.05);
     final wav = await extractAudio(videoPath);
+    logStage('Extract Audio');
     if (_trCancelled) throw Exception('لغو شد');
     if (!File(wav).existsSync() || File(wav).lengthSync() == 0) {
       throw Exception('استخراج صدا ناموفق');
@@ -531,6 +547,7 @@ class WhisperService {
       // ۲. بارگذاری مدل در whisper.cpp بومی
       onStatus('بارگذاری مدل (V2 — ${model.name})...', 0.25);
       final ctxResult = await _ch.invokeMethod<dynamic>('v2InitContext', {'modelPath': mPath});
+      logStage('Load Model');
       if (ctxResult == null) throw Exception('بارگذاری مدل ناموفق');
       ctx = (ctxResult as num).toInt();
       if (ctx == 0) throw Exception('بارگذاری مدل ناموفق (ctx=0)');
@@ -542,6 +559,7 @@ class WhisperService {
       final raw = await _ch.invokeMethod<String>('v2Transcribe', {
         'ctx': ctx, 'wavPath': wav, 'lang': language, 'threads': threads, 'translate': isTranslate,
       });
+      logStage('Transcribe (infer)');
       if (_trCancelled) throw Exception('لغو شد');
       if (raw == null || raw.trim().isEmpty) throw Exception('خروجی خالی از موتور V2');
 
