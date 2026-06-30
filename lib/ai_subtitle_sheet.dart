@@ -40,6 +40,7 @@ class _State extends State<AiSubtitleSheet> {
   String _mode = 'pick'; // pick | new | running | done
   WhisperEngine _engine = WhisperEngine.v1;
   bool _translate = false;
+  int _videoDurationMs = 0;
 
   @override void initState(){ super.initState(); _load(); }
 
@@ -48,12 +49,14 @@ class _State extends State<AiSubtitleSheet> {
     final active = await WhisperService.getActiveModel();
     final existing = WhisperService.existingLanguages(widget.videoPath);
     final engine = await WhisperService.getActiveEngine();
+    final duration = await WhisperService.getVideoDurationMs(widget.videoPath);
     if(mounted) setState((){
       _downloaded = list;
       _selected = active ?? (list.isNotEmpty ? list.first : null);
       _existingLangs = existing;
       _mode = existing.isNotEmpty ? 'pick' : 'new';
       _engine = engine;
+      _videoDurationMs = duration;
       _loading = false;
     });
   }
@@ -378,18 +381,30 @@ class _State extends State<AiSubtitleSheet> {
         ]),
       ),
 
-    // ── تخمین دقت بر اساس مدل + زبان انتخابی ──
+    // ── تخمین دقت + زمان پردازش بر اساس مدل + زبان انتخابی ──
     if(_selected!=null)
       Container(
         margin:const EdgeInsets.only(bottom:10),
         padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
         decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(10)),
-        child:Row(children:[
-          const Icon(Icons.insights,color:Color(0xFF7C3AED),size:16),
-          const SizedBox(width:8),
-          Text('دقت تخمینی: ',style:const TextStyle(color:Colors.white54,fontSize:12)),
-          Text(estimateAccuracy(_selected!,_lang),
-            style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[
+            const Icon(Icons.insights,color:Color(0xFF7C3AED),size:16),
+            const SizedBox(width:8),
+            const Text('دقت تخمینی: ',style:TextStyle(color:Colors.white54,fontSize:12)),
+            Text(estimateAccuracy(_selected!,_lang),
+              style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
+          ]),
+          if(_videoDurationMs>0)...[
+            const SizedBox(height:4),
+            Row(children:[
+              const Icon(Icons.timer_outlined,color:Color(0xFF7C3AED),size:16),
+              const SizedBox(width:8),
+              const Text('زمان تخمینی: ',style:TextStyle(color:Colors.white54,fontSize:12)),
+              Text(WhisperService.estimateProcessingTime(_videoDurationMs,_selected!,_engine),
+                style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
+            ]),
+          ],
         ]),
       ),
 
