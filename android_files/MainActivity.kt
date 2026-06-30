@@ -53,6 +53,8 @@ class MainActivity : FlutterActivity() {
     private val A_PLAY    = "com.vezoo.PLAY"
     private val A_PAUSE   = "com.vezoo.PAUSE"
     private val A_CLOSE   = "com.vezoo.CLOSE"
+    private val A_AI_CANCEL = "com.vezoo.AI_CANCEL"
+    private var whisperCh: MethodChannel? = null
 
     // ── ثابت‌های کریپتو ──
     private val APP_HALF = byteArrayOf(
@@ -85,6 +87,11 @@ class MainActivity : FlutterActivity() {
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
+            if (i?.action == A_AI_CANCEL) {
+                nm().cancel(AI_NOTIF_ID)
+                whisperCh?.invokeMethod("aiCancelRequested", null)
+                return
+            }
             val action = when(i?.action) {
                 A_PLAY->"play"; A_PAUSE->"pause"; A_CLOSE->"close"; else->return
             }
@@ -120,7 +127,8 @@ class MainActivity : FlutterActivity() {
         }
 
         // ── Whisper Audio Extraction ──
-        MethodChannel(fe.dartExecutor.binaryMessenger, WHISPER_CH).setMethodCallHandler { call, result ->
+        whisperCh = MethodChannel(fe.dartExecutor.binaryMessenger, WHISPER_CH)
+        whisperCh!!.setMethodCallHandler { call, result ->
             when (call.method) {
                 "extractAudio" -> {
                     val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
@@ -260,7 +268,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        val f = IntentFilter().apply { addAction(A_PLAY); addAction(A_PAUSE); addAction(A_CLOSE) }
+        val f = IntentFilter().apply { addAction(A_PLAY); addAction(A_PAUSE); addAction(A_CLOSE); addAction(A_AI_CANCEL) }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, f, Context.RECEIVER_EXPORTED)
         else registerReceiver(receiver, f)
     }
@@ -487,6 +495,7 @@ class MainActivity : FlutterActivity() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(percent < 100)
             .setOnlyAlertOnce(true)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "لغو", pi(A_AI_CANCEL, 5))
             .build())
     }
     private fun pi(action: String, code: Int) = PendingIntent.getBroadcast(this, code, Intent(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
