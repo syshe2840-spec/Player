@@ -80,6 +80,7 @@ WhisperModelDef _recommendModelByRam(int ramMb) {
 }
 
 const kLanguages = {
+  'auto':'تشخیص خودکار',
   'fa':'فارسی','en':'English','ar':'عربی','tr':'ترکی','fr':'فرانسه',
   'de':'آلمانی','es':'اسپانیایی','zh':'چینی','ja':'ژاپنی','ru':'روسی','ko':'کره‌ای',
 };
@@ -87,7 +88,7 @@ const kLanguages = {
 /// سطح پشتیبانی هر زبان در whisper (بر اساس داده‌های منتشرشده OpenAI)
 /// 2=بهترین (انگلیسی) 1=خوب 0=متوسط (زبان‌های با منابع آموزشی کمتر)
 const _kLangSupport = {
-  'en':2, 'es':1,'fr':1,'de':1,'ru':1,'ja':1,'ko':1,'zh':1,
+  'en':2, 'es':1,'fr':1,'de':1,'ru':1,'ja':1,'ko':1,'zh':1,'auto':1,
   'fa':0,'ar':0,'tr':0,
 };
 
@@ -241,7 +242,7 @@ class WhisperService {
     final dir = Directory(p.dirname(videoPath));
     if (!dir.existsSync()) return [];
     final found = <String>[];
-    final pattern = RegExp('^${RegExp.escape(base)}_ai_([a-z]{2})(_improved)?\\.srt\$');
+    final pattern = RegExp('^${RegExp.escape(base)}_ai_([a-z]{2,5})(_improved)?\\.srt\$');
     for (final f in dir.listSync()) {
       if (f is! File) continue;
       final m = pattern.firstMatch(p.basename(f.path));
@@ -273,7 +274,7 @@ class WhisperService {
     final base = p.basenameWithoutExtension(videoPath);
     final dir = Directory(p.dirname(videoPath));
     if (!dir.existsSync()) return;
-    final pattern = RegExp('^${RegExp.escape(base)}_ai_[a-z]{2}(_improved)?\\.srt\$');
+    final pattern = RegExp('^${RegExp.escape(base)}_ai_[a-z]{2,5}(_improved)?\\.srt\$');
     for (final f in dir.listSync()) {
       if (f is File && pattern.hasMatch(p.basename(f.path))) {
         try { f.deleteSync(); } catch (_) {}
@@ -355,6 +356,70 @@ class WhisperService {
   /// پیشنهاد مدل مناسب بر اساس رم گوشی
   static WhisperModelDef recommendedModel(int ramMb) => _recommendModelByRam(ramMb);
 
+  // ── مدت زمان ویدیو (برای تخمین زمان پردازش) ──
+  static Future<int> getVideoDurationMs(String videoPath) async {
+    try {
+      final v = await _ch.invokeMethod<int>('getVideoDuration', {'path': videoPath});
+      return v ?? 0;
+    } catch (_) { return 0; }
+  }
+
+  /// تخمین زمان پردازش بر اساس مدت ویدیو + مدل + موتور
+  /// ضرایب تجربی‌اند، فقط یک راهنمای کلی‌اند نه عدد دقیق
+  static String estimateProcessingTime(int videoDurationMs, WhisperModelDef model, WhisperEngine engine) {
+    if (videoDurationMs <= 0) return 'نامشخص';
+    final videoSec = videoDurationMs / 1000;
+    // ضریب کندی نسبت به مدت واقعی صدا — هرچه مدل بزرگ‌تر، ضریب بالاتر
+    final modelFactor = switch (model.speedStars) {
+      5 => 0.4, 4 => 0.7, 3 => 1.2, 2 => 2.2, _ => 4.0,
+    };
+    final engineFactor = engine == WhisperEngine.v2 ? 0.85 : 1.0; // V2 معمولاً کمی سریع‌تر
+    final estSec = (videoSec * modelFactor * engineFactor).round();
+    if (estSec < 60) return 'حدود $estSec ثانیه';
+    final mins = (estSec / 60).round();
+    return 'حدود $mins دقیقه';
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  تاریخچه AI — لیست ویدیوهایی که زیرنویس برایشان ساخته شده
+  // ══════════════════════════════════════════════════════════
+  static Future<List<String>> getHistoryVideos() async {
+    final list = (await SharedPreferences.getInstance()).getStringList('ai_history_videos') ?? [];
+    // فقط فایل‌هایی که هنوز وجود دارند و واقعاً زیرنویس دارند
+    return list.where((p) => File(p).existsSync() && existingLanguages(p).isNotEmpty).toList();
+  }
+
+  static Future<void> _addToHistory(String videoPath) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('ai_history_videos') ?? [];
+    if (!list.contains(videoPath)) {
+      list.insert(0, videoPath);
+      await prefs.setStringList('ai_history_videos', list);
+    }
+  }
+
+  static Future<void> removeFromHistory(String videoPath) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('ai_history_videos') ?? [];
+    list.remove(videoPath);
+    await prefs.setStringList('ai_history_videos', list);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  Notification پیشرفت — برای دیدن وضعیت حتی اگر کاربر از اپ خارج شود
+  //  توجه: بدون foreground service واقعی، اندروید همچنان می‌تواند در شرایط
+  //  کمبود حافظه پردازش را متوقف کند — این فقط نمایش وضعیت است، نه تضمین کامل.
+  // ══════════════════════════════════════════════════════════
+  static Future<void> showProgressNotification(String title) async {
+    try { await _ch.invokeMethod('showAiProgress', {'title': title}); } catch (_) {}
+  }
+  static Future<void> updateProgressNotification(String status, double progress) async {
+    try { await _ch.invokeMethod('updateAiProgress', {'status': status, 'percent': (progress*100).round()}); } catch (_) {}
+  }
+  static Future<void> hideProgressNotification() async {
+    try { await _ch.invokeMethod('hideAiProgress'); } catch (_) {}
+  }
+
   // ── Transcribe — مسیریابی بر اساس engine انتخابی ──
   static Future<String> transcribe({
     required String videoPath,
@@ -365,9 +430,16 @@ class WhisperService {
     bool isTranslate = false,
     required void Function(String, double) onStatus,
   }) async {
-    return engine == WhisperEngine.v2
-      ? _transcribeV2(videoPath: videoPath, language: language, model: model, isTranslate: isTranslate, onStatus: onStatus)
-      : _transcribeV1(videoPath: videoPath, language: language, model: model, useVad: useVad, isTranslate: isTranslate, onStatus: onStatus);
+    await showProgressNotification('ساخت زیرنویس: ${videoPath.split('/').last}');
+    try {
+      return await (engine == WhisperEngine.v2
+        ? _transcribeV2(videoPath: videoPath, language: language, model: model, isTranslate: isTranslate,
+            onStatus: (s,p){ updateProgressNotification(s,p); onStatus(s,p); })
+        : _transcribeV1(videoPath: videoPath, language: language, model: model, useVad: useVad, isTranslate: isTranslate,
+            onStatus: (s,p){ updateProgressNotification(s,p); onStatus(s,p); }));
+    } finally {
+      await hideProgressNotification();
+    }
   }
 
   // ── V1: whisper_ggml_plus (پایدار، پکیج Flutter) ──
@@ -424,6 +496,7 @@ class WhisperService {
 
     final out = srtPath(videoPath, language);
     File(out).writeAsStringSync(srt, encoding: utf8);
+    await _addToHistory(videoPath);
 
     onStatus('✓ ذخیره شد', 1.0);
     return out;
@@ -478,6 +551,7 @@ class WhisperService {
 
       final out = srtPath(videoPath, language);
       File(out).writeAsStringSync(srt, encoding: utf8);
+      await _addToHistory(videoPath);
 
       onStatus('✓ ذخیره شد', 1.0);
       return out;
@@ -523,7 +597,7 @@ class WhisperService {
     improved = _fixPunctuation(improved);
     improved = _fixHalfSpaces(improved);
 
-    final out = srtPath.replaceFirst(RegExp(r'(_ai_[a-z]{2})\.srt$'), r'$1_improved.srt');
+    final out = srtPath.replaceFirst(RegExp(r'(_ai_[a-z]{2,5})\.srt$'), r'$1_improved.srt');
     File(out).writeAsStringSync(_segsToSrtRaw(improved), encoding: utf8);
     return out;
   }
