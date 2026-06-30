@@ -75,7 +75,7 @@ Java_com_vezoo_player_WhisperV2Bridge_nativeFreeContext(JNIEnv *env, jobject thi
 JNIEXPORT jstring JNICALL
 Java_com_vezoo_player_WhisperV2Bridge_nativeTranscribeWav(
         JNIEnv *env, jobject thiz,
-        jlong ctx_ptr, jstring wav_path, jstring language, jint threads, jboolean use_vad) {
+        jlong ctx_ptr, jstring wav_path, jstring language, jint threads, jboolean translate) {
 
     struct whisper_context* ctx = (struct whisper_context*)(intptr_t)ctx_ptr;
     if (!ctx) return (*env)->NewStringUTF(env, "");
@@ -97,15 +97,15 @@ Java_com_vezoo_player_WhisperV2Bridge_nativeTranscribeWav(
     params.print_progress   = false;
     params.print_timestamps = false;
     params.print_special    = false;
-    params.translate        = false;
-    params.language         = lang;
+    params.translate        = (translate == JNI_TRUE); /* whisper فقط به انگلیسی ترجمه می‌کند */
+    params.language         = lang;                     /* زبان مبدا — حتی موقع ترجمه باید مبدا باشد */
     params.n_threads        = threads > 0 ? threads : 4;
     params.offset_ms        = 0;
     params.no_context       = true;
     params.single_segment   = false;
-    (void)use_vad; /* VAD در این نسخه اولیه فعال نیست — مرحله بعد */
 
-    LOGI("Running whisper_full: %d samples, lang=%s, threads=%d", n_samples, lang, params.n_threads);
+    LOGI("Running whisper_full: %d samples, lang=%s, threads=%d, translate=%d",
+         n_samples, lang, params.n_threads, params.translate);
     int rc = whisper_full(ctx, params, pcmf32, n_samples);
     free(pcmf32);
     (*env)->ReleaseStringUTFChars(env, language, lang);
@@ -149,3 +149,4 @@ Java_com_vezoo_player_WhisperV2Bridge_nativeGetSystemInfo(JNIEnv *env, jobject t
     const char* info = whisper_print_system_info();
     return (*env)->NewStringUTF(env, info);
 }
+
