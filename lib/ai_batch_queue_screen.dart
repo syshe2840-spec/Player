@@ -133,12 +133,12 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
                 onChanged: _running ? null : (v) { if (v != null) setState(() => _selected = v); },
               )),
               const SizedBox(width: 8),
-              DropdownButton<String>(
-                value: _lang, dropdownColor: const Color(0xFF2A2A35),
+              Flexible(child: DropdownButton<String>(
+                value: _lang, dropdownColor: const Color(0xFF2A2A35), isExpanded: false,
                 style: const TextStyle(color: Colors.white, fontSize: 12),
                 items: kLanguages.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                 onChanged: _running ? null : (v) { if (v != null) setState(() => _lang = v); },
-              ),
+              )),
             ]),
             const SizedBox(height: 8),
             Row(children: [
