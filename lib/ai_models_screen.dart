@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
 import 'ai_batch_queue_screen.dart';
+import 'ai_history_screen.dart';
 
 class AiModelsScreen extends StatefulWidget {
   const AiModelsScreen({super.key});
@@ -109,6 +110,11 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       title:const Text('مدل‌های AI زیرنویس',style:TextStyle(color:Colors.white,fontSize:16)),
       leading:IconButton(icon:const Icon(Icons.arrow_back,color:Colors.white),onPressed:()=>Navigator.pop(ctx)),
       actions:[
+        IconButton(
+          icon:const Icon(Icons.history,color:Color(0xFF7C3AED)),
+          tooltip:'تاریخچه زیرنویس‌ها',
+          onPressed:()=>Navigator.push(ctx,MaterialPageRoute(builder:(_)=>const AiHistoryScreen())),
+        ),
         IconButton(
           icon:const Icon(Icons.playlist_add_check,color:Color(0xFF7C3AED)),
           tooltip:'ساخت دسته‌ای زیرنویس',
