@@ -28,6 +28,7 @@ target_include_directories(whisper_core PUBLIC
 )
 target_compile_features(whisper_core PUBLIC cxx_std_17)
 target_link_libraries(whisper_core PUBLIC ggml)
+target_compile_definitions(whisper_core PRIVATE WHISPER_VERSION="1.9.1")
 
 find_package(Threads REQUIRED)
 target_link_libraries(whisper_core PUBLIC Threads::Threads)
@@ -45,3 +46,4 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(whisper_core PRIVATE -O3)
     target_compile_options(vezoo_whisper PRIVATE -O3)
 endif()
+
