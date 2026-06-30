@@ -12,29 +12,27 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   final Map<String,bool>   _busy = {};
   String? _active;
   bool _loading = true;
+  String _filter = 'all'; // all | quantized | full
 
   @override void initState(){ super.initState(); _refresh(); }
 
   Future<void> _refresh() async {
     final a = await WhisperService.getActiveModel();
     final Map<String,bool> dl={};
-    for(final m in kWhisperModels) dl[m.model.modelName]=await WhisperService.isDownloaded(m);
-    if(mounted) setState((){ _dl.addAll(dl); _active=a?.model.modelName; _loading=false; });
+    for(final m in kWhisperModels) dl[m.id]=await WhisperService.isDownloaded(m);
+    if(mounted) setState((){ _dl..clear()..addAll(dl); _active=a?.id; _loading=false; });
   }
 
   Future<void> _download(WhisperModelDef m) async {
-    final key = m.model.modelName;
+    final key = m.id;
     setState((){ _busy[key]=true; _prog[key]=0; });
-
-    // feedback فوری که دانلود شروع شد
     if(mounted) ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content:Text('دانلود ${m.name} شروع شد (${m.sizeMb}MB)...'),
         duration:const Duration(seconds:3), backgroundColor:const Color(0xFF7C3AED)));
-
     try {
       await for(final p in WhisperService.downloadModel(m)){
         if(!mounted) break;
-        setState(()=> _prog[key]= p<0 ? (_prog[key]??0)+0.01 : p );
+        setState(()=> _prog[key]=p);
       }
       await _refresh();
       if(mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -42,8 +40,8 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
           backgroundColor:Colors.green, duration:const Duration(seconds:3)));
     } catch(e){
       if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content:Text('خطا: $e'), backgroundColor:Colors.red,
-          duration:const Duration(seconds:6)));
+        SnackBar(content:Text('دانلود متوقف شد — دوباره بزنید تا ادامه دهد\n$e'),
+          backgroundColor:Colors.orange, duration:const Duration(seconds:5)));
     } finally {
       if(mounted) setState(()=>_busy[key]=false);
     }
@@ -51,7 +49,13 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
 
   void _cancel(WhisperModelDef m){
     WhisperService.cancelDownload();
-    setState(()=>_busy[m.model.modelName]=false);
+    setState(()=>_busy[m.id]=false);
+  }
+
+  List<WhisperModelDef> get _filtered {
+    if(_filter=='quantized') return kWhisperModels.where((m)=>m.isQuantized).toList();
+    if(_filter=='full') return kWhisperModels.where((m)=>!m.isQuantized).toList();
+    return kWhisperModels;
   }
 
   @override
@@ -64,26 +68,49 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
     ),
     body: _loading
       ? const Center(child:CircularProgressIndicator(color:Color(0xFF7C3AED)))
-      : ListView(padding:const EdgeInsets.all(16), children:[
+      : Column(children:[
           _infoCard(),
-          const SizedBox(height:12),
-          ...kWhisperModels.map(_buildCard),
+          _filterBar(),
+          Expanded(child:ListView(padding:const EdgeInsets.fromLTRB(16,8,16,16),
+            children:_filtered.map(_buildCard).toList())),
         ]),
   );
 
-  Widget _infoCard() => Container(
-    padding:const EdgeInsets.all(12),
-    decoration:BoxDecoration(color:const Color(0xFF1C1C22).withOpacity(0.8),borderRadius:BorderRadius.circular(12)),
-    child:const Row(children:[
-      Icon(Icons.info_outline,color:Color(0xFF7C3AED),size:18),
-      SizedBox(width:8),
-      Expanded(child:Text('فقط یک‌بار دانلود کنید — بعد کاملاً آفلاین کار می‌کند',
-        style:TextStyle(color:Colors.white70,fontSize:12))),
+  Widget _infoCard() => Padding(
+    padding:const EdgeInsets.fromLTRB(16,12,16,0),
+    child:Container(
+      padding:const EdgeInsets.all(12),
+      decoration:BoxDecoration(color:const Color(0xFF1C1C22).withOpacity(0.8),borderRadius:BorderRadius.circular(12)),
+      child:const Row(children:[
+        Icon(Icons.info_outline,color:Color(0xFF7C3AED),size:18),
+        SizedBox(width:8),
+        Expanded(child:Text('می‌توانید چند مدل دانلود کنید — هنگام ساخت زیرنویس انتخاب می‌کنید',
+          style:TextStyle(color:Colors.white70,fontSize:12))),
+      ]),
+    ),
+  );
+
+  Widget _filterBar() => Padding(
+    padding:const EdgeInsets.fromLTRB(16,12,16,0),
+    child:Row(children:[
+      _chip('همه','all'), const SizedBox(width:8),
+      _chip('فشرده (Quantized)','quantized'), const SizedBox(width:8),
+      _chip('کامل','full'),
     ]),
+  );
+  Widget _chip(String label,String v) => GestureDetector(
+    onTap:()=>setState(()=>_filter=v),
+    child:Container(
+      padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+      decoration:BoxDecoration(
+        color:_filter==v?const Color(0xFF7C3AED):const Color(0xFF1C1C22),
+        borderRadius:BorderRadius.circular(20)),
+      child:Text(label,style:TextStyle(color:_filter==v?Colors.white:Colors.white60,fontSize:12)),
+    ),
   );
 
   Widget _buildCard(WhisperModelDef m){
-    final key = m.model.modelName;
+    final key = m.id;
     final dl    = _dl[key]   ?? false;
     final busy  = _busy[key] ?? false;
     final prog  = _prog[key] ?? 0.0;
@@ -98,25 +125,21 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       ),
       child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
 
-        // ── عنوان ──
         Row(children:[
           _tag(m.name, const Color(0xFF7C3AED)),
+          if(m.isQuantized)...[const SizedBox(width:6),_tag(m.variant.toUpperCase(), Colors.teal)],
           const SizedBox(width:8),
           if(act)_tag('فعال', Colors.green),
           if(dl && !act)_tag('دانلود شده', Colors.blue),
           const Spacer(),
-          Text('~${m.sizeMb} MB',style:const TextStyle(color:Colors.white54,fontSize:12)),
+          Text('~${m.sizeMb>=1000 ? "${(m.sizeMb/1000).toStringAsFixed(1)}GB" : "${m.sizeMb}MB"}',
+            style:const TextStyle(color:Colors.white54,fontSize:12)),
         ]),
         const SizedBox(height:6),
         Text(m.desc,style:const TextStyle(color:Colors.white70,fontSize:12)),
         const SizedBox(height:6),
+        Row(children:[_stars('سرعت',m.speedStars), const SizedBox(width:16), _stars('دقت',m.accStars)]),
 
-        // ── ستاره‌ها ──
-        Row(children:[
-          _stars('سرعت',m.speedStars), const SizedBox(width:16), _stars('دقت',m.accStars),
-        ]),
-
-        // ── progress ──
         if(busy)...[
           const SizedBox(height:12),
           LinearProgressIndicator(
@@ -127,29 +150,28 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
           ),
           const SizedBox(height:4),
           Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
-            Text(prog>0&&prog<=1 ? '${(prog*100).toInt()}% از ${m.sizeMb}MB'
-                : 'در حال دانلود...',
+            Text('${(prog*100).clamp(0,100).toInt()}%',
               style:const TextStyle(color:Colors.white54,fontSize:11)),
             TextButton(onPressed:()=>_cancel(m),
-              child:const Text('لغو',style:TextStyle(color:Colors.red,fontSize:11))),
+              child:const Text('لغو (قابل ادامه)',style:TextStyle(color:Colors.orange,fontSize:11))),
           ]),
         ],
 
-        // ── دکمه‌ها ──
         if(!busy)...[
           const SizedBox(height:12),
           Row(children:[
             if(!dl) Expanded(child:FilledButton.icon(
               onPressed:()=>_download(m),
               icon:const Icon(Icons.download,size:16),
-              label:Text('دانلود ${m.name} (~${m.sizeMb}MB)'),
+              label:Text('دانلود (~${m.sizeMb>=1000 ? "${(m.sizeMb/1000).toStringAsFixed(1)}GB" : "${m.sizeMb}MB"})',
+                style:const TextStyle(fontSize:12)),
               style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED),
                 shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
             )),
             if(dl&&!act) Expanded(child:FilledButton.icon(
               onPressed:()async{ await WhisperService.setActive(m); await _refresh(); },
               icon:const Icon(Icons.check_circle,size:16),
-              label:const Text('انتخاب'),
+              label:const Text('فعال‌سازی'),
               style:FilledButton.styleFrom(backgroundColor:Colors.green,
                 shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
             )),
@@ -162,7 +184,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
                   final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(
                     backgroundColor:const Color(0xFF1C1C22),
                     title:const Text('حذف مدل',style:TextStyle(color:Colors.white)),
-                    content:Text('مدل ${m.name} (${m.sizeMb}MB) حذف شود؟',style:const TextStyle(color:Colors.white70)),
+                    content:Text('مدل ${m.name} حذف شود؟',style:const TextStyle(color:Colors.white70)),
                     actions:[
                       TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('لغو')),
                       FilledButton(onPressed:()=>Navigator.pop(context,true),
@@ -176,7 +198,6 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
             ],
           ]),
         ],
-
       ])),
     );
   }
