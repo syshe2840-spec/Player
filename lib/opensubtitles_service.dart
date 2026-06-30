@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
 
 // ── ثابت‌ها ──
 const String _osApiKey = '0cVNQX84gIY4Nm0VvReFL7DTNMnLeINO';
@@ -62,26 +61,8 @@ class ParsedFileInfo {
   ParsedFileInfo({required this.title, this.year, this.season, this.episode, required this.isSeries});
 }
 
-// ── سرویس ──
+// ── سرویس — کاملاً بدون نیاز به یوزر/پسورد، فقط API Key ──
 class OpenSubtitlesService {
-  static String? _token;
-  static DateTime? _tokenExpiry;
-
-  static Future<String?> getUsername() async => (await SharedPreferences.getInstance()).getString('os_username');
-  static Future<String?> getPassword() async => (await SharedPreferences.getInstance()).getString('os_password');
-
-  static Future<void> setCredentials(String u, String pw) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('os_username', u);
-    await prefs.setString('os_password', pw);
-    _token = null; // اجبار به لاگین دوباره با اطلاعات جدید
-  }
-
-  static Future<bool> hasCredentials() async {
-    final u = await getUsername();
-    return u != null && u.isNotEmpty;
-  }
-
   static Map<String, String> _baseHeaders() => {
         'Api-Key': _osApiKey,
         'User-Agent': _osUserAgent,
@@ -96,38 +77,11 @@ class OpenSubtitlesService {
       if (j is Map && j['message'] != null) msg = j['message'].toString();
     } catch (_) {}
     final lower = msg.toLowerCase();
-    if (status == 406 || lower.contains('limit') || lower.contains('quota') || lower.contains('reached')) {
+    if (status == 406 || status == 403 || lower.contains('limit') || lower.contains('quota') || lower.contains('reached')) {
       return 'به محدودیت دانلود روزانه رسیدید — ظرف چند ساعت دیگر دوباره امتحان کنید';
     }
-    if (status == 401) return 'نام کاربری یا رمز عبور OpenSubtitles اشتباه است';
     if (status == 400) return 'جستجوی نامعتبر — عبارت را تغییر دهید';
     return 'خطا (${status}): $msg';
-  }
-
-  static Future<String> _ensureToken() async {
-    if (_token != null && _tokenExpiry != null && DateTime.now().isBefore(_tokenExpiry!)) return _token!;
-    final u = await getUsername();
-    final pw = await getPassword();
-    if (u == null || pw == null || u.isEmpty || pw.isEmpty) {
-      throw Exception('ابتدا نام کاربری و رمز OpenSubtitles را وارد کنید');
-    }
-
-    final client = HttpClient();
-    try {
-      final req = await client.postUrl(Uri.parse('$_osBaseUrl/login'));
-      _baseHeaders().forEach((k, v) => req.headers.set(k, v));
-      req.write(jsonEncode({'username': u, 'password': pw}));
-      final res = await req.close();
-      final body = await res.transform(utf8.decoder).join();
-      if (res.statusCode != 200) throw Exception(_friendlyError(res.statusCode, body));
-      final data = jsonDecode(body);
-      _token = data['token'] as String?;
-      if (_token == null) throw Exception('توکن دریافت نشد');
-      _tokenExpiry = DateTime.now().add(const Duration(hours: 20));
-      return _token!;
-    } finally {
-      client.close();
-    }
   }
 
   static Future<dynamic> _get(String path, Map<String, String> params) async {
@@ -136,7 +90,6 @@ class OpenSubtitlesService {
     try {
       final req = await client.getUrl(uri);
       _baseHeaders().forEach((k, v) => req.headers.set(k, v));
-      if (_token != null) req.headers.set('Authorization', 'Bearer $_token');
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
       if (res.statusCode != 200) throw Exception(_friendlyError(res.statusCode, body));
@@ -146,7 +99,7 @@ class OpenSubtitlesService {
     }
   }
 
-  /// مرحله ۱: جستجوی عنوان فیلم/سریال (بدون نیاز به لاگین)
+  /// مرحله ۱: جستجوی عنوان فیلم/سریال
   static Future<List<OsFeature>> searchTitle(String query) async {
     if (query.trim().length < 2) return [];
     final data = await _get('/features', {'query': query.trim()});
@@ -184,20 +137,17 @@ class OpenSubtitlesService {
       ..sort((a, b) => b.downloadCount.compareTo(a.downloadCount));
   }
 
-  /// مرحله ۳: دانلود فایل زیرنویس و ذخیره کنار ویدیو
+  /// مرحله ۳: دانلود فایل زیرنویس — فقط با API Key (بدون لاگین)، سهمیه‌ی رایگان روزانه
   static Future<String> downloadSubtitle({
     required OsSubtitle sub,
     required String videoPath,
     void Function(int remaining)? onQuota,
   }) async {
-    await _ensureToken();
-
     final client = HttpClient();
     String? link;
     try {
       final req = await client.postUrl(Uri.parse('$_osBaseUrl/download'));
       _baseHeaders().forEach((k, v) => req.headers.set(k, v));
-      req.headers.set('Authorization', 'Bearer $_token');
       req.write(jsonEncode({'file_id': sub.fileId}));
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
@@ -210,7 +160,7 @@ class OpenSubtitlesService {
     } finally {
       client.close();
     }
-    if (link == null) throw Exception('لینک دانلود دریافت نشد');
+    if (link == null) throw Exception('لینک دانلود دریافت نشد — احتمالاً به محدودیت روزانه رسیده‌اید');
 
     // دانلود محتوای واقعی فایل srt از لینک موقت
     final client2 = HttpClient();
@@ -255,7 +205,6 @@ class OpenSubtitlesService {
       cutTitle = name.substring(0, m2.start);
     }
 
-    // برش در اولین تگ کیفیت/انکودینگ شناخته‌شده
     final qualityTags = RegExp(
       r'\b(1080p|720p|480p|2160p|4k|bluray|blu-ray|webdl|web-dl|web|hdtv|brrip|dvdrip|x264|x265|hevc|aac|ac3|yts|yify)\b',
       caseSensitive: false,
@@ -263,7 +212,6 @@ class OpenSubtitlesService {
     final qm = qualityTags.firstMatch(cutTitle);
     if (qm != null) cutTitle = cutTitle.substring(0, qm.start);
 
-    // سال
     int? year;
     final ym = RegExp(r'\b(19|20)\d{2}\b').firstMatch(cutTitle);
     if (ym != null) {
