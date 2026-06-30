@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'vez_service.dart';
 import 'ai_subtitle_sheet.dart';
+import 'opensubtitles_search_sheet.dart';
 import 'settings.dart';
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
@@ -1064,6 +1065,15 @@ class _PlayerState extends State<PlayerScreen>{
                 backgroundColor:Color(0xFF7C3AED)));
             },onPreview:(srt){
               _loadSub(srt,secondary:false);
+            }),
+          ),
+          IconButton(icon:const Icon(Icons.cloud_download_outlined),color:const Color(0xFF7C3AED),
+            tooltip:'زیرنویس آنلاین',
+            onPressed:()=>OpenSubtitlesSheet.show(context,_curPath,(srt){
+              _loadSub(srt,secondary:false);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:Text('زیرنویس آنلاین بارگذاری شد'),
+                backgroundColor:Color(0xFF7C3AED)));
             }),
           ),
           IconButton(icon:const Icon(Icons.subtitles),onPressed:()=>showModalBottomSheet(
