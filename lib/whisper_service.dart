@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -63,6 +62,22 @@ const kWhisperModels = [
 
 // ── موتور تشخیص گفتار — کاربر انتخاب می‌کند، هر دو همیشه در دسترس‌اند ──
 enum WhisperEngine { v1, v2 }
+
+/// تشخیص رم گوشی و پیشنهاد بهترین مدل بر اساس آن
+Future<int> _getDeviceRamMb() async {
+  const ch = MethodChannel('com.vezoo.player/whisper');
+  final v = await ch.invokeMethod<int>('getDeviceInfo');
+  return v ?? 3072; // پیش‌فرض محافظه‌کارانه اگر گرفتن RAM ممکن نبود
+}
+
+/// پیشنهاد مدل بر اساس رم گوشی (مگابایت)
+WhisperModelDef _recommendModelByRam(int ramMb) {
+  if (ramMb < 2500) return kWhisperModels.firstWhere((m) => m.id == 'tiny-q5_1');
+  if (ramMb < 4000) return kWhisperModels.firstWhere((m) => m.id == 'base-q5_1');
+  if (ramMb < 6000) return kWhisperModels.firstWhere((m) => m.id == 'small-q5_1');
+  if (ramMb < 8000) return kWhisperModels.firstWhere((m) => m.id == 'medium-q5_0');
+  return kWhisperModels.firstWhere((m) => m.id == 'large-v3-turbo-q5_0');
+}
 
 const kLanguages = {
   'fa':'فارسی','en':'English','ar':'عربی','tr':'ترکی','fr':'فرانسه',
@@ -289,6 +304,12 @@ class WhisperService {
   static Future<void> setActiveEngine(WhisperEngine e) async =>
       (await SharedPreferences.getInstance()).setString('whisper_engine', e == WhisperEngine.v2 ? 'v2' : 'v1');
 
+  /// رم گوشی به مگابایت (برای پیشنهاد مدل مناسب)
+  static Future<int> getDeviceRamMb() => _getDeviceRamMb();
+
+  /// پیشنهاد مدل مناسب بر اساس رم گوشی
+  static WhisperModelDef recommendedModel(int ramMb) => _recommendModelByRam(ramMb);
+
   // ── Transcribe — مسیریابی بر اساس engine انتخابی ──
   static Future<String> transcribe({
     required String videoPath,
@@ -296,11 +317,12 @@ class WhisperService {
     required WhisperModelDef model,
     required bool useVad,
     required WhisperEngine engine,
+    bool isTranslate = false,
     required void Function(String, double) onStatus,
   }) async {
     return engine == WhisperEngine.v2
-      ? _transcribeV2(videoPath: videoPath, language: language, model: model, onStatus: onStatus)
-      : _transcribeV1(videoPath: videoPath, language: language, model: model, useVad: useVad, onStatus: onStatus);
+      ? _transcribeV2(videoPath: videoPath, language: language, model: model, isTranslate: isTranslate, onStatus: onStatus)
+      : _transcribeV1(videoPath: videoPath, language: language, model: model, useVad: useVad, isTranslate: isTranslate, onStatus: onStatus);
   }
 
   // ── V1: whisper_ggml_plus (پایدار، پکیج Flutter) ──
@@ -309,6 +331,7 @@ class WhisperService {
     required String language,
     required WhisperModelDef model,
     required bool useVad,
+    bool isTranslate = false,
     required void Function(String, double) onStatus,
   }) async {
     _trCancelled = false;
@@ -335,7 +358,7 @@ class WhisperService {
       transcribeRequest: TranscribeRequest(
         audio: wav,
         language: language,
-        isTranslate: false,
+        isTranslate: isTranslate,
         threads: Platform.numberOfProcessors.clamp(2, 8),
         isNoTimestamps: false,
         vadMode: useVad ? WhisperVadMode.enabled : WhisperVadMode.disabled,
@@ -366,6 +389,7 @@ class WhisperService {
     required String videoPath,
     required String language,
     required WhisperModelDef model,
+    bool isTranslate = false,
     required void Function(String, double) onStatus,
   }) async {
     _trCancelled = false;
@@ -398,7 +422,7 @@ class WhisperService {
       onStatus('تبدیل گفتار به متن (V2 — native)...', 0.4);
       final threads = Platform.numberOfProcessors.clamp(2, 8);
       final raw = await _ch.invokeMethod<String>('v2Transcribe', {
-        'ctx': ctx, 'wavPath': wav, 'lang': language, 'threads': threads,
+        'ctx': ctx, 'wavPath': wav, 'lang': language, 'threads': threads, 'translate': isTranslate,
       });
       if (_trCancelled) throw Exception('لغو شد');
       if (raw == null || raw.trim().isEmpty) throw Exception('خروجی خالی از موتور V2');
@@ -591,3 +615,42 @@ class _Seg {
   final String text;
   const _Seg(this.from, this.to, this.text);
 }
+
+// ══════════════════════════════════════════════════════════
+//  ویرایشگر دستی SRT — خواندن/نوشتن عمومی
+// ══════════════════════════════════════════════════════════
+
+/// یک سطر زیرنویس — برای استفاده در ویرایشگر دستی
+class SrtEntry {
+  Duration from;
+  Duration to;
+  String text;
+  SrtEntry({required this.from, required this.to, required this.text});
+}
+
+/// خواندن یک فایل SRT و برگرداندن لیست قابل‌ویرایش
+List<SrtEntry> readSrtEntries(String path) {
+  if (!File(path).existsSync()) return [];
+  final segs = WhisperService._parseSrt(File(path).readAsStringSync());
+  return segs.map((s) => SrtEntry(from: s.from, to: s.to, text: s.text)).toList();
+}
+
+/// نوشتن لیست ویرایش‌شده به فایل SRT
+void writeSrtEntries(String path, List<SrtEntry> entries) {
+  final b = StringBuffer();
+  for (int i = 0; i < entries.length; i++) {
+    final e = entries[i];
+    b.writeln('${i + 1}');
+    b.writeln('${_fmtSrtDur(e.from)} --> ${_fmtSrtDur(e.to)}');
+    b.writeln(e.text.trim());
+    b.writeln();
+  }
+  File(path).writeAsStringSync(b.toString(), encoding: utf8);
+}
+
+String _fmtSrtDur(Duration d) =>
+    '${d.inHours.toString().padLeft(2, '0')}:'
+    '${(d.inMinutes % 60).toString().padLeft(2, '0')}:'
+    '${(d.inSeconds % 60).toString().padLeft(2, '0')},'
+    '${(d.inMilliseconds % 1000).toString().padLeft(3, '0')}';
+
