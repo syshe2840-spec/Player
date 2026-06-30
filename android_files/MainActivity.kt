@@ -331,7 +331,19 @@ class MainActivity : FlutterActivity() {
         val codec = MediaCodec.createDecoderByType(mime)
         codec.configure(audioFmt, null, null, 0); codec.start()
         val bufInfo = MediaCodec.BufferInfo()
-        val pcm = mutableListOf<Short>()
+
+        // ── بافر primitive رشدپذیر — جایگزین MutableList<Short> که boxing داشت و کند بود ──
+        val durationUs = audioFmt.getLong(MediaFormat.KEY_DURATION, 0L)
+        val estSamples = if (durationUs > 0) ((durationUs / 1_000_000.0) * origRate).toInt() + 4096 else 1_000_000
+        var pcm = ShortArray(estSamples.coerceAtLeast(4096))
+        var pcmLen = 0
+        fun ensureCapacity(extra: Int) {
+            if (pcmLen + extra > pcm.size) {
+                val newCap = maxOf(pcm.size * 2, pcmLen + extra)
+                pcm = pcm.copyOf(newCap)
+            }
+        }
+
         var inputDone = false
         try {
             while (!cancel.get()) {
@@ -350,14 +362,26 @@ class MainActivity : FlutterActivity() {
                     val s = ShortArray(bufInfo.size / 2)
                     buf.order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s)
                     codec.releaseOutputBuffer(outIdx, false)
-                    if (channels >= 2) { var i = 0; while (i + 1 < s.size) { pcm.add(((s[i].toInt() + s[i+1].toInt()) / 2).toShort()); i += channels } }
-                    else s.forEach { pcm.add(it) }
+                    if (channels >= 2) {
+                        val outCount = s.size / channels
+                        ensureCapacity(outCount)
+                        var i = 0
+                        while (i + 1 < s.size) {
+                            pcm[pcmLen++] = ((s[i].toInt() + s[i + 1].toInt()) / 2).toShort()
+                            i += channels
+                        }
+                    } else {
+                        ensureCapacity(s.size)
+                        System.arraycopy(s, 0, pcm, pcmLen, s.size)
+                        pcmLen += s.size
+                    }
                     if (bufInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
                 }
             }
         } finally { codec.stop(); codec.release(); extractor.release() }
         if (cancel.get()) throw Exception("cancelled")
-        val out = if (origRate == 16000) pcm.toShortArray() else resamplePcm(pcm.toShortArray(), origRate, 16000)
+        val trimmed = pcm.copyOf(pcmLen)
+        val out = if (origRate == 16000) trimmed else resamplePcm(trimmed, origRate, 16000)
         writeWav(outputPath, out, 16000)
     }
 
