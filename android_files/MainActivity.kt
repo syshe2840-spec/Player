@@ -134,6 +134,45 @@ class MainActivity : FlutterActivity() {
                 }
                 "cancelExtraction" -> { extractCancel.set(true); result.success(null) }
                 "getCacheDir" -> result.success(cacheDir.absolutePath)
+
+                // ── AI v2 (whisper.cpp بومی) — تست ──
+                "v2InitContext" -> {
+                    val modelPath = call.argument<String>("modelPath") ?: run { result.error("NO_MODEL","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val ctx = WhisperV2Bridge.nativeInitContext(modelPath)
+                            handler.post { if (ctx != 0L) result.success(ctx) else result.error("INIT_FAILED", "context ptr is 0", null) }
+                        } catch (e: Throwable) {
+                            handler.post { result.error("INIT_EXCEPTION", e.message, null) }
+                        }
+                    }
+                }
+                "v2FreeContext" -> {
+                    val ctx = (call.argument<Number>("ctx") ?: 0).toLong()
+                    executor.execute {
+                        try { WhisperV2Bridge.nativeFreeContext(ctx) } catch (_: Throwable) {}
+                        handler.post { result.success(null) }
+                    }
+                }
+                "v2Transcribe" -> {
+                    val ctx = (call.argument<Number>("ctx") ?: 0).toLong()
+                    val wavPath = call.argument<String>("wavPath") ?: run { result.error("NO_WAV","",null); return@setMethodCallHandler }
+                    val lang = call.argument<String>("lang") ?: "en"
+                    val threads = call.argument<Int>("threads") ?: 4
+                    executor.execute {
+                        try {
+                            val text = WhisperV2Bridge.nativeTranscribeWav(ctx, wavPath, lang, threads, false)
+                            handler.post { result.success(text) }
+                        } catch (e: Throwable) {
+                            handler.post { result.error("TRANSCRIBE_EXCEPTION", e.message, null) }
+                        }
+                    }
+                }
+                "v2SystemInfo" -> {
+                    try { result.success(WhisperV2Bridge.nativeGetSystemInfo()) }
+                    catch (e: Throwable) { result.error("SYSINFO_EXCEPTION", e.message, null) }
+                }
+
                 else -> result.notImplemented()
             }
         }
