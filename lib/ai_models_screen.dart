@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
 import 'ai_batch_queue_screen.dart';
@@ -17,8 +16,40 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   String _filter = 'all'; // all | quantized | full
   String? _recommendedId;
   int? _ramMb;
+  double _cacheMb = 0;
+  int _cacheCount = 0;
+  bool _clearingCache = false;
 
-  @override void initState(){ super.initState(); _refresh(); _loadRecommendation(); }
+  @override void initState(){ super.initState(); _refresh(); _loadRecommendation(); _loadCacheInfo(); }
+
+  Future<void> _loadCacheInfo() async {
+    final mb = await WhisperService.getAudioCacheSizeMb();
+    final c = await WhisperService.getAudioCacheCount();
+    if(mounted) setState((){ _cacheMb=mb; _cacheCount=c; });
+  }
+
+  Future<void> _clearCache() async {
+    final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
+      backgroundColor:const Color(0xFF1C1C22),
+      title:const Text('پاکسازی کش صدا',style:TextStyle(color:Colors.white,fontSize:15)),
+      content:Text('$_cacheCount فایل صوتی استخراج‌شده (${_cacheMb.toStringAsFixed(1)}MB) حذف شود؟\nزیرنویس‌های ساخته‌شده حذف نمی‌شوند، فقط دفعه بعد صدا دوباره استخراج می‌شود.',
+        style:const TextStyle(color:Colors.white70,fontSize:12)),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('لغو')),
+        FilledButton(onPressed:()=>Navigator.pop(context,true),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('پاکسازی')),
+      ],
+    ));
+    if(ok!=true) return;
+    setState(()=>_clearingCache=true);
+    await WhisperService.clearAudioCache();
+    await _loadCacheInfo();
+    if(mounted){
+      setState(()=>_clearingCache=false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:Text('✓ کش صدا پاک شد'),backgroundColor:Colors.green));
+    }
+  }
 
   Future<void> _loadRecommendation() async {
     try {
@@ -89,6 +120,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       ? const Center(child:CircularProgressIndicator(color:Color(0xFF7C3AED)))
       : Column(children:[
           _infoCard(),
+          _cacheCard(),
           _filterBar(),
           Expanded(child:ListView(padding:const EdgeInsets.fromLTRB(16,8,16,16),
             children:_filtered.map(_buildCard).toList())),
@@ -108,6 +140,29 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
             ? 'رم گوشی شما: ~${(_ramMb!/1024).toStringAsFixed(1)}GB — مدل پیشنهادی با ⭐ مشخص شده'
             : 'می‌توانید چند مدل دانلود کنید — هنگام ساخت زیرنویس انتخاب می‌کنید',
           style:const TextStyle(color:Colors.white70,fontSize:12))),
+      ]),
+    ),
+  );
+
+  Widget _cacheCard() => Padding(
+    padding:const EdgeInsets.fromLTRB(16,8,16,0),
+    child:Container(
+      padding:const EdgeInsets.all(12),
+      decoration:BoxDecoration(color:const Color(0xFF1C1C22).withOpacity(0.8),borderRadius:BorderRadius.circular(12)),
+      child:Row(children:[
+        const Icon(Icons.storage,color:Colors.amber,size:18),
+        const SizedBox(width:8),
+        Expanded(child:Text(
+          _cacheCount>0
+            ? 'کش صدای استخراج‌شده: $_cacheCount فایل (${_cacheMb.toStringAsFixed(1)}MB)'
+            : 'کش صدا خالی است',
+          style:const TextStyle(color:Colors.white70,fontSize:12))),
+        if(_cacheCount>0) TextButton(
+          onPressed:_clearingCache?null:_clearCache,
+          child:_clearingCache
+            ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2,color:Colors.red))
+            : const Text('پاکسازی',style:TextStyle(color:Colors.red,fontSize:12)),
+        ),
       ]),
     ),
   );
@@ -238,3 +293,4 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       color:i<n?const Color(0xFF7C3AED):Colors.white24)),
   ]);
 }
+
