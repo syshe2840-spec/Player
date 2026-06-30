@@ -47,6 +47,9 @@ class MainActivity : FlutterActivity() {
     private val extractCancel = AtomicBoolean(false)
     private val NOTIF_CH_ID = "player_ctrl"
     private val NOTIF_ID  = 42
+    private val AI_NOTIF_CH_ID = "ai_progress"
+    private val AI_NOTIF_ID = 43
+    private var aiNotifTitle = "زیرنویس AI"
     private val A_PLAY    = "com.vezoo.PLAY"
     private val A_PAUSE   = "com.vezoo.PAUSE"
     private val A_CLOSE   = "com.vezoo.CLOSE"
@@ -144,6 +147,35 @@ class MainActivity : FlutterActivity() {
                     } catch (e: Throwable) {
                         result.error("DEVICE_INFO_FAILED", e.message, null)
                     }
+                }
+                "getVideoDuration" -> {
+                    val path = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val r = MediaMetadataRetriever()
+                            r.setDataSource(applicationContext, Uri.fromFile(File(path)))
+                            val dur = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                            r.release()
+                            handler.post { result.success(dur.toInt()) }
+                        } catch (e: Throwable) {
+                            handler.post { result.error("DURATION_FAILED", e.message, null) }
+                        }
+                    }
+                }
+                "showAiProgress" -> {
+                    val title = call.argument<String>("title") ?: "زیرنویس AI"
+                    showAiProgressNotif(title, 0, "شروع...")
+                    result.success(null)
+                }
+                "updateAiProgress" -> {
+                    val status = call.argument<String>("status") ?: ""
+                    val percent = call.argument<Int>("percent") ?: 0
+                    showAiProgressNotif(null, percent, status)
+                    result.success(null)
+                }
+                "hideAiProgress" -> {
+                    nm().cancel(AI_NOTIF_ID)
+                    result.success(null)
                 }
 
                 // ── AI v2 (whisper.cpp بومی) ──
@@ -416,8 +448,22 @@ class MainActivity : FlutterActivity() {
     }
     private fun nm() = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
     private fun createNotifChannel() {
-        if (Build.VERSION.SDK_INT >= 26)
+        if (Build.VERSION.SDK_INT >= 26) {
             nm().createNotificationChannel(NotificationChannel(NOTIF_CH_ID, "کنترل پلیر", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
+            nm().createNotificationChannel(NotificationChannel(AI_NOTIF_CH_ID, "پیشرفت زیرنویس AI", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
+        }
+    }
+    private fun showAiProgressNotif(newTitle: String?, percent: Int, status: String) {
+        if (newTitle != null) aiNotifTitle = newTitle
+        nm().notify(AI_NOTIF_ID, NotificationCompat.Builder(this, AI_NOTIF_CH_ID)
+            .setSmallIcon(android.R.drawable.ic_popup_sync)
+            .setContentTitle(aiNotifTitle)
+            .setContentText(status)
+            .setProgress(100, percent.coerceIn(0, 100), percent <= 0)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(percent < 100)
+            .setOnlyAlertOnce(true)
+            .build())
     }
     private fun pi(action: String, code: Int) = PendingIntent.getBroadcast(this, code, Intent(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     private fun showNotif() {
