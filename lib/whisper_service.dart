@@ -84,6 +84,23 @@ const kLanguages = {
   'de':'آلمانی','es':'اسپانیایی','zh':'چینی','ja':'ژاپنی','ru':'روسی','ko':'کره‌ای',
 };
 
+/// سطح پشتیبانی هر زبان در whisper (بر اساس داده‌های منتشرشده OpenAI)
+/// 2=بهترین (انگلیسی) 1=خوب 0=متوسط (زبان‌های با منابع آموزشی کمتر)
+const _kLangSupport = {
+  'en':2, 'es':1,'fr':1,'de':1,'ru':1,'ja':1,'ko':1,'zh':1,
+  'fa':0,'ar':0,'tr':0,
+};
+
+/// تخمین کیفیت/دقت بر اساس مدل انتخابی + زبان — فقط یک راهنمای کلی است
+String estimateAccuracy(WhisperModelDef model, String lang) {
+  final langScore = _kLangSupport[lang] ?? 0;
+  final score = model.accStars + langScore - 1; // ترکیب امتیاز مدل و زبان
+  if (score >= 6) return 'عالی';
+  if (score >= 5) return 'خوب';
+  if (score >= 3) return 'متوسط';
+  return 'ضعیف — مدل بزرگ‌تری پیشنهاد می‌شود';
+}
+
 // ══════════════════════════════════════════════════════════
 //  سرویس اصلی
 // ══════════════════════════════════════════════════════════
@@ -291,8 +308,36 @@ class WhisperService {
     return cachedWav;
   }
 
+  /// مسیر پوشه کش صدا
+  static Future<String> _audioCacheDir() async => p.join(await _modelsRoot(), '_audio_cache');
+
+  /// حجم کل کش صدا (مگابایت)
+  static Future<double> getAudioCacheSizeMb() async {
+    final dir = Directory(await _audioCacheDir());
+    if (!dir.existsSync()) return 0;
+    int total = 0;
+    for (final f in dir.listSync()) {
+      if (f is File) total += f.lengthSync();
+    }
+    return total / 1024 / 1024;
+  }
+
+  /// تعداد فایل‌های کش‌شده
+  static Future<int> getAudioCacheCount() async {
+    final dir = Directory(await _audioCacheDir());
+    if (!dir.existsSync()) return 0;
+    return dir.listSync().whereType<File>().length;
+  }
+
+  /// پاک کردن کامل کش صدا
+  static Future<void> clearAudioCache() async {
+    final dir = Directory(await _audioCacheDir());
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  }
+
   static Future<void> cancelExtraction() async {
     _trCancelled = true;
+
     try { await _ch.invokeMethod('cancelExtraction'); } catch (_) {}
   }
 
@@ -374,7 +419,7 @@ class WhisperService {
     if (segs != null && segs.isNotEmpty) {
       srt = _segsToSrt(segs);
     } else {
-      srt = _textToSrt(result.text);
+      srt = _textToSrt(result.text, _wavDurationSeconds(wav));
     }
 
     final out = srtPath(videoPath, language);
@@ -494,12 +539,27 @@ class WhisperService {
     }
     return b.toString();
   }
-  static String _textToSrt(String text) {
+  /// مدت واقعی فایل WAV (16kHz mono 16-bit) بر اساس حجم فایل — برای زمان‌بندی دقیق fallback
+  static double _wavDurationSeconds(String wavPath) {
+    try {
+      final bytes = File(wavPath).lengthSync();
+      final dataBytes = (bytes - 44).clamp(0, bytes); // حذف هدر ۴۴ بایتی WAV
+      return dataBytes / 2 / 16000; // 16-bit mono @ 16kHz
+    } catch (_) { return 0; }
+  }
+
+  static String _textToSrt(String text, [double totalSeconds = 0]) {
     final parts = text.split(RegExp(r'(?<=[.!?،؟])\s+')).where((s)=>s.trim().isNotEmpty).toList();
+    if (parts.isEmpty) return '';
+    // اگر مدت واقعی صدا داریم، هر جمله متناسب با طول نسبی‌اش زمان می‌گیرد
+    final useReal = totalSeconds > 0;
+    final perPart = useReal ? totalSeconds / parts.length : 5.0;
     final b = StringBuffer();
     for (int i = 0; i < parts.length; i++) {
+      final from = (i * perPart);
+      final to = ((i + 1) * perPart);
       b.writeln('${i+1}');
-      b.writeln('${_d(Duration(seconds:i*5))} --> ${_d(Duration(seconds:(i+1)*5))}');
+      b.writeln('${_d(Duration(milliseconds:(from*1000).round()))} --> ${_d(Duration(milliseconds:(to*1000).round()))}');
       b.writeln(parts[i].trim()); b.writeln();
     }
     return b.toString();
@@ -653,4 +713,5 @@ String _fmtSrtDur(Duration d) =>
     '${(d.inMinutes % 60).toString().padLeft(2, '0')}:'
     '${(d.inSeconds % 60).toString().padLeft(2, '0')},'
     '${(d.inMilliseconds % 1000).toString().padLeft(3, '0')}';
+
 
