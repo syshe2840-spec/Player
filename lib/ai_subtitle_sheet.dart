@@ -183,6 +183,14 @@ class _State extends State<AiSubtitleSheet> {
             ],
           ])),
           IconButton(
+            icon:const Icon(Icons.share,color:Color(0xFF7C3AED),size:18),
+            tooltip:'اشتراک‌گذاری',
+            onPressed:()=>SharePlus.instance.share(ShareParams(
+              files:[XFile(WhisperService.bestSrtPath(widget.videoPath, lang))],
+              text:'زیرنویس Vezoo')),
+            constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
+          ),
+          IconButton(
             icon:const Icon(Icons.delete_outline,color:Colors.red,size:18),
             onPressed:()=>_deleteLang(lang),
             constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
@@ -323,6 +331,21 @@ class _State extends State<AiSubtitleSheet> {
         ]),
       ),
 
+    // ── تخمین دقت بر اساس مدل + زبان انتخابی ──
+    if(_selected!=null)
+      Container(
+        margin:const EdgeInsets.only(bottom:10),
+        padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
+        decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(10)),
+        child:Row(children:[
+          const Icon(Icons.insights,color:Color(0xFF7C3AED),size:16),
+          const SizedBox(width:8),
+          Text('دقت تخمینی: ',style:const TextStyle(color:Colors.white54,fontSize:12)),
+          Text(estimateAccuracy(_selected!,_lang),
+            style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
+        ]),
+      ),
+
     Row(children:[
       if(_existingLangs.isNotEmpty)...[
         OutlinedButton(
@@ -407,9 +430,9 @@ class _State extends State<AiSubtitleSheet> {
     Row(children:[
       Expanded(child:OutlinedButton.icon(
         onPressed:()=>SharePlus.instance.share(ShareParams(files:[XFile(_srtPath!)],text:'زیرنویس Vezoo')),
-        icon:const Icon(Icons.share,size:15,color:Colors.white70),
-        label:const Text('اشتراک',style:TextStyle(color:Colors.white70,fontSize:12)),
-        style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24),
+        icon:const Icon(Icons.share,size:15,color:Color(0xFF7C3AED)),
+        label:const Text('اشتراک',style:TextStyle(color:Color(0xFF7C3AED),fontSize:12,fontWeight:FontWeight.bold)),
+        style:OutlinedButton.styleFrom(side:const BorderSide(color:Color(0xFF7C3AED)),
           padding:const EdgeInsets.symmetric(vertical:10),
           shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
       )),
