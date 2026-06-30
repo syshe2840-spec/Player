@@ -189,12 +189,67 @@ class WhisperService {
     }
   }
 
-  // ── کش زیرنویس ──
-  static String srtPath(String videoPath) {
+  // ── کش زیرنویس — بر اساس زبان ──
+  static String srtPath(String videoPath, String language) {
     final ext = p.extension(videoPath);
-    return videoPath.replaceFirst(RegExp('${RegExp.escape(ext)}\$'), '_ai.srt');
+    final base = videoPath.replaceFirst(RegExp('${RegExp.escape(ext)}\$'), '');
+    return '${base}_ai_$language.srt';
   }
-  static bool subtitleExists(String videoPath) => File(srtPath(videoPath)).existsSync();
+  static bool subtitleExists(String videoPath, String language) =>
+      File(srtPath(videoPath, language)).existsSync();
+
+  /// لیست زبان‌هایی که زیرنویس AI برایشان ساخته شده
+  static List<String> existingLanguages(String videoPath) {
+    final ext = p.extension(videoPath);
+    final base = p.basenameWithoutExtension(videoPath);
+    final dir = Directory(p.dirname(videoPath));
+    if (!dir.existsSync()) return [];
+    final found = <String>[];
+    final pattern = RegExp('^${RegExp.escape(base)}_ai_([a-z]{2})(_improved)?\\.srt\$');
+    for (final f in dir.listSync()) {
+      if (f is! File) continue;
+      final m = pattern.firstMatch(p.basename(f.path));
+      if (m != null) {
+        final lang = m.group(1)!;
+        if (!found.contains(lang)) found.add(lang);
+      }
+    }
+    return found;
+  }
+
+  /// آیا نسخه بهبودیافته برای این زبان وجود دارد؟
+  static bool improvedExists(String videoPath, String language) {
+    final ext = p.extension(videoPath);
+    final base = p.basenameWithoutExtension(videoPath);
+    return File(p.join(p.dirname(videoPath), '${base}_ai_${language}_improved.srt')).existsSync();
+  }
+  static String improvedPath(String videoPath, String language) {
+    final base = p.basenameWithoutExtension(videoPath);
+    return p.join(p.dirname(videoPath), '${base}_ai_${language}_improved.srt');
+  }
+
+  /// مسیر نهایی برای استفاده — بهبودیافته در اولویت
+  static String bestSrtPath(String videoPath, String language) =>
+      improvedExists(videoPath, language) ? improvedPath(videoPath, language) : srtPath(videoPath, language);
+
+  /// حذف همه زیرنویس‌های AI ساخته‌شده برای این ویدیو
+  static void deleteAllSubtitles(String videoPath) {
+    final base = p.basenameWithoutExtension(videoPath);
+    final dir = Directory(p.dirname(videoPath));
+    if (!dir.existsSync()) return;
+    final pattern = RegExp('^${RegExp.escape(base)}_ai_[a-z]{2}(_improved)?\\.srt\$');
+    for (final f in dir.listSync()) {
+      if (f is File && pattern.hasMatch(p.basename(f.path))) {
+        try { f.deleteSync(); } catch (_) {}
+      }
+    }
+  }
+
+  /// حذف یک زبان خاص (هم نسخه عادی هم بهبودیافته)
+  static void deleteLanguage(String videoPath, String language) {
+    try { File(srtPath(videoPath, language)).deleteSync(); } catch (_) {}
+    try { File(improvedPath(videoPath, language)).deleteSync(); } catch (_) {}
+  }
 
   // ── کش صدا ──
   static Future<String> _audioCache(String videoPath) async {
@@ -273,7 +328,7 @@ class WhisperService {
       srt = _textToSrt(result.text);
     }
 
-    final out = srtPath(videoPath);
+    final out = srtPath(videoPath, language);
     File(out).writeAsStringSync(srt, encoding: utf8);
 
     onStatus('✓ ذخیره شد', 1.0);
@@ -294,7 +349,7 @@ class WhisperService {
     improved = _fixPunctuation(improved);
     improved = _fixHalfSpaces(improved);
 
-    final out = srtPath.replaceFirst(RegExp(r'_ai\.srt$'), '_ai_improved.srt');
+    final out = srtPath.replaceFirst(RegExp(r'(_ai_[a-z]{2})\.srt$'), r'$1_improved.srt');
     File(out).writeAsStringSync(_segsToSrtRaw(improved), encoding: utf8);
     return out;
   }
