@@ -134,8 +134,19 @@ class MainActivity : FlutterActivity() {
                 }
                 "cancelExtraction" -> { extractCancel.set(true); result.success(null) }
                 "getCacheDir" -> result.success(cacheDir.absolutePath)
+                "getDeviceInfo" -> {
+                    try {
+                        val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                        val mi = android.app.ActivityManager.MemoryInfo()
+                        am.getMemoryInfo(mi)
+                        val totalMb = (mi.totalMem / (1024 * 1024)).toInt()
+                        result.success(totalMb)
+                    } catch (e: Throwable) {
+                        result.error("DEVICE_INFO_FAILED", e.message, null)
+                    }
+                }
 
-                // ── AI v2 (whisper.cpp بومی) — تست ──
+                // ── AI v2 (whisper.cpp بومی) ──
                 "v2InitContext" -> {
                     val modelPath = call.argument<String>("modelPath") ?: run { result.error("NO_MODEL","",null); return@setMethodCallHandler }
                     executor.execute {
@@ -159,9 +170,10 @@ class MainActivity : FlutterActivity() {
                     val wavPath = call.argument<String>("wavPath") ?: run { result.error("NO_WAV","",null); return@setMethodCallHandler }
                     val lang = call.argument<String>("lang") ?: "en"
                     val threads = call.argument<Int>("threads") ?: 4
+                    val translate = call.argument<Boolean>("translate") ?: false
                     executor.execute {
                         try {
-                            val text = WhisperV2Bridge.nativeTranscribeWav(ctx, wavPath, lang, threads, false)
+                            val text = WhisperV2Bridge.nativeTranscribeWav(ctx, wavPath, lang, threads, translate)
                             handler.post { result.success(text) }
                         } catch (e: Throwable) {
                             handler.post { result.error("TRANSCRIBE_EXCEPTION", e.message, null) }
