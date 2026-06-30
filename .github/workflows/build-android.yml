@@ -28,7 +28,7 @@ jobs:
 
       - name: Restore our files
         run: |
-          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt
           MAKT=$(find android -name "MainActivity.kt" | head -1)
           echo "=== Found MainActivity at: $MAKT ==="
           if [ -n "$MAKT" ]; then
@@ -48,6 +48,19 @@ jobs:
           cp android_files/cpp/vezoo_jni.c android/app/src/main/cpp/
           cp android_files/cpp/CMakeLists.txt android/app/src/main/cpp/
           ls android/app/src/main/cpp/
+
+      - name: Setup Whisper v2 native library (AI v2 — experimental, compile-only stage)
+        run: |
+          mkdir -p android/app/src/main/cpp/whisper_v2
+          cp -r android_files/cpp/whisper_v2/. android/app/src/main/cpp/whisper_v2/
+          echo "=== whisper_v2 vendored files ==="
+          find android/app/src/main/cpp/whisper_v2 -type f | wc -l
+          # کپی Kotlin bridge
+          MAKT_DIR=$(dirname "$(find android -name "MainActivity.kt" | head -1)")
+          if [ -n "$MAKT_DIR" ]; then
+            cp android_files/WhisperV2Bridge.kt "$MAKT_DIR/WhisperV2Bridge.kt"
+            echo "=== WhisperV2Bridge.kt copied to $MAKT_DIR ==="
+          fi
           # patch build.gradle.kts برای NDK
           APP=android/app/build.gradle.kts
           if [ ! -f "$APP" ]; then APP=android/app/build.gradle; fi
@@ -107,4 +120,3 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
