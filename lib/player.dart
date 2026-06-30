@@ -1056,50 +1056,69 @@ class _PlayerState extends State<PlayerScreen>{
                 ]),
               ),
             ),
-          IconButton(icon:const Icon(Icons.auto_awesome),color:const Color(0xFF7C3AED),
-            tooltip:'زیرنویس AI',
-            onPressed:()=>AiSubtitleSheet.show(context,_curPath,(srt){
-              _loadSub(srt,secondary:false);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content:Text('زیرنویس AI بارگذاری شد'),
-                backgroundColor:Color(0xFF7C3AED)));
-            },onPreview:(srt){
-              _loadSub(srt,secondary:false);
-            }),
+          PopupMenuButton<String>(
+            icon:const Icon(Icons.subtitles,color:Color(0xFF7C3AED)),
+            tooltip:'زیرنویس',
+            onSelected:(v){
+              switch(v){
+                case 'ai':
+                  AiSubtitleSheet.show(context,_curPath,(srt){
+                    _loadSub(srt,secondary:false);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content:Text('زیرنویس AI بارگذاری شد'),
+                      backgroundColor:Color(0xFF7C3AED)));
+                  },onPreview:(srt){
+                    _loadSub(srt,secondary:false);
+                  });
+                  break;
+                case 'online':
+                  OpenSubtitlesSheet.show(context,_curPath,(srt){
+                    _loadSub(srt,secondary:false);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content:Text('زیرنویس آنلاین بارگذاری شد'),
+                      backgroundColor:Color(0xFF7C3AED)));
+                  });
+                  break;
+                case 'settings':
+                  showModalBottomSheet(
+                    context:context,isScrollControlled:true,backgroundColor:const Color(0xFF1C1C22),
+                    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
+                    builder:(ctx)=>PlayerSettings(
+                      vs:_vs,onChanged:(vs){setState(()=>_vs=vs);},
+                      sub1Visible:_sub1Visible,onSub1Visible:(v)=>setState(()=>_sub1Visible=v),
+                      sub2Visible:_sub2Visible,onSub2Visible:(v)=>setState(()=>_sub2Visible=v),
+                      sub2Path:_sub2Path,
+                      subDelayMs:_subDelayMs,onSubDelayMs:(v)=>setState(()=>_subDelayMs=v),
+                      subDelay2Ms:_subDelay2Ms,onSubDelay2Ms:(v)=>setState(()=>_subDelay2Ms=v),
+                      audioDelayMs:_audioDelayMs,onAudioDelayMs:(v)=>setState(()=>_audioDelayMs=v),
+                      color2:_color2,onColor2:(c)=>setState(()=>_color2=c),
+                      onPickSub1:()=>_pickSub(secondary:false),onPickSub2:()=>_pickSub(secondary:true),
+                      onPickFont:_pickFont,
+                      speed:_vs.speed,onSpeed:(s){setState(()=>_vs.speed=s);player.setRate(s);},
+                      ampVolume:_currentAmpVolume,onAmpVolume:(v){setState(()=>_currentAmpVolume=v);player.setVolume(v);},
+                      onSaveForVideo:_saveVsForVideo,
+                      hwDecode:_hwDecode,onHwDecode:(v)=>setState(()=>_hwDecode=v),
+                      embeddedSubEnabled:_embeddedSubEnabled,
+                      onEmbeddedSubEnabled:(v){setState((){_embeddedSubEnabled=v;if(!v)_embeddedSubText=null;});
+                        if(v&&_subtitleTracks.isNotEmpty)player.setSubtitleTrack(_subtitleTracks.first);},
+                      videoWidth:_videoWidth,videoHeight:_videoHeight,
+                    ),
+                  );
+                  break;
+              }
+            },
+            itemBuilder:(_)=>const [
+              PopupMenuItem(value:'ai',child:Row(children:[
+                Icon(Icons.auto_awesome,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('زیرنویس AI (آفلاین)'),
+              ])),
+              PopupMenuItem(value:'online',child:Row(children:[
+                Icon(Icons.cloud_download_outlined,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('زیرنویس آنلاین'),
+              ])),
+              PopupMenuItem(value:'settings',child:Row(children:[
+                Icon(Icons.tune,size:18,color:Colors.white70),SizedBox(width:10),Text('تنظیمات نمایش زیرنویس'),
+              ])),
+            ],
           ),
-          IconButton(icon:const Icon(Icons.cloud_download_outlined),color:const Color(0xFF7C3AED),
-            tooltip:'زیرنویس آنلاین',
-            onPressed:()=>OpenSubtitlesSheet.show(context,_curPath,(srt){
-              _loadSub(srt,secondary:false);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content:Text('زیرنویس آنلاین بارگذاری شد'),
-                backgroundColor:Color(0xFF7C3AED)));
-            }),
-          ),
-          IconButton(icon:const Icon(Icons.subtitles),onPressed:()=>showModalBottomSheet(
-            context:context,isScrollControlled:true,backgroundColor:const Color(0xFF1C1C22),
-            shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
-            builder:(ctx)=>PlayerSettings(
-              vs:_vs,onChanged:(vs){setState(()=>_vs=vs);},
-              sub1Visible:_sub1Visible,onSub1Visible:(v)=>setState(()=>_sub1Visible=v),
-              sub2Visible:_sub2Visible,onSub2Visible:(v)=>setState(()=>_sub2Visible=v),
-              sub2Path:_sub2Path,
-              subDelayMs:_subDelayMs,onSubDelayMs:(v)=>setState(()=>_subDelayMs=v),
-              subDelay2Ms:_subDelay2Ms,onSubDelay2Ms:(v)=>setState(()=>_subDelay2Ms=v),
-              audioDelayMs:_audioDelayMs,onAudioDelayMs:(v)=>setState(()=>_audioDelayMs=v),
-              color2:_color2,onColor2:(c)=>setState(()=>_color2=c),
-              onPickSub1:()=>_pickSub(secondary:false),onPickSub2:()=>_pickSub(secondary:true),
-              onPickFont:_pickFont,
-              speed:_vs.speed,onSpeed:(s){setState(()=>_vs.speed=s);player.setRate(s);},
-              ampVolume:_currentAmpVolume,onAmpVolume:(v){setState(()=>_currentAmpVolume=v);player.setVolume(v);},
-              onSaveForVideo:_saveVsForVideo,
-              hwDecode:_hwDecode,onHwDecode:(v)=>setState(()=>_hwDecode=v),
-              embeddedSubEnabled:_embeddedSubEnabled,
-              onEmbeddedSubEnabled:(v){setState((){_embeddedSubEnabled=v;if(!v)_embeddedSubText=null;});
-                if(v&&_subtitleTracks.isNotEmpty)player.setSubtitleTrack(_subtitleTracks.first);},
-              videoWidth:_videoWidth,videoHeight:_videoHeight,
-            ),
-          )),
           IconButton(icon:const Icon(Icons.picture_in_picture_rounded),
               tooltip:'PiP',onPressed:_enterPip),
           IconButton(icon:Icon(_landscape?Icons.stay_current_portrait:Icons.screen_rotation),onPressed:_toggleOrientation),
@@ -1217,4 +1236,5 @@ class _PlayerState extends State<PlayerScreen>{
     ),
   );
 }
+
 
