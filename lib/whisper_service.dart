@@ -411,7 +411,19 @@ class WhisperService {
   //  توجه: بدون foreground service واقعی، اندروید همچنان می‌تواند در شرایط
   //  کمبود حافظه پردازش را متوقف کند — این فقط نمایش وضعیت است، نه تضمین کامل.
   // ══════════════════════════════════════════════════════════
+  static bool _cancelHandlerAttached = false;
+  static void _ensureCancelHandler() {
+    if (_cancelHandlerAttached) return;
+    _cancelHandlerAttached = true;
+    _ch.setMethodCallHandler((call) async {
+      if (call.method == 'aiCancelRequested') {
+        await cancelExtraction();
+      }
+    });
+  }
+
   static Future<void> showProgressNotification(String title) async {
+    _ensureCancelHandler();
     try { await _ch.invokeMethod('showAiProgress', {'title': title}); } catch (_) {}
   }
   static Future<void> updateProgressNotification(String status, double progress) async {
@@ -805,5 +817,4 @@ String _fmtSrtDur(Duration d) =>
     '${(d.inMinutes % 60).toString().padLeft(2, '0')}:'
     '${(d.inSeconds % 60).toString().padLeft(2, '0')},'
     '${(d.inMilliseconds % 1000).toString().padLeft(3, '0')}';
-
 
