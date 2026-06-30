@@ -28,50 +28,29 @@ class _State extends State<AiSubtitleSheet> {
   String _status = '';
   double _progress = 0;
   String? _srtPath;
-  bool _alreadyExists = false;
   bool _loading = true;
   bool _improving = false;
+  List<String> _existingLangs = [];
+  String _mode = 'pick'; // pick | new | running | done
 
   @override void initState(){ super.initState(); _load(); }
 
   Future<void> _load() async {
     final list = await WhisperService.downloadedModels();
     final active = await WhisperService.getActiveModel();
-    final exists = WhisperService.subtitleExists(widget.videoPath);
+    final existing = WhisperService.existingLanguages(widget.videoPath);
     if(mounted) setState((){
       _downloaded = list;
       _selected = active ?? (list.isNotEmpty ? list.first : null);
-      _alreadyExists = exists;
+      _existingLangs = existing;
+      _mode = existing.isNotEmpty ? 'pick' : 'new';
       _loading = false;
     });
   }
 
-  Future<void> _start({bool force=false}) async {
+  Future<void> _start() async {
     if(_selected==null) return;
-    if(_alreadyExists && !force){
-      // پرسش — استفاده از موجود یا ساخت مجدد
-      final action = await showDialog<String>(context:context, builder:(_)=>AlertDialog(
-        backgroundColor:const Color(0xFF1C1C22),
-        title:const Text('زیرنویس قبلاً ساخته شده',style:TextStyle(color:Colors.white,fontSize:15)),
-        content:const Text('برای این ویدیو قبلاً زیرنویس AI ساخته شده. می‌خواهید از همان استفاده کنید یا دوباره بسازید؟',
-          style:TextStyle(color:Colors.white70,fontSize:13)),
-        actions:[
-          TextButton(onPressed:()=>Navigator.pop(context,'cancel'),child:const Text('لغو')),
-          TextButton(onPressed:()=>Navigator.pop(context,'rebuild'),child:const Text('ساخت مجدد')),
-          FilledButton(onPressed:()=>Navigator.pop(context,'use'),
-            style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED)),
-            child:const Text('استفاده از موجود')),
-        ],
-      ));
-      if(action=='cancel'||action==null) return;
-      if(action=='use'){
-        setState((){ _done=true; _srtPath=WhisperService.srtPath(widget.videoPath); });
-        return;
-      }
-      // rebuild → ادامه میدیم پایین
-    }
-
-    setState((){ _running=true; _progress=0; _status='شروع...'; });
+    setState((){ _running=true; _mode='running'; _progress=0; _status='شروع...'; });
     try {
       final path = await WhisperService.transcribe(
         videoPath: widget.videoPath,
@@ -80,9 +59,9 @@ class _State extends State<AiSubtitleSheet> {
         useVad: _useVad,
         onStatus:(s,p){ if(mounted) setState((){ _status=s; _progress=p; }); },
       );
-      if(mounted) setState((){ _running=false; _done=true; _srtPath=path; });
+      if(mounted) setState((){ _running=false; _mode='done'; _srtPath=path; });
     } catch(e){
-      if(mounted) setState((){ _running=false; _status='خطا: $e'; });
+      if(mounted) setState((){ _running=false; _mode='new'; _status='خطا: $e'; });
     }
   }
 
@@ -98,6 +77,41 @@ class _State extends State<AiSubtitleSheet> {
       setState(()=>_improving=false);
       if(mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content:Text('خطا: $e'), backgroundColor:Colors.red));
+    }
+  }
+
+  Future<void> _deleteLang(String lang) async {
+    final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
+      backgroundColor:const Color(0xFF1C1C22),
+      title:const Text('حذف زیرنویس',style:TextStyle(color:Colors.white,fontSize:15)),
+      content:Text('زیرنویس ${kLanguages[lang]??lang} حذف شود؟',style:const TextStyle(color:Colors.white70)),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('لغو')),
+        FilledButton(onPressed:()=>Navigator.pop(context,true),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('حذف')),
+      ],
+    ));
+    if(ok==true){
+      WhisperService.deleteLanguage(widget.videoPath, lang);
+      await _load();
+    }
+  }
+
+  Future<void> _deleteAll() async {
+    final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
+      backgroundColor:const Color(0xFF1C1C22),
+      title:const Text('حذف همه زیرنویس‌های AI',style:TextStyle(color:Colors.white,fontSize:15)),
+      content:Text('همه ${_existingLangs.length} زیرنویس ساخته‌شده برای این ویدیو حذف شوند؟',
+        style:const TextStyle(color:Colors.white70)),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('لغو')),
+        FilledButton(onPressed:()=>Navigator.pop(context,true),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('حذف همه')),
+      ],
+    ));
+    if(ok==true){
+      WhisperService.deleteAllSubtitles(widget.videoPath);
+      await _load();
     }
   }
 
@@ -119,15 +133,87 @@ class _State extends State<AiSubtitleSheet> {
               TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
             ]),
             const SizedBox(height:12),
-            if(_done)        ..._buildDone()
-            else if(_running)..._buildRunning()
-            else             ..._buildIdle(),
+
+            if(_mode=='pick')    ..._buildPick()
+            else if(_mode=='new')..._buildNew()
+            else if(_mode=='running')..._buildRunning()
+            else if(_mode=='done')..._buildDone(),
+
             const SizedBox(height:8),
           ]),
     ),
   );
 
-  List<Widget> _buildIdle()=>[
+  // ── حالت انتخاب: زبان‌های موجود + ساخت جدید ──
+  List<Widget> _buildPick()=>[
+    const Padding(
+      padding: EdgeInsets.only(bottom:8),
+      child: Align(alignment:Alignment.centerRight,
+        child:Text('زیرنویس‌های ساخته‌شده:',style:TextStyle(color:Colors.white60,fontSize:12))),
+    ),
+
+    ..._existingLangs.map((lang){
+      final improved = WhisperService.improvedExists(widget.videoPath, lang);
+      return Container(
+        margin:const EdgeInsets.only(bottom:8),
+        padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
+        decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(12)),
+        child:Row(children:[
+          const Icon(Icons.star,color:Colors.amber,size:16),
+          const SizedBox(width:8),
+          Expanded(child:Row(children:[
+            Text(kLanguages[lang]??lang,style:const TextStyle(color:Colors.white,fontSize:14)),
+            if(improved)...[
+              const SizedBox(width:6),
+              Container(padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
+                decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.2),borderRadius:BorderRadius.circular(6)),
+                child:const Text('بهبودیافته',style:TextStyle(color:Color(0xFF7C3AED),fontSize:10))),
+            ],
+          ])),
+          IconButton(
+            icon:const Icon(Icons.delete_outline,color:Colors.red,size:18),
+            onPressed:()=>_deleteLang(lang),
+            constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
+          ),
+          const SizedBox(width:4),
+          FilledButton(
+            onPressed:(){
+              widget.onDone(WhisperService.bestSrtPath(widget.videoPath, lang));
+              Navigator.pop(context);
+            },
+            style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED),
+              minimumSize:const Size(0,32),padding:const EdgeInsets.symmetric(horizontal:14),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8))),
+            child:const Text('استفاده',style:TextStyle(fontSize:12)),
+          ),
+        ]),
+      );
+    }),
+
+    const SizedBox(height:8),
+    Row(children:[
+      Expanded(child:OutlinedButton.icon(
+        onPressed:()=>setState(()=>_mode='new'),
+        icon:const Icon(Icons.add,size:16,color:Color(0xFF7C3AED)),
+        label:const Text('ساخت زبان جدید',style:TextStyle(color:Color(0xFF7C3AED),fontSize:13)),
+        style:OutlinedButton.styleFrom(side:const BorderSide(color:Color(0xFF7C3AED)),
+          padding:const EdgeInsets.symmetric(vertical:12),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
+      )),
+      const SizedBox(width:8),
+      OutlinedButton.icon(
+        onPressed:_deleteAll,
+        icon:const Icon(Icons.delete_sweep,size:16,color:Colors.red),
+        label:const Text('حذف همه',style:TextStyle(color:Colors.red,fontSize:13)),
+        style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.red),
+          padding:const EdgeInsets.symmetric(vertical:12,horizontal:12),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
+      ),
+    ]),
+  ];
+
+  // ── حالت ساخت جدید ──
+  List<Widget> _buildNew()=>[
     if(_downloaded.isEmpty)
       _row(icon:Icons.memory, child:const Text('هیچ مدلی دانلود نشده',style:TextStyle(color:Colors.orange,fontSize:13)),
         trailing:FilledButton.icon(
@@ -153,12 +239,17 @@ class _State extends State<AiSubtitleSheet> {
       value:_lang, dropdownColor:const Color(0xFF2A2A35),
       underline:const SizedBox(), isExpanded:true,
       style:const TextStyle(color:Colors.white,fontSize:13),
-      items:kLanguages.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),
+      items:kLanguages.entries.map((e){
+        final has = _existingLangs.contains(e.key);
+        return DropdownMenuItem(value:e.key,child:Row(children:[
+          Text(e.value),
+          if(has)...[const SizedBox(width:6),const Icon(Icons.star,color:Colors.amber,size:12)],
+        ]));
+      }).toList(),
       onChanged:(v){ if(v!=null) setState(()=>_lang=v); },
     )),
     const SizedBox(height:10),
 
-    // ── VAD ──
     Container(
       padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
       decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(12)),
@@ -172,28 +263,46 @@ class _State extends State<AiSubtitleSheet> {
     ),
     const SizedBox(height:14),
 
-    if(_alreadyExists)
+    if(_existingLangs.contains(_lang))
       Container(
         margin:const EdgeInsets.only(bottom:10),
         padding:const EdgeInsets.all(10),
-        decoration:BoxDecoration(color:Colors.blue.withOpacity(0.15),borderRadius:BorderRadius.circular(10)),
+        decoration:BoxDecoration(color:Colors.orange.withOpacity(0.15),borderRadius:BorderRadius.circular(10)),
         child:const Row(children:[
-          Icon(Icons.info_outline,color:Colors.blue,size:16),
+          Icon(Icons.warning_amber,color:Colors.orange,size:16),
           SizedBox(width:8),
-          Expanded(child:Text('زیرنویس قبلاً ساخته شده',style:TextStyle(color:Colors.blue,fontSize:12))),
+          Expanded(child:Text('این زبان قبلاً ساخته شده — با ساخت مجدد جایگزین می‌شود',
+            style:TextStyle(color:Colors.orange,fontSize:11))),
         ]),
       ),
 
-    SizedBox(width:double.infinity,child:FilledButton.icon(
-      onPressed:_downloaded.isEmpty ? null : ()=>_start(),
-      icon:const Icon(Icons.subtitles),
-      label:Text(_alreadyExists?'بررسی زیرنویس':'تولید زیرنویس',style:const TextStyle(fontSize:15)),
-      style:FilledButton.styleFrom(
-        backgroundColor:const Color(0xFF7C3AED),
-        padding:const EdgeInsets.symmetric(vertical:14),
-        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)),
-      ),
-    )),
+    Row(children:[
+      if(_existingLangs.isNotEmpty)...[
+        OutlinedButton(
+          onPressed:()=>setState(()=>_mode='pick'),
+          style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24),
+            padding:const EdgeInsets.symmetric(vertical:14,horizontal:16),
+            shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
+          child:const Icon(Icons.arrow_back,color:Colors.white70,size:18),
+        ),
+        const SizedBox(width:8),
+      ],
+      Expanded(child:FilledButton.icon(
+        onPressed:_downloaded.isEmpty ? null : _start,
+        icon:const Icon(Icons.subtitles),
+        label:const Text('تولید زیرنویس',style:TextStyle(fontSize:15)),
+        style:FilledButton.styleFrom(
+          backgroundColor:const Color(0xFF7C3AED),
+          padding:const EdgeInsets.symmetric(vertical:14),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)),
+        ),
+      )),
+    ]),
+
+    if(_status.startsWith('خطا'))Padding(
+      padding:const EdgeInsets.only(top:8),
+      child:Text(_status,style:const TextStyle(color:Colors.red,fontSize:11),textAlign:TextAlign.center),
+    ),
   ];
 
   List<Widget> _buildRunning()=>[
@@ -211,7 +320,7 @@ class _State extends State<AiSubtitleSheet> {
       style:const TextStyle(color:Colors.white54,fontSize:12),textAlign:TextAlign.center),
     const SizedBox(height:12),
     OutlinedButton.icon(
-      onPressed:()async{ await WhisperService.cancelExtraction(); if(mounted) setState(()=>_running=false); },
+      onPressed:()async{ await WhisperService.cancelExtraction(); if(mounted) setState((){ _running=false; _mode='new'; }); },
       icon:const Icon(Icons.stop_circle_outlined,color:Colors.red),
       label:const Text('لغو',style:TextStyle(color:Colors.red)),
       style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.red)),
@@ -225,14 +334,13 @@ class _State extends State<AiSubtitleSheet> {
     const SizedBox(height:4),
     const Icon(Icons.check_circle,color:Colors.green,size:44),
     const SizedBox(height:6),
-    const Text('زیرنویس آماده شد',
-      style:TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
+    Text('زیرنویس ${kLanguages[_lang]??_lang} آماده شد',
+      style:const TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
     const SizedBox(height:4),
     Text(_srtPath?.split('/').last??'',
       style:const TextStyle(color:Colors.white54,fontSize:11),textAlign:TextAlign.center),
     const SizedBox(height:14),
 
-    // ── دکمه بهبود ──
     SizedBox(width:double.infinity,child:OutlinedButton.icon(
       onPressed:_improving?null:_improve,
       icon:_improving
