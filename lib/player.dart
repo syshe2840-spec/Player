@@ -107,6 +107,8 @@ class _PlayerState extends State<PlayerScreen>{
   double _fastSeekSpeed=3.0; // ثانیه در ثانیه
   double _fastSeekBaseSpeed=3.0;
   Timer? _fastSeekTimer;
+  bool _fastSeekLocked=false; // کشیدن بالا → قفل، بعد از رهاکردن انگشت هم ادامه پیدا می‌کند
+  double _fastSeekDragStartY=0;
   Timer? _thumbTimer;
 
   // UI
@@ -634,7 +636,7 @@ class _PlayerState extends State<PlayerScreen>{
     if(_locked)return;
     _fastSeekTimer?.cancel();
     // نوار سمت راست = وقتی عقب میریم، سمت چپ = وقتی جلو
-    setState((){_fastSeeking=true;_fastSeekRight=!forward;_fastSeekBaseSpeed=_fastSeekSpeed;});
+    setState((){_fastSeeking=true;_fastSeekRight=!forward;_fastSeekBaseSpeed=_fastSeekSpeed;_fastSeekLocked=false;_fastSeekDragStartY=0;});
     _fastSeekTimer=Timer.periodic(const Duration(milliseconds:80),(t){
       final delta=(_fastSeekSpeed*(forward?1:-1)*80).round();
       final ms=(_position.inMilliseconds+delta).clamp(0,_duration.inMilliseconds);
@@ -644,12 +646,20 @@ class _PlayerState extends State<PlayerScreen>{
 
   void _stopFastSeek(){
     _fastSeekTimer?.cancel();
-    setState(()=>_fastSeeking=false);
+    setState((){_fastSeeking=false;_fastSeekLocked=false;});
   }
 
   void _adjustFastSeekSpeed(double dy){
+    if(_fastSeekDragStartY==0)_fastSeekDragStartY=dy;
     // بالا = سریع‌تر، پایین = کندتر
     setState(()=>_fastSeekSpeed=(_fastSeekBaseSpeed-dy/60).clamp(1.0,20.0));
+    // کشیدن بیش از ۸۰ پیکسل به سمت بالا → قفل میشود (با رهاکردن انگشت هم متوقف نمیشود)
+    if(!_fastSeekLocked&&(dy-_fastSeekDragStartY)< -80){
+      setState(()=>_fastSeekLocked=true);
+      _overlay='🔒 قفل شد — برای توقف لمس کنید';
+      _overlayTimer?.cancel();
+      _overlayTimer=Timer(const Duration(seconds:2),()=>setState(()=>_overlay=null));
+    }
   }
 
   @override
@@ -876,7 +886,10 @@ class _PlayerState extends State<PlayerScreen>{
         // ── لایه اشاره (بدون onLongPress — تداخل با drag) ──
         if(!_locked)Positioned.fill(child:GestureDetector(
           behavior:HitTestBehavior.opaque,
-          onTap:_toggleControls,
+          onTap:(){
+            if(_fastSeeking&&_fastSeekLocked){_stopFastSeek();return;}
+            _toggleControls();
+          },
           onDoubleTapDown:(d)=>_doubleTapPos=d.localPosition,
           onDoubleTap:_onDoubleTap,
           onScaleStart:_onScaleStart,
@@ -891,8 +904,8 @@ class _PlayerState extends State<PlayerScreen>{
           onLongPressMoveUpdate:(d){
             if(_fastSeeking)_adjustFastSeekSpeed(d.offsetFromOrigin.dy);
           },
-          onLongPressEnd:(_)=>_stopFastSeek(),
-          onLongPressCancel:()=>_stopFastSeek(),
+          onLongPressEnd:(_){ if(!_fastSeekLocked)_stopFastSeek(); },
+          onLongPressCancel:(){ if(!_fastSeekLocked)_stopFastSeek(); },
           child:const SizedBox.expand(),
         )),
 
@@ -951,10 +964,15 @@ class _PlayerState extends State<PlayerScreen>{
             bottom:_size.height*0.15,
             width:52,
             child:Container(
-              decoration:BoxDecoration(color:Colors.black.withOpacity(0.7),borderRadius:BorderRadius.circular(26)),
+              decoration:BoxDecoration(
+                color:Colors.black.withOpacity(0.7),
+                borderRadius:BorderRadius.circular(26),
+                border:_fastSeekLocked?Border.all(color:Colors.orange,width:1.5):null,
+              ),
               padding:const EdgeInsets.symmetric(vertical:12,horizontal:6),
               child:Column(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
-                Icon(_fastSeekRight?Icons.fast_rewind:Icons.fast_forward,color:Colors.orange,size:20),
+                Icon(_fastSeekLocked?Icons.lock:(_fastSeekRight?Icons.fast_rewind:Icons.fast_forward),
+                  color:Colors.orange,size:20),
                 // نوار سرعت (بکش بالا/پایین روی ویدیو تغییر می‌کنه)
                 Expanded(child:Container(
                   margin:const EdgeInsets.symmetric(vertical:8,horizontal:8),
@@ -1044,6 +1062,8 @@ class _PlayerState extends State<PlayerScreen>{
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content:Text('زیرنویس AI بارگذاری شد'),
                 backgroundColor:Color(0xFF7C3AED)));
+            },onPreview:(srt){
+              _loadSub(srt,secondary:false);
             }),
           ),
           IconButton(icon:const Icon(Icons.subtitles),onPressed:()=>showModalBottomSheet(
