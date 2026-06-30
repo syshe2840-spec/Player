@@ -1,6 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
-import 'whisper_v2_test_screen.dart';
+import 'ai_batch_queue_screen.dart';
 
 class AiModelsScreen extends StatefulWidget {
   const AiModelsScreen({super.key});
@@ -14,8 +15,18 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   String? _active;
   bool _loading = true;
   String _filter = 'all'; // all | quantized | full
+  String? _recommendedId;
+  int? _ramMb;
 
-  @override void initState(){ super.initState(); _refresh(); }
+  @override void initState(){ super.initState(); _refresh(); _loadRecommendation(); }
+
+  Future<void> _loadRecommendation() async {
+    try {
+      final ram = await WhisperService.getDeviceRamMb();
+      final rec = WhisperService.recommendedModel(ram);
+      if(mounted) setState((){ _ramMb=ram; _recommendedId=rec.id; });
+    } catch(_){ /* روی بعضی دستگاه‌ها ممکنه پشتیبانی نشه — مهم نیست */ }
+  }
 
   Future<void> _refresh() async {
     final a = await WhisperService.getActiveModel();
@@ -68,9 +79,9 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       leading:IconButton(icon:const Icon(Icons.arrow_back,color:Colors.white),onPressed:()=>Navigator.pop(ctx)),
       actions:[
         IconButton(
-          icon:const Icon(Icons.science_outlined,color:Color(0xFF7C3AED)),
-          tooltip:'تست AI v2 (آزمایشی)',
-          onPressed:()=>Navigator.push(ctx,MaterialPageRoute(builder:(_)=>const WhisperV2TestScreen())),
+          icon:const Icon(Icons.playlist_add_check,color:Color(0xFF7C3AED)),
+          tooltip:'ساخت دسته‌ای زیرنویس',
+          onPressed:()=>Navigator.push(ctx,MaterialPageRoute(builder:(_)=>const AiBatchQueueScreen())),
         ),
       ],
     ),
@@ -89,11 +100,14 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
     child:Container(
       padding:const EdgeInsets.all(12),
       decoration:BoxDecoration(color:const Color(0xFF1C1C22).withOpacity(0.8),borderRadius:BorderRadius.circular(12)),
-      child:const Row(children:[
-        Icon(Icons.info_outline,color:Color(0xFF7C3AED),size:18),
-        SizedBox(width:8),
-        Expanded(child:Text('می‌توانید چند مدل دانلود کنید — هنگام ساخت زیرنویس انتخاب می‌کنید',
-          style:TextStyle(color:Colors.white70,fontSize:12))),
+      child:Row(children:[
+        const Icon(Icons.info_outline,color:Color(0xFF7C3AED),size:18),
+        const SizedBox(width:8),
+        Expanded(child:Text(
+          _ramMb!=null
+            ? 'رم گوشی شما: ~${(_ramMb!/1024).toStringAsFixed(1)}GB — مدل پیشنهادی با ⭐ مشخص شده'
+            : 'می‌توانید چند مدل دانلود کنید — هنگام ساخت زیرنویس انتخاب می‌کنید',
+          style:const TextStyle(color:Colors.white70,fontSize:12))),
       ]),
     ),
   );
@@ -123,13 +137,14 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
     final busy  = _busy[key] ?? false;
     final prog  = _prog[key] ?? 0.0;
     final act   = _active == key;
+    final recommended = _recommendedId == key;
 
     return Container(
       margin:const EdgeInsets.only(bottom:12),
       decoration:BoxDecoration(
         color:const Color(0xFF1C1C22),
         borderRadius:BorderRadius.circular(16),
-        border:Border.all(color: act?const Color(0xFF7C3AED):Colors.white12, width:act?2:1),
+        border:Border.all(color: act?const Color(0xFF7C3AED):(recommended?Colors.amber:Colors.white12), width:act||recommended?2:1),
       ),
       child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
 
@@ -138,6 +153,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
           if(m.isQuantized)...[const SizedBox(width:6),_tag(m.variant.toUpperCase(), Colors.teal)],
           const SizedBox(width:8),
           if(act)_tag('فعال', Colors.green),
+          if(recommended)...[const SizedBox(width:6),_tag('⭐ پیشنهادی', Colors.amber)],
           if(dl && !act)_tag('دانلود شده', Colors.blue),
           const Spacer(),
           Text('~${m.sizeMb>=1000 ? "${(m.sizeMb/1000).toStringAsFixed(1)}GB" : "${m.sizeMb}MB"}',
@@ -222,4 +238,3 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       color:i<n?const Color(0xFF7C3AED):Colors.white24)),
   ]);
 }
-
