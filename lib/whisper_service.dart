@@ -34,7 +34,7 @@ class WhisperModelDef {
   String dirPath(String root) => p.join(root, id);
   String filePath(String root) => p.join(dirPath(root), filename);
 
-  bool isQuantized => variant.isNotEmpty;
+  bool get isQuantized => variant.isNotEmpty;
 }
 
 const kWhisperModels = [
@@ -249,16 +249,17 @@ class WhisperService {
 
     // ۲. Transcribe
     onStatus('تبدیل گفتار به متن (${model.name})...', 0.3);
-    final whisper = Whisper(model: model.base, modelDir: model.dirPath(root));
+    final whisper = Whisper(model: model.base);
     final result = await whisper.transcribe(
       transcribeRequest: TranscribeRequest(
         audio: wav,
         language: language,
         isTranslate: false,
-        threads: 4,
+        threads: Platform.numberOfProcessors.clamp(2, 8),
         isNoTimestamps: false,
         vadMode: useVad ? WhisperVadMode.enabled : WhisperVadMode.disabled,
       ),
+      modelPath: mPath,
     );
     if (_trCancelled) throw Exception('لغو شد');
 
