@@ -55,6 +55,7 @@ class MainActivity : FlutterActivity() {
     private val A_CLOSE   = "com.vezoo.CLOSE"
     private val A_AI_CANCEL = "com.vezoo.AI_CANCEL"
     private var whisperCh: MethodChannel? = null
+    private var aiCancelSink: io.flutter.plugin.common.EventChannel.EventSink? = null
 
     // ── ثابت‌های کریپتو ──
     private val APP_HALF = byteArrayOf(
@@ -89,7 +90,7 @@ class MainActivity : FlutterActivity() {
         override fun onReceive(c: Context?, i: Intent?) {
             if (i?.action == A_AI_CANCEL) {
                 nm().cancel(AI_NOTIF_ID)
-                whisperCh?.invokeMethod("aiCancelRequested", null)
+                handler.post { aiCancelSink?.success("cancel") }
                 return
             }
             val action = when(i?.action) {
@@ -129,6 +130,13 @@ class MainActivity : FlutterActivity() {
         // ── Whisper Audio Extraction ──
         whisperCh = MethodChannel(fe.dartExecutor.binaryMessenger, WHISPER_CH)
         whisperCh!!.setMethodCallHandler { call, result ->
+
+        // ── EventChannel جداگانه برای دکمه لغو notification (مستقل از whisperCh) ──
+        io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ai_cancel")
+            .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
+                override fun onListen(args: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) { aiCancelSink = sink }
+                override fun onCancel(args: Any?) { aiCancelSink = null }
+            })
             when (call.method) {
                 "extractAudio" -> {
                     val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
