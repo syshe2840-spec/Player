@@ -64,6 +64,8 @@ class _State extends State<AiSubtitleSheet> {
   Future<void> _start() async {
     if(_selected==null) return;
     setState((){ _running=true; _mode='running'; _progress=0; _status='شروع...'; });
+    // notification: fire-and-forget — هرگز await نمی‌شود تا UI رو بلاک نکند
+    WhisperService.showProgressNotification('ساخت زیرنویس: ${widget.videoPath.split('/').last}');
     try {
       final path = await WhisperService.transcribe(
         videoPath: widget.videoPath,
@@ -72,11 +74,16 @@ class _State extends State<AiSubtitleSheet> {
         useVad: _useVad,
         engine: _engine,
         isTranslate: _translate,
-        onStatus:(s,p){ if(mounted) setState((){ _status=s; _progress=p; }); },
+        onStatus:(s,p){
+          WhisperService.updateProgressNotification(s, p); // fire-and-forget
+          if(mounted) setState((){ _status=s; _progress=p; });
+        },
       );
       if(mounted) setState((){ _running=false; _mode='done'; _srtPath=path; });
     } catch(e){
       if(mounted) setState((){ _running=false; _mode='new'; _status='خطا: $e'; });
+    } finally {
+      WhisperService.hideProgressNotification(); // fire-and-forget
     }
   }
 
