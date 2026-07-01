@@ -444,16 +444,9 @@ class WhisperService {
     bool isTranslate = false,
     required void Function(String, double) onStatus,
   }) async {
-    await showProgressNotification('ساخت زیرنویس: ${videoPath.split('/').last}');
-    try {
-      return await (engine == WhisperEngine.v2
-        ? _transcribeV2(videoPath: videoPath, language: language, model: model, isTranslate: isTranslate,
-            onStatus: (s,p){ updateProgressNotification(s,p); onStatus(s,p); })
-        : _transcribeV1(videoPath: videoPath, language: language, model: model, useVad: useVad, isTranslate: isTranslate,
-            onStatus: (s,p){ updateProgressNotification(s,p); onStatus(s,p); }));
-    } finally {
-      await hideProgressNotification();
-    }
+    return engine == WhisperEngine.v2
+      ? _transcribeV2(videoPath: videoPath, language: language, model: model, isTranslate: isTranslate, onStatus: onStatus)
+      : _transcribeV1(videoPath: videoPath, language: language, model: model, useVad: useVad, isTranslate: isTranslate, onStatus: onStatus);
   }
 
   // ── V1: whisper_ggml_plus (پایدار، پکیج Flutter) ──
