@@ -415,11 +415,12 @@ class WhisperService {
   static void _ensureCancelHandler() {
     if (_cancelHandlerAttached) return;
     _cancelHandlerAttached = true;
-    _ch.setMethodCallHandler((call) async {
-      if (call.method == 'aiCancelRequested') {
-        await cancelExtraction();
-      }
-    });
+    // به‌جای setMethodCallHandler (که handler قبلی رو kill می‌کنه)،
+    // از یه EventChannel جداگانه برای دریافت cancel از notification استفاده می‌کنیم
+    const _cancelCh = EventChannel('com.vezoo.player/ai_cancel');
+    _cancelCh.receiveBroadcastStream().listen((_) async {
+      await cancelExtraction();
+    }, onError: (_) {});
   }
 
   static Future<void> showProgressNotification(String title) async {
@@ -817,4 +818,5 @@ String _fmtSrtDur(Duration d) =>
     '${(d.inMinutes % 60).toString().padLeft(2, '0')}:'
     '${(d.inSeconds % 60).toString().padLeft(2, '0')},'
     '${(d.inMilliseconds % 1000).toString().padLeft(3, '0')}';
+
 
