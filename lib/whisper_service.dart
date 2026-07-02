@@ -812,4 +812,146 @@ String _fmtSrtDur(Duration d) =>
     '${(d.inSeconds % 60).toString().padLeft(2, '0')},'
     '${(d.inMilliseconds % 1000).toString().padLeft(3, '0')}';
 
+// ══════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════
+//  زیرنویس زنده — پردازش تکه‌تکه V2 در حین پخش
+// ══════════════════════════════════════════════════════════
+
+enum LiveBehindAction { pause, slowDown }
+
+class LiveSubConfig {
+  final int chunkMs;
+  final String language;
+  final WhisperModelDef model;
+  final bool isTranslate;
+  final LiveBehindAction behindAction;
+  final double behindSpeed;
+  const LiveSubConfig({
+    this.chunkMs = 30000,
+    required this.language,
+    required this.model,
+    this.isTranslate = false,
+    this.behindAction = LiveBehindAction.pause,
+    this.behindSpeed = 0.75,
+  });
+}
+
+class LiveSubState {
+  static bool cancelled = false;
+  static int transcribedMs = 0;
+  static int totalMs = 0;
+  static int chunksDone = 0;
+  static int chunksTotal = 0;
+  static void reset(){cancelled=false;transcribedMs=0;totalMs=0;chunksDone=0;chunksTotal=0;}
+}
+
+/// مسیر فایل SRT زنده (کنار فایل ویدیو ذخیره میشه)
+String liveSrtPath(String videoPath, String language) {
+  return p.join(p.dirname(videoPath), '${p.basenameWithoutExtension(videoPath)}_live_$language.srt');
+}
+
+/// لغو زیرنویس زنده
+Future<void> cancelLiveSub() async {
+  LiveSubState.cancelled = true;
+  await WhisperService.cancelExtraction();
+}
+
+/// پردازش زنده — chunk به chunk، SRT روی دیسک بروز میشه
+Future<String> transcribeLive({
+  required String videoPath,
+  required LiveSubConfig config,
+  required void Function(int startMs, int totalMs, int done, int total) onChunk,
+  required void Function() onSrtUpdated,
+}) async {
+  LiveSubState.reset();
+  const ch = MethodChannel('com.vezoo.player/whisper');
+
+  final durationMs = await WhisperService.getVideoDurationMs(videoPath);
+  if (durationMs <= 0) throw Exception('مدت ویدیو قابل تشخیص نیست');
+  LiveSubState.totalMs = durationMs;
+
+  final srtFile = liveSrtPath(videoPath, config.language);
+  File(srtFile).writeAsStringSync('', encoding: utf8);
+
+  final mPath = await WhisperService.modelFilePath(config.model);
+  if (!File(mPath).existsSync()) throw Exception('مدل ${config.model.name} پیدا نشد');
+
+  final ctxResult = await ch.invokeMethod<dynamic>('v2InitContext', {'modelPath': mPath});
+  if (ctxResult == null) throw Exception('بارگذاری مدل ناموفق');
+  final ctx = (ctxResult as num).toInt();
+  if (ctx == 0) throw Exception('بارگذاری مدل ناموفق (ctx=0)');
+
+  // پوشه موقت chunk ها
+  final cacheDir = Directory(p.join((await getApplicationSupportDirectory()).path, '_live_chunks'));
+  if (!cacheDir.existsSync()) cacheDir.createSync(recursive: true);
+
+  try {
+    final chunksTotal = (durationMs / config.chunkMs).ceil().clamp(1, 9999);
+    LiveSubState.chunksTotal = chunksTotal;
+    final allSegs = <_Seg>[];
+
+    for (int i = 0; i < chunksTotal; i++) {
+      if (LiveSubState.cancelled) break;
+
+      final startMs = i * config.chunkMs;
+      final endMs   = ((i + 1) * config.chunkMs).clamp(0, durationMs);
+      final durMs   = endMs - startMs;
+
+      LiveSubState.chunksDone = i;
+      onChunk(startMs, durationMs, i, chunksTotal);
+
+      final tmpWav = p.join(cacheDir.path, '${videoPath.hashCode.abs()}_$i.wav');
+      try {
+        await ch.invokeMethod('extractAudioRange', {
+          'input': videoPath, 'output': tmpWav,
+          'startMs': startMs, 'durationMs': durMs,
+        });
+      } catch (e) {
+        debugPrint('[LiveSub] chunk $i extract: $e');
+        try { File(tmpWav).deleteSync(); } catch (_) {}
+        continue;
+      }
+      if (LiveSubState.cancelled) { try { File(tmpWav).deleteSync(); } catch (_) {} break; }
+
+      final raw = await ch.invokeMethod<String>('v2Transcribe', {
+        'ctx': ctx, 'wavPath': tmpWav,
+        'lang': config.language,
+        'threads': Platform.numberOfProcessors.clamp(2, 8),
+        'translate': config.isTranslate,
+      });
+      try { File(tmpWav).deleteSync(); } catch (_) {}
+
+      if (raw != null && raw.trim().isNotEmpty) {
+        for (final line in raw.split('\n').where((l) => l.contains('|'))) {
+          final parts = line.split('|');
+          if (parts.length < 3) continue;
+          final fromMs = (int.tryParse(parts[0]) ?? 0) + startMs;
+          final toMs   = (int.tryParse(parts[1]) ?? 0) + startMs;
+          final text   = parts.sublist(2).join('|').trim();
+          if (text.isNotEmpty) allSegs.add(_Seg(Duration(milliseconds: fromMs), Duration(milliseconds: toMs), text));
+        }
+        File(srtFile).writeAsStringSync(_liveSegsToSrt(allSegs), encoding: utf8);
+        LiveSubState.transcribedMs = endMs;
+        LiveSubState.chunksDone = i + 1;
+        onSrtUpdated();
+      }
+    }
+
+    if (!LiveSubState.cancelled) LiveSubState.transcribedMs = durationMs;
+    return srtFile;
+  } finally {
+    try { await ch.invokeMethod('v2FreeContext', {'ctx': ctx}); } catch (_) {}
+  }
+}
+
+String _liveSegsToSrt(List<_Seg> segs) {
+  final b = StringBuffer();
+  for (int i = 0; i < segs.length; i++) {
+    b.writeln('${i + 1}');
+    b.writeln('${_d(segs[i].from)} --> ${_d(segs[i].to)}');
+    b.writeln(segs[i].text.trim());
+    b.writeln();
+  }
+  return b.toString();
+}
