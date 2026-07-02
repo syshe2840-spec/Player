@@ -28,7 +28,7 @@ jobs:
 
       - name: Restore our files
         run: |
-          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt lib/srt_editor_screen.dart lib/ai_batch_queue_screen.dart lib/ai_history_screen.dart lib/opensubtitles_service.dart lib/opensubtitles_search_sheet.dart lib/live_sub_sheet.dart
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt lib/srt_editor_screen.dart lib/ai_batch_queue_screen.dart lib/ai_history_screen.dart lib/opensubtitles_service.dart lib/opensubtitles_search_sheet.dart lib/live_sub_sheet.dart android_files/LiveSubService.kt
           MAKT=$(find android -name "MainActivity.kt" | head -1)
           echo "=== Found MainActivity at: $MAKT ==="
           if [ -n "$MAKT" ]; then
@@ -59,7 +59,16 @@ jobs:
           MAKT_DIR=$(dirname "$(find android -name "MainActivity.kt" | head -1)")
           if [ -n "$MAKT_DIR" ]; then
             cp android_files/WhisperV2Bridge.kt "$MAKT_DIR/WhisperV2Bridge.kt"
-            echo "=== WhisperV2Bridge.kt copied to $MAKT_DIR ==="
+            cp android_files/LiveSubService.kt  "$MAKT_DIR/LiveSubService.kt"
+            echo "=== Kotlin files copied ==="
+            # اضافه کردن service به AndroidManifest
+            MANIFEST="android/app/src/main/AndroidManifest.xml"
+            if ! grep -q "LiveSubService" "$MANIFEST"; then
+              sed -i 's|</application>|        <service android:name="com.vezoo.player.LiveSubService" android:foregroundServiceType="dataSync" android:exported="false"/>\n        </application>|' "$MANIFEST"
+              # اضافه کردن permission های Foreground Service
+              sed -i 's|<uses-permission android:name="android.permission.INTERNET"/>|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>|' "$MANIFEST"
+              echo "=== AndroidManifest updated with LiveSubService ==="
+            fi
           fi
           # patch build.gradle.kts برای NDK
           APP=android/app/build.gradle.kts
