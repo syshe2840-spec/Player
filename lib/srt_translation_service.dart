@@ -67,6 +67,9 @@ class SrtEntry2 {
 
 class SrtTranslationService {
   static const _workerBase = 'https://player.lastofanarchy.workers.dev';
+  static bool _cancelled = false;
+
+  static void cancel() => _cancelled = true;
 
   /// پارس SRT و جدا کردن متن از timestamp/index
   static List<SrtEntry2> parseSrt(String content) {
@@ -114,6 +117,7 @@ class SrtTranslationService {
     String? sourceLangCode,
     void Function(String status, double progress)? onStatus,
   }) async {
+    _cancelled = false;
     onStatus?.call('خواندن فایل...', 0.05);
     final content = await File(srtPath).readAsString(encoding: utf8);
     final entries = parseSrt(content);
@@ -132,32 +136,52 @@ class SrtTranslationService {
     onStatus?.call('ارسال به سرور...', 0.15);
     debugPrint('[SrtTranslate] ${allTextLines.length} lines → ${kTranslateLangs[targetLangCode]}');
 
-    // ارسال به Worker
-    final body = jsonEncode({
-      'lines': allTextLines,
-      'target_lang': kTranslateLangs[targetLangCode] ?? targetLangCode,
-      if (sourceLangCode != null) 'source_lang': kTranslateLangs[sourceLangCode] ?? sourceLangCode,
-    });
+    // ── Client-side batching: هر request فقط ۳۰ خط ──
+    // این از timeout شدن Worker جلوگیری می‌کنه
+    const batchSize = 30;
+    final translatedLines = <String>[];
+    final totalBatches = (allTextLines.length / batchSize).ceil();
 
-    onStatus?.call('در حال ترجمه...', 0.3);
-    final client = HttpClient();
-    String responseBody;
-    try {
-      final req = await client.postUrl(Uri.parse('$_workerBase/translate-srt'));
-      final bodyBytes = utf8.encode(body);
-      req.headers.set('Content-Type', 'application/json; charset=utf-8');
-      req.headers.contentLength = bodyBytes.length;
-      req.add(bodyBytes);
-      final res = await req.close();
-      responseBody = await res.transform(utf8.decoder).join();
-      if (res.statusCode != 200) throw Exception('خطای سرور (${res.statusCode}): $responseBody');
-    } finally {
-      client.close();
+    for (int b = 0; b < totalBatches; b++) {
+      if (_cancelled) throw Exception('لغو شد');
+
+      final start = b * batchSize;
+      final end = (start + batchSize).clamp(0, allTextLines.length);
+      final batchLines = allTextLines.sublist(start, end);
+
+      final progress = 0.2 + (b / totalBatches) * 0.65;
+      onStatus?.call('ترجمه تکه ${b + 1} از $totalBatches...', progress);
+
+      final body = jsonEncode({
+        'lines': batchLines,
+        'target_lang': kTranslateLangs[targetLangCode] ?? targetLangCode,
+        if (sourceLangCode != null) 'source_lang': kTranslateLangs[sourceLangCode] ?? sourceLangCode,
+      });
+
+      final client = HttpClient();
+      String responseBody;
+      try {
+        final req = await client.postUrl(Uri.parse('$_workerBase/translate-srt'));
+        final bodyBytes = utf8.encode(body);
+        req.headers.set('Content-Type', 'application/json; charset=utf-8');
+        req.headers.contentLength = bodyBytes.length;
+        req.add(bodyBytes);
+        final res = await req.close();
+        responseBody = await res.transform(utf8.decoder).join();
+        if (res.statusCode != 200) throw Exception('خطای سرور (${res.statusCode}): $responseBody');
+      } finally {
+        client.close();
+      }
+
+      final data = jsonDecode(responseBody) as Map<String, dynamic>;
+      final batchResult = (data['lines'] as List).map((e) => e.toString()).toList();
+      if (batchResult.length != batchLines.length) {
+        // اگه سرور عدد اشتباه برگرداند، fallback به اصل
+        translatedLines.addAll(batchLines);
+      } else {
+        translatedLines.addAll(batchResult);
+      }
     }
-
-    onStatus?.call('پردازش نتیجه...', 0.85);
-    final data = jsonDecode(responseBody) as Map<String, dynamic>;
-    final translatedLines = (data['lines'] as List).map((e) => e.toString()).toList();
 
     if (translatedLines.length != allTextLines.length) {
       throw Exception('تعداد خطوط ترجمه‌شده با اصل مطابقت ندارد');
