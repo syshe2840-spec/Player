@@ -21,6 +21,7 @@ import 'vez_service.dart';
 import 'ai_subtitle_sheet.dart';
 import 'opensubtitles_search_sheet.dart';
 import 'live_sub_sheet.dart';
+import 'srt_translate_sheet.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
 
@@ -48,6 +49,7 @@ class _PlayerState extends State<PlayerScreen>{
   List<SubEntry> _sub1=[];
   List<SubEntry> _sub2=[];
   bool _sub1Visible=true,_sub2Visible=false;
+  String? _sub1Path; // مسیر زیرنویس اصلی فعال (برای ترجمه)
   String? _sub2Path;
   List<AudioTrack> _audioTracks=[];
   List<SubtitleTrack> _subtitleTracks=[];
@@ -294,7 +296,7 @@ class _PlayerState extends State<PlayerScreen>{
         }
       }
       if(secondary){setState((){_sub2=entries;_sub2Path=path;_sub2Visible=entries.isNotEmpty;});}
-      else{setState(()=>_sub1=entries);}
+      else{setState((){_sub1=entries;_sub1Path=path;});}
     }catch(e){
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content:Text('خطا در بارگذاری زیرنویس: \${p.basename(path)}')));
@@ -1259,6 +1261,17 @@ class _PlayerState extends State<PlayerScreen>{
                       backgroundColor:Color(0xFF7C3AED)));
                   });
                   break;
+                case 'translate':
+                  if (_sub1Path != null) {
+                    SrtTranslateSheet.show(context, _sub1Path!, (translated) {
+                      _loadSub(translated, secondary: false);
+                    });
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('ابتدا یک زیرنویس بارگذاری کنید'),
+                      backgroundColor: Colors.orange));
+                  }
+                  break;
                 case 'settings':
                   showModalBottomSheet(
                     context:context,isScrollControlled:true,backgroundColor:const Color(0xFF1C1C22),
@@ -1317,6 +1330,10 @@ class _PlayerState extends State<PlayerScreen>{
               const PopupMenuItem(value:'online',child:Row(children:[
                 Icon(Icons.cloud_download_outlined,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('زیرنویس آنلاین'),
               ])),
+              if(_sub1Path!=null)
+                const PopupMenuItem(value:'translate',child:Row(children:[
+                  Icon(Icons.translate,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('ترجمه زیرنویس'),
+                ])),
               const PopupMenuItem(value:'settings',child:Row(children:[
                 Icon(Icons.tune,size:18,color:Colors.white70),SizedBox(width:10),Text('تنظیمات نمایش زیرنویس'),
               ])),
@@ -1564,4 +1581,3 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
-
