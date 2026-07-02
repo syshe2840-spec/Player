@@ -24,6 +24,7 @@ class _State extends State<LiveSubSheet> {
   String _lang = 'fa';
   bool _translate = false;
   int _chunkMs = 30000;
+  bool _useOverlap = true;
   LiveBehindAction _behindAction = LiveBehindAction.pause;
   double _behindSpeed = 0.75;
   bool _loading = true;
@@ -110,15 +111,37 @@ class _State extends State<LiveSubSheet> {
                 _switchRow('ترجمه به انگلیسی', _translate, (v) => setState(() => _translate = v)),
                 const SizedBox(height: 10),
 
-                // ── اندازه chunk ──
-                _row('اندازه هر تکه', Row(children: [
-                  _chunkChip('۱۵ ثانیه', 15000),
-                  const SizedBox(width: 6),
-                  _chunkChip('۳۰ ثانیه', 30000),
-                  const SizedBox(width: 6),
-                  _chunkChip('۶۰ ثانیه', 60000),
+                // ── اندازه هر تکه ──
+                _rowLabel('اندازه هر تکه'),
+                const SizedBox(height:6),
+                SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[
+                  _chunkChip('۱۵s', 15000),
+                  const SizedBox(width:6),
+                  _chunkChip('۳۰s', 30000),
+                  const SizedBox(width:6),
+                  _chunkChip('۱min', 60000),
+                  const SizedBox(width:6),
+                  _chunkChip('۲min', 120000),
+                  const SizedBox(width:6),
+                  _chunkChip('۳min', 180000),
+                  const SizedBox(width:6),
+                  _chunkChip('۴min', 240000),
+                  const SizedBox(width:6),
+                  _chunkChip('۵min', 300000),
+                  const SizedBox(width:6),
+                  _chunkChip('۱۰min', 600000),
+                  const SizedBox(width:6),
+                  _chunkChip('۱۵min', 900000),
                 ])),
-                const SizedBox(height: 10),
+                const SizedBox(height:10),
+
+                // ── Overlap ──
+                _switchRow('Overlap (جلوگیری از قطع شدن کلمات)', _useOverlap, (v) => setState(() => _useOverlap = v)),
+                if(_useOverlap)
+                  Padding(padding:const EdgeInsets.only(top:4,right:4),child:Text(
+                    '۵ ثانیه ابتدای هر تکه با تکه قبل همپوشانی دارد — زیرنویس تکرار نمیشه',
+                    style:const TextStyle(color:Colors.white38,fontSize:10))),
+                const SizedBox(height:10),
 
                 // ── وقتی جا موند ──
                 Container(
@@ -155,7 +178,9 @@ class _State extends State<LiveSubSheet> {
                   onPressed: _selected == null ? null : () {
                     Navigator.pop(ctx);
                     widget.onStart(LiveSubConfig(
-                      chunkMs: _chunkMs, language: _lang, model: _selected!,
+                      chunkMs: _chunkMs,
+                      overlapMs: _useOverlap ? 5000 : 0,
+                      language: _lang, model: _selected!,
                       isTranslate: _translate, behindAction: _behindAction, behindSpeed: _behindSpeed,
                     ));
                   },
@@ -168,6 +193,8 @@ class _State extends State<LiveSubSheet> {
       ),
     ),
   );
+
+  Widget _rowLabel(String label) => Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11));
 
   Widget _row(String label, Widget child) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
