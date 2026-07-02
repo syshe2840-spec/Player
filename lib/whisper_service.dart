@@ -867,12 +867,8 @@ Future<void> _startLiveSubService(String videoName) async {
       'title': 'زیرنویس زنده',
       'text': videoName,
     });
-    // وقتی service کشته شد (اپ کامل بسته شد) → cancel کن
-    ch.setMethodCallHandler((call) async {
-      if (call.method == 'liveSubServiceDestroyed') {
-        LiveSubState.cancelled = true;
-      }
-    });
+    // توجه: از setMethodCallHandler استفاده نمی‌کنیم چون channel رو کور می‌کنه
+    // وقتی service kill شه، LiveSubState.cancelled در onDestroy از Kotlin ست میشه
   } catch (_) {}
 }
 
