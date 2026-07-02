@@ -116,6 +116,7 @@ class SrtTranslationService {
     required String targetLangCode,
     String? sourceLangCode,
     void Function(String status, double progress)? onStatus,
+    void Function(String partialPath)? onSrtUpdated, // بعد از هر batch فراخوانی میشه
   }) async {
     _cancelled = false;
     onStatus?.call('خواندن فایل...', 0.05);
@@ -203,28 +204,44 @@ class SrtTranslationService {
       final data = jsonDecode(responseBody) as Map<String, dynamic>;
       final batchResult = (data['lines'] as List).map((e) => e.toString()).toList();
       if (batchResult.length != batchLines.length) {
-        // اگه سرور عدد اشتباه برگرداند، fallback به اصل
         translatedLines.addAll(batchLines);
       } else {
         translatedLines.addAll(batchResult);
       }
+
+      // ── ذخیره تدریجی بعد از هر batch ──
+      // اگه لغو شد یا خطا بود، تا اینجا ذخیره شده
+      final partialDir = p.dirname(srtPath);
+      final partialBase = p.basenameWithoutExtension(srtPath);
+      final partialPath = p.join(partialDir, '${partialBase}_$targetLangCode.srt');
+
+      // بازسازی entries تا اینجا با ترجمه + بقیه با متن اصلی
+      int lineIdx2 = 0;
+      final partialEntries = entries.map((e) {
+        final newTexts = e.textLines.map((orig) {
+          if (lineIdx2 < translatedLines.length) return translatedLines[lineIdx2++];
+          lineIdx2++;
+          return orig; // هنوز ترجمه نشده → اصل
+        }).toList();
+        return SrtEntry2(e.index, e.timestamp, newTexts);
+      }).toList();
+      await File(partialPath).writeAsString(buildSrt(partialEntries), encoding: utf8);
+      onSrtUpdated?.call(partialPath); // اپلای روی پلیر (اختیاری)
     }
 
     if (translatedLines.length != allTextLines.length) {
       throw Exception('تعداد خطوط ترجمه‌شده با اصل مطابقت ندارد');
     }
 
-    // بازسازی entries با متن ترجمه‌شده
+    // ── ذخیره نهایی کامل ──
+    final dir = p.dirname(srtPath);
+    final base = p.basenameWithoutExtension(srtPath);
+    final outPath = p.join(dir, '${base}_$targetLangCode.srt');
     int lineIdx = 0;
     final newEntries = entries.map((e) {
       final newTexts = e.textLines.map((_) => translatedLines[lineIdx++]).toList();
       return SrtEntry2(e.index, e.timestamp, newTexts);
     }).toList();
-
-    // ذخیره کنار فایل اصلی
-    final dir = p.dirname(srtPath);
-    final base = p.basenameWithoutExtension(srtPath);
-    final outPath = p.join(dir, '${base}_$targetLangCode.srt');
     await File(outPath).writeAsString(buildSrt(newEntries), encoding: utf8);
 
     onStatus?.call('✓ ذخیره شد', 1.0);
