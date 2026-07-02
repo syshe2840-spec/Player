@@ -845,6 +845,9 @@ class LiveSubState {
   static int totalMs = 0;
   static int chunksDone = 0;
   static int chunksTotal = 0;
+  static int chunkMs = 30000;     // اندازه هر تکه برای نمایش در پنل
+  static String language = '';    // زبان انتخابی برای نمایش در پنل
+  static bool useOverlap = true;
   static void reset(){cancelled=false;transcribedMs=0;totalMs=0;chunksDone=0;chunksTotal=0;}
 }
 
@@ -893,6 +896,9 @@ Future<String> transcribeLive({
   final durationMs = await WhisperService.getVideoDurationMs(videoPath);
   if (durationMs <= 0) throw Exception('مدت ویدیو قابل تشخیص نیست');
   LiveSubState.totalMs = durationMs;
+  LiveSubState.chunkMs = config.chunkMs;
+  LiveSubState.language = config.language;
+  LiveSubState.useOverlap = config.overlapMs > 0;
 
   final srtFile = liveSrtPath(videoPath, config.language);
   File(srtFile).writeAsStringSync('', encoding: utf8);
