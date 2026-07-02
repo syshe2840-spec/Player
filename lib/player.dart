@@ -1489,6 +1489,12 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         _row('🔊 پردازش‌شده', '${_fmt(transcribed)} از ${_fmt(totalSec)}'),
         const SizedBox(height:4),
         _row('⏳ تخمین مانده', '~${_fmt(remaining)}'),
+        const SizedBox(height:4),
+        _row('🧩 اندازه هر تکه', _fmt(LiveSubState.chunkMs ~/ 1000)),
+        const SizedBox(height:4),
+        _row('🌐 زبان', kLanguages[LiveSubState.language] ?? LiveSubState.language),
+        const SizedBox(height:4),
+        _row('🔗 Overlap', LiveSubState.useOverlap ? 'فعال (۵s)' : 'غیرفعال'),
         const SizedBox(height:16),
 
         const Divider(color:Colors.white12),
