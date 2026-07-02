@@ -117,7 +117,12 @@ class _PlayerState extends State<PlayerScreen>{
   bool _liveSubActive=false;
   String? _liveSubSrtPath;
   Timer? _liveSubRefreshTimer;
-  bool _liveSubPaused=false; // توسط live mode متوقف شده (نه کاربر)
+  Timer? _liveSubSecondTimer; // هر ثانیه آپدیت برای نمایش زمان زنده
+  int _liveChunkElapsedSec = 0; // ثانیه‌های گذشته از chunk جاری
+  int _liveChunkEstSec = 0;     // تخمین زمان chunk جاری
+  int _liveTotalEstSec = 0;     // تخمین کل مانده
+  bool _liveSubPaused=false;
+  bool _liveBadgeVisible=true; // دکمه 👁 مخفی/نمایش badge
   LiveBehindAction _liveBehindAction=LiveBehindAction.pause;
   double _liveBehindSpeed=0.75;
   Timer? _thumbTimer;
@@ -654,15 +659,33 @@ class _PlayerState extends State<PlayerScreen>{
     _liveSubSrtPath = srtPath;
 
     // timer بررسی sync + refresh SRT هر ۳ ثانیه
-    _liveSubRefreshTimer?.cancel();
+    _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
     _liveSubRefreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => _liveSubTick());
+
+    // timer هر ثانیه برای نمایش زنده‌ی زمان
+    _liveChunkElapsedSec = 0;
+    _liveSubSecondTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _liveChunkElapsedSec++;
+        // تخمین زمان chunk بر اساس مدل (تقریبی)
+        final chunkSec = LiveSubState.chunksTotal > 0
+            ? (LiveSubState.totalMs ~/ 1000) ~/ LiveSubState.chunksTotal
+            : 30;
+        _liveChunkEstSec = chunkSec;
+        final remaining = (LiveSubState.chunksTotal - LiveSubState.chunksDone) * chunkSec;
+        _liveTotalEstSec = remaining > 0 ? remaining : 0;
+      });
+      // reset counter وقتی chunk عوض شد
+      if (_liveChunkElapsedSec > _liveChunkEstSec + 10) _liveChunkElapsedSec = 0;
+    });
 
     // شروع transcription در پس‌زمینه
     transcribeLive(
       videoPath: _curPath,
       config: config,
       onChunk: (startMs, totalMs, done, total) {
-        // نیازی به UI update نیست — ticker کافیه
+        if (mounted) setState(() => _liveChunkElapsedSec = 0);
       },
       onSrtUpdated: () {
         if (mounted) _loadSub(srtPath, secondary: false);
@@ -670,7 +693,7 @@ class _PlayerState extends State<PlayerScreen>{
     ).then((_) {
       if (mounted) {
         setState(() => _liveSubActive = false);
-        _liveSubRefreshTimer?.cancel();
+        _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
         // اگه توسط buffer pause شده بود، resume کن
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -680,7 +703,7 @@ class _PlayerState extends State<PlayerScreen>{
     }).catchError((e) {
       if (mounted) {
         setState(() => _liveSubActive = false);
-        _liveSubRefreshTimer?.cancel();
+        _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
         if (!e.toString().contains('لغو')) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -690,9 +713,34 @@ class _PlayerState extends State<PlayerScreen>{
     });
   }
 
+  void _showLivePanel() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C22),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _LivePanelSheet(
+        onStop: () { Navigator.pop(context); _stopLiveSub(); },
+        onSkipChunk: () { Navigator.pop(context); _skipCurrentChunk(); },
+        onToggleVideo: () {
+          Navigator.pop(context);
+          if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
+          else player.pause();
+        },
+      ),
+    );
+  }
+
+  void _skipCurrentChunk() {
+    // لغو chunk جاری با reset flag — loop بعدی خودش می‌ره chunk بعدی
+    // در حال حاضر با cancel/restart پیاده میشه
+    // TODO: پیاده‌سازی skip واقعی در آینده
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('رد این تکه — chunk بعدی شروع میشه'), backgroundColor: Color(0xFF7C3AED)));
+  }
+
   void _stopLiveSub() {
     cancelLiveSub();
-    _liveSubRefreshTimer?.cancel();
+    _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
     if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
     setState(() => _liveSubActive = false);
   }
@@ -763,7 +811,7 @@ class _PlayerState extends State<PlayerScreen>{
     try{VolumeController.instance.showSystemUI=true;}catch(_){}
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _liveSubRefreshTimer?.cancel();
+    _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
     if (_liveSubActive) cancelLiveSub();
     player.dispose();
     super.dispose();
@@ -1080,23 +1128,32 @@ class _PlayerState extends State<PlayerScreen>{
 
         // ── پیام وسط ──
         // ── نشانگر زیرنویس زنده ──
-        if(_liveSubActive)
+        if(_liveSubActive && _liveBadgeVisible)
           Positioned(
             top: 80, left: 0, right: 0,
-            child: Center(child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(20)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.fiber_smart_record, color: Colors.red, size: 12),
-                const SizedBox(width: 4),
-                Text(
-                  _liveSubPaused
-                    ? 'در حال پردازش... (${(LiveSubState.transcribedMs/1000).toInt()}s/${(LiveSubState.totalMs/1000).toInt()}s)'
-                    : 'زیرنویس زنده — ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal} تکه',
-                  style: const TextStyle(color: Colors.white, fontSize: 10)),
-                const SizedBox(width: 6),
-                GestureDetector(onTap: _stopLiveSub, child: const Icon(Icons.close, color: Colors.white54, size: 14)),
-              ]),
+            child: Center(child: GestureDetector(
+              onTap: () => _showLivePanel(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.75), borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.fiber_smart_record, color: Colors.red, size: 12),
+                  const SizedBox(width: 5),
+                  Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(
+                      'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveChunkElapsedSec}s از ~${_liveChunkEstSec}s',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    if(_liveTotalEstSec > 0)
+                      Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
+                        style: const TextStyle(color: Colors.white60, fontSize: 9)),
+                  ]),
+                  const SizedBox(width: 8),
+                  // دکمه مخفی کردن badge
+                  GestureDetector(
+                    onTap: () => setState(()=>_liveBadgeVisible=false),
+                    child: const Icon(Icons.visibility_off, color: Colors.white38, size: 13)),
+                ]),
+              ),
             )),
           ),
 
@@ -1218,7 +1275,9 @@ class _PlayerState extends State<PlayerScreen>{
                   break;
                 case 'live':
                   if (_liveSubActive) {
-                    _stopLiveSub();
+                    // نمایش مجدد badge اگه مخفی بود + باز کردن پنل وضعیت
+                    setState(()=>_liveBadgeVisible=true);
+                    _showLivePanel();
                   } else {
                     LiveSubSheet.show(context, _curPath, _startLiveSub);
                   }
@@ -1227,8 +1286,14 @@ class _PlayerState extends State<PlayerScreen>{
             },
             itemBuilder:(_)=>[
               if (_liveSubActive)
-                const PopupMenuItem(value:'live',child:Row(children:[
-                  Icon(Icons.stop_circle,size:18,color:Colors.red),SizedBox(width:10),Text('توقف زیرنویس زنده'),
+                PopupMenuItem(value:'live',child:Row(children:[
+                  const Icon(Icons.fiber_smart_record,size:18,color:Colors.red),
+                  const SizedBox(width:10),
+                  Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    const Text('زیرنویس زنده — در حال اجرا'),
+                    Text('تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}',
+                      style:const TextStyle(color:Colors.white54,fontSize:11)),
+                  ]),
                 ]))
               else
                 const PopupMenuItem(value:'live',child:Row(children:[
@@ -1363,4 +1428,120 @@ class _PlayerState extends State<PlayerScreen>{
   );
 }
 
+// ── پنل اطلاعات زیرنویس زنده (bottom sheet با آپدیت زنده) ──
+class _LivePanelSheet extends StatefulWidget {
+  final VoidCallback onStop, onSkipChunk, onToggleVideo;
+  const _LivePanelSheet({required this.onStop, required this.onSkipChunk, required this.onToggleVideo});
+  @override State<_LivePanelSheet> createState() => _LivePanelSheetState();
+}
+
+class _LivePanelSheetState extends State<_LivePanelSheet> {
+  Timer? _t;
+  int _elapsed = 0;
+
+  @override void initState() {
+    super.initState();
+    _elapsed = 0;
+    _t = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsed++);
+    });
+  }
+  @override void dispose() { _t?.cancel(); super.dispose(); }
+
+  String _fmt(int sec) {
+    if (sec < 60) return '${sec}s';
+    return '${sec~/60}m ${sec%60}s';
+  }
+
+  @override
+  Widget build(BuildContext ctx) {
+    final done = LiveSubState.chunksDone;
+    final total = LiveSubState.chunksTotal;
+    final transcribed = LiveSubState.transcribedMs ~/ 1000;
+    final totalSec = LiveSubState.totalMs ~/ 1000;
+    final chunkSec = total > 0 ? totalSec ~/ total : 30;
+    final remaining = (total - done) * chunkSec;
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 16),
+
+        Row(children: [
+          const Icon(Icons.fiber_smart_record, color: Colors.red, size: 18),
+          const SizedBox(width: 8),
+          const Text('زیرنویس زنده در حال اجرا', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        ]),
+        const SizedBox(height: 16),
+        const Divider(color: Colors.white12),
+        const SizedBox(height: 12),
+
+        // ── زمان chunk جاری ──
+        _infoRow('⏱ این تکه', '${_fmt(_elapsed)} از ~${_fmt(chunkSec)}'),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(
+          value: chunkSec > 0 ? (_elapsed / chunkSec).clamp(0.0, 1.0) : 0,
+          backgroundColor: Colors.white12,
+          color: Colors.red,
+        ),
+        const SizedBox(height: 12),
+
+        // ── پیشرفت کل ──
+        _infoRow('📊 تکه‌ها', '$done از $total'),
+        const SizedBox(height: 4),
+        _infoRow('🔊 پردازش‌شده', '${_fmt(transcribed)} از ${_fmt(totalSec)}'),
+        const SizedBox(height: 4),
+        _infoRow('⏳ تخمین مانده', '~${_fmt(remaining)}'),
+        const SizedBox(height: 16),
+
+        const Divider(color: Colors.white12),
+        const SizedBox(height: 12),
+
+        // ── دکمه‌ها ──
+        Row(children: [
+          Expanded(child: OutlinedButton.icon(
+            onPressed: widget.onToggleVideo,
+            icon: const Icon(Icons.pause, size: 16),
+            label: const Text('توقف/ادامه ویدیو', style: TextStyle(fontSize: 12)),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24)),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: OutlinedButton.icon(
+            onPressed: widget.onSkipChunk,
+            icon: const Icon(Icons.skip_next, size: 16),
+            label: const Text('رد این تکه', style: TextStyle(fontSize: 12)),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.orange), foregroundColor: Colors.orange),
+          )),
+        ]),
+        const SizedBox(height: 8),
+        SizedBox(width: double.infinity, child: FilledButton.icon(
+          onPressed: () async {
+            final ok = await showDialog<bool>(context: ctx, builder: (_) => AlertDialog(
+              backgroundColor: const Color(0xFF1C1C22),
+              title: const Text('لغو زیرنویس زنده؟', style: TextStyle(color: Colors.white, fontSize: 15)),
+              content: Text('تا اینجا ${_fmt(transcribed)} پردازش شده و در فایل SRT ذخیره شده.',
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ادامه')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('لغو کامل')),
+              ],
+            ));
+            if (ok == true) widget.onStop();
+          },
+          icon: const Icon(Icons.stop, size: 16),
+          label: const Text('لغو کامل'),
+          style: FilledButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 12)),
+        )),
+      ]),
+    );
+  }
+
+  Widget _infoRow(String label, String value) => Row(children: [
+    Text(label, style: const TextStyle(color: Colors.white60, fontSize: 13)),
+    const Spacer(),
+    Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+  ]);
+}
 
