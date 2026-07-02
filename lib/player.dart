@@ -21,6 +21,7 @@ import 'vez_service.dart';
 import 'ai_subtitle_sheet.dart';
 import 'opensubtitles_search_sheet.dart';
 import 'live_sub_sheet.dart';
+import 'whisper_service.dart';
 import 'settings.dart';
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
