@@ -845,10 +845,17 @@ class LiveSubState {
   static int totalMs = 0;
   static int chunksDone = 0;
   static int chunksTotal = 0;
-  static int chunkMs = 30000;     // اندازه هر تکه برای نمایش در پنل
-  static String language = '';    // زبان انتخابی برای نمایش در پنل
+  static int chunkMs = 30000;
+  static String language = '';
   static bool useOverlap = true;
-  static void reset(){cancelled=false;transcribedMs=0;totalMs=0;chunksDone=0;chunksTotal=0;}
+  static int chunkStartMs = 0; // زمان شروع chunk جاری (DateTime.now().millisecondsSinceEpoch)
+  static void reset(){
+    cancelled=false; transcribedMs=0; totalMs=0; chunksDone=0; chunksTotal=0;
+    chunkStartMs = DateTime.now().millisecondsSinceEpoch;
+  }
+
+  static int get chunkElapsedSec =>
+    ((DateTime.now().millisecondsSinceEpoch - chunkStartMs) / 1000).round();
 }
 
 /// مسیر فایل SRT زنده (کنار فایل ویدیو ذخیره میشه)
@@ -933,6 +940,7 @@ Future<String> transcribeLive({
       final extractDur  = chunkEnd - extractStart;
 
       LiveSubState.chunksDone = i;
+      LiveSubState.chunkStartMs = DateTime.now().millisecondsSinceEpoch; // ریست timer این تکه
       onChunk(chunkStart, durationMs, i, chunksTotal);
 
       final tmpWav = p.join(cacheDir.path, '${videoPath.hashCode.abs()}_$i.wav');
