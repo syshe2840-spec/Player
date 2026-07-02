@@ -653,6 +653,8 @@ class _PlayerState extends State<PlayerScreen>{
   void _startLiveSub(LiveSubConfig config) {
     _liveBehindAction = config.behindAction;
     _liveBehindSpeed  = config.behindSpeed;
+    LiveSubState.reset();
+    _liveBadgeVisible = true; // هر session جدید badge دیده میشه
     setState(() => _liveSubActive = true);
 
     final srtPath = liveSrtPath(_curPath, config.language);
@@ -690,7 +692,7 @@ class _PlayerState extends State<PlayerScreen>{
       if (mounted) {
         setState(() => _liveSubActive = false);
         _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
-        // اگه توسط buffer pause شده بود، resume کن
+        _liveStopwatch.stop();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('✓ زیرنویس زنده کامل شد'),
@@ -700,6 +702,7 @@ class _PlayerState extends State<PlayerScreen>{
       if (mounted) {
         setState(() => _liveSubActive = false);
         _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
+        _liveStopwatch.stop();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
         if (!e.toString().contains('لغو')) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -738,6 +741,7 @@ class _PlayerState extends State<PlayerScreen>{
   void _stopLiveSub() {
     cancelLiveSub();
     _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
+    _liveStopwatch.stop();
     if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
     setState(() => _liveSubActive = false);
   }
@@ -1128,40 +1132,41 @@ class _PlayerState extends State<PlayerScreen>{
         if(_liveSubActive && _liveBadgeVisible)
           Positioned(
             top: 80, left: 0, right: 0,
-            child: Center(child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
-                borderRadius: BorderRadius.circular(20)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                // ── بخش اصلی badge (کلیک → پنل) ──
-                GestureDetector(
-                  onTap: _showLivePanel,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.fiber_smart_record, color: Colors.red, size: 12),
-                      const SizedBox(width: 5),
-                      Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(
-                          'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveStopwatch.elapsed.inSeconds}s گذشت',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                        if(_liveTotalEstSec > 0)
-                          Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
-                            style: const TextStyle(color: Colors.white60, fontSize: 9)),
+            child: ValueListenableBuilder<int>(
+              valueListenable: LiveSubState.notifier,
+              builder: (_,__,___) => Center(child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.75),
+                  borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  GestureDetector(
+                    onTap: _showLivePanel,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.fiber_smart_record, color: Colors.red, size: 12),
+                        const SizedBox(width: 5),
+                        Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(
+                            'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveStopwatch.elapsed.inSeconds}s گذشت',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          if(_liveTotalEstSec > 0)
+                            Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
+                              style: const TextStyle(color: Colors.white60, fontSize: 9)),
+                        ]),
                       ]),
-                    ]),
+                    ),
                   ),
-                ),
-                // ── دکمه 👁 مخفی‌کردن — کاملاً جدا ──
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(()=>_liveBadgeVisible=false),
-                  child: const Padding(
-                    padding: EdgeInsets.fromLTRB(4, 6, 12, 6),
-                    child: Icon(Icons.visibility, color: Colors.white54, size: 14)),
-                ),
-              ]),
-            )),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(()=>_liveBadgeVisible=false),
+                    child: const Padding(
+                      padding: EdgeInsets.fromLTRB(4, 6, 12, 6),
+                      child: Icon(Icons.visibility, color: Colors.white54, size: 14)),
+                  ),
+                ]),
+              )),
+            ),
           ),
 
         if(_overlay!=null)Center(child:Container(
@@ -1452,13 +1457,17 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
 
   @override
   Widget build(BuildContext ctx) {
-    final done        = LiveSubState.chunksDone;
-    final total       = LiveSubState.chunksTotal;
-    final transcribed = LiveSubState.transcribedMs ~/ 1000;
-    final totalSec    = LiveSubState.totalMs ~/ 1000;
-    final chunkSec    = total > 0 ? (totalSec / total).round() : 30;
-    final remaining   = (total - done) * chunkSec;
-    final elapsed     = widget.stopwatch.elapsed.inSeconds;
+    final elapsed = widget.stopwatch.elapsed.inSeconds;
+
+    return ValueListenableBuilder<int>(
+      valueListenable: LiveSubState.notifier,
+      builder: (_, __, ___) {
+        final done        = LiveSubState.chunksDone;
+        final total       = LiveSubState.chunksTotal;
+        final transcribed = LiveSubState.transcribedMs ~/ 1000;
+        final totalSec    = LiveSubState.totalMs ~/ 1000;
+        final chunkSec    = total > 0 ? (totalSec / total).round() : 30;
+        final remaining   = (total - done) * chunkSec;
 
     return SafeArea(child: SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -1545,6 +1554,8 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         )),
       ]),
     ));
+      }, // end ValueListenableBuilder builder
+    ); // end ValueListenableBuilder
   }
 
   Widget _row(String label, String value) => Row(children:[
