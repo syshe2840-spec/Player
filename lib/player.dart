@@ -1131,29 +1131,39 @@ class _PlayerState extends State<PlayerScreen>{
         if(_liveSubActive && _liveBadgeVisible)
           Positioned(
             top: 80, left: 0, right: 0,
-            child: Center(child: GestureDetector(
-              onTap: () => _showLivePanel(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.75), borderRadius: BorderRadius.circular(20)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.fiber_smart_record, color: Colors.red, size: 12),
-                  const SizedBox(width: 5),
-                  Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(
-                      'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveChunkElapsedSec}s از ~${_liveChunkEstSec}s',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    if(_liveTotalEstSec > 0)
-                      Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
-                        style: const TextStyle(color: Colors.white60, fontSize: 9)),
-                  ]),
-                  const SizedBox(width: 8),
-                  // دکمه مخفی کردن badge
-                  GestureDetector(
-                    onTap: () => setState(()=>_liveBadgeVisible=false),
-                    child: const Icon(Icons.visibility_off, color: Colors.white38, size: 13)),
-                ]),
-              ),
+            child: Center(child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.75),
+                borderRadius: BorderRadius.circular(20)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                // ── بخش اصلی badge (کلیک → پنل) ──
+                GestureDetector(
+                  onTap: _showLivePanel,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.fiber_smart_record, color: Colors.red, size: 12),
+                      const SizedBox(width: 5),
+                      Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(
+                          'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveChunkElapsedSec}s / ~${_liveChunkEstSec}s',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        if(_liveTotalEstSec > 0)
+                          Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
+                            style: const TextStyle(color: Colors.white60, fontSize: 9)),
+                      ]),
+                    ]),
+                  ),
+                ),
+                // ── دکمه 👁 مخفی‌کردن — کاملاً جدا ──
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(()=>_liveBadgeVisible=false),
+                  child: const Padding(
+                    padding: EdgeInsets.fromLTRB(4, 6, 12, 6),
+                    child: Icon(Icons.visibility, color: Colors.white54, size: 14)),
+                ),
+              ]),
             )),
           ),
 
@@ -1466,14 +1476,19 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
       padding: const EdgeInsets.all(20),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         Row(children: [
           const Icon(Icons.fiber_smart_record, color: Colors.red, size: 18),
           const SizedBox(width: 8),
-          const Text('زیرنویس زنده در حال اجرا', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          const Expanded(child: Text('زیرنویس زنده در حال اجرا', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold))),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+            onPressed: () => Navigator.pop(ctx),
+            constraints: const BoxConstraints(), padding: const EdgeInsets.all(4),
+          ),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         const Divider(color: Colors.white12),
         const SizedBox(height: 12),
 
