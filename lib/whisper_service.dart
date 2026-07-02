@@ -822,6 +822,7 @@ enum LiveBehindAction { pause, slowDown }
 
 class LiveSubConfig {
   final int chunkMs;
+  final int overlapMs; // اگه ۰ باشه overlap غیرفعاله
   final String language;
   final WhisperModelDef model;
   final bool isTranslate;
@@ -829,6 +830,7 @@ class LiveSubConfig {
   final double behindSpeed;
   const LiveSubConfig({
     this.chunkMs = 30000,
+    this.overlapMs = 5000,
     required this.language,
     required this.model,
     this.isTranslate = false,
@@ -894,18 +896,23 @@ Future<String> transcribeLive({
     for (int i = 0; i < chunksTotal; i++) {
       if (LiveSubState.cancelled) break;
 
-      final startMs = i * config.chunkMs;
-      final endMs   = ((i + 1) * config.chunkMs).clamp(0, durationMs);
-      final durMs   = endMs - startMs;
+      final chunkStart = i * config.chunkMs;
+      final chunkEnd   = ((i + 1) * config.chunkMs).clamp(0, durationMs);
+
+      // overlap: شروع از کمی قبل‌تر (نه chunk اول) تا whisper context داشته باشه
+      final extractStart = (i == 0 || config.overlapMs == 0)
+          ? chunkStart
+          : (chunkStart - config.overlapMs).clamp(0, durationMs);
+      final extractDur  = chunkEnd - extractStart;
 
       LiveSubState.chunksDone = i;
-      onChunk(startMs, durationMs, i, chunksTotal);
+      onChunk(chunkStart, durationMs, i, chunksTotal);
 
       final tmpWav = p.join(cacheDir.path, '${videoPath.hashCode.abs()}_$i.wav');
       try {
         await ch.invokeMethod('extractAudioRange', {
           'input': videoPath, 'output': tmpWav,
-          'startMs': startMs, 'durationMs': durMs,
+          'startMs': extractStart, 'durationMs': extractDur,
         });
       } catch (e) {
         debugPrint('[LiveSub] chunk $i extract: $e');
@@ -926,13 +933,17 @@ Future<String> transcribeLive({
         for (final line in raw.split('\n').where((l) => l.contains('|'))) {
           final parts = line.split('|');
           if (parts.length < 3) continue;
-          final fromMs = (int.tryParse(parts[0]) ?? 0) + startMs;
-          final toMs   = (int.tryParse(parts[1]) ?? 0) + startMs;
+          // timestamp واقعی = offset در WAV + شروع استخراج
+          final fromMs = (int.tryParse(parts[0]) ?? 0) + extractStart;
+          final toMs   = (int.tryParse(parts[1]) ?? 0) + extractStart;
           final text   = parts.sublist(2).join('|').trim();
-          if (text.isNotEmpty) allSegs.add(_Seg(Duration(milliseconds: fromMs), Duration(milliseconds: toMs), text));
+          // فیلتر ناحیه overlap (قبل از chunkStart) تا تکرار نشه
+          if (text.isNotEmpty && fromMs >= chunkStart) {
+            allSegs.add(_Seg(Duration(milliseconds: fromMs), Duration(milliseconds: toMs), text));
+          }
         }
         File(srtFile).writeAsStringSync(_liveSegsToSrt(allSegs), encoding: utf8);
-        LiveSubState.transcribedMs = endMs;
+        LiveSubState.transcribedMs = chunkEnd;
         LiveSubState.chunksDone = i + 1;
         onSrtUpdated();
       }
