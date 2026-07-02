@@ -857,6 +857,28 @@ String liveSrtPath(String videoPath, String language) {
 Future<void> cancelLiveSub() async {
   LiveSubState.cancelled = true;
   await WhisperService.cancelExtraction();
+  _stopLiveSubService();
+}
+
+Future<void> _startLiveSubService(String videoName) async {
+  const ch = MethodChannel('com.vezoo.player/whisper');
+  try {
+    await ch.invokeMethod('startLiveSubService', {
+      'title': 'زیرنویس زنده',
+      'text': videoName,
+    });
+    // وقتی service کشته شد (اپ کامل بسته شد) → cancel کن
+    ch.setMethodCallHandler((call) async {
+      if (call.method == 'liveSubServiceDestroyed') {
+        LiveSubState.cancelled = true;
+      }
+    });
+  } catch (_) {}
+}
+
+Future<void> _stopLiveSubService() async {
+  const ch = MethodChannel('com.vezoo.player/whisper');
+  try { await ch.invokeMethod('stopLiveSubService'); } catch (_) {}
 }
 
 /// پردازش زنده — chunk به chunk، SRT روی دیسک بروز میشه
@@ -867,6 +889,9 @@ Future<String> transcribeLive({
   required void Function() onSrtUpdated,
 }) async {
   LiveSubState.reset();
+
+  // شروع Foreground Service — اپ minimize شد؟ پردازش ادامه میده
+  await _startLiveSubService(p.basenameWithoutExtension(videoPath));
   const ch = MethodChannel('com.vezoo.player/whisper');
 
   final durationMs = await WhisperService.getVideoDurationMs(videoPath);
@@ -950,6 +975,7 @@ Future<String> transcribeLive({
     }
 
     if (!LiveSubState.cancelled) LiveSubState.transcribedMs = durationMs;
+    _stopLiveSubService(); // service دیگه نیازی نیست
     return srtFile;
   } finally {
     try { await ch.invokeMethod('v2FreeContext', {'ctx': ctx}); } catch (_) {}
