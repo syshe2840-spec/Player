@@ -144,8 +144,10 @@ class SrtTranslationService {
     String responseBody;
     try {
       final req = await client.postUrl(Uri.parse('$_workerBase/translate-srt'));
-      req.headers.set('Content-Type', 'application/json');
-      req.write(body);
+      final bodyBytes = utf8.encode(body);
+      req.headers.set('Content-Type', 'application/json; charset=utf-8');
+      req.headers.contentLength = bodyBytes.length;
+      req.add(bodyBytes);
       final res = await req.close();
       responseBody = await res.transform(utf8.decoder).join();
       if (res.statusCode != 200) throw Exception('خطای سرور (${res.statusCode}): $responseBody');
