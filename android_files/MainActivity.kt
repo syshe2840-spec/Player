@@ -193,6 +193,25 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+                "startLiveSubService" -> {
+                    val title = call.argument<String>("title") ?: "زیرنویس زنده"
+                    val text  = call.argument<String>("text")  ?: "در حال پردازش..."
+                    val intent = Intent(this, LiveSubService::class.java).apply {
+                        putExtra("title", title); putExtra("text", text)
+                    }
+                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent)
+                    else startService(intent)
+                    // وقتی service از بیرون kill شد (اپ کامل بسته شد) → به Dart اطلاع بده
+                    LiveSubServiceHelper.onServiceDestroyed = {
+                        handler.post { whisperCh?.invokeMethod("liveSubServiceDestroyed", null) }
+                    }
+                    result.success(null)
+                }
+                "stopLiveSubService" -> {
+                    LiveSubServiceHelper.onServiceDestroyed = null
+                    stopService(Intent(this, LiveSubService::class.java))
+                    result.success(null)
+                }
                 "showAiProgress" -> {
                     val title = call.argument<String>("title") ?: "زیرنویس AI"
                     showAiProgressNotif(title, 0, "شروع...")
