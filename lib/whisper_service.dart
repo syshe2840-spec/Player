@@ -848,11 +848,18 @@ class LiveSubState {
   static int chunkMs = 30000;
   static String language = '';
   static bool useOverlap = true;
-  static int chunkStartMs = 0; // زمان شروع chunk جاری (DateTime.now().millisecondsSinceEpoch)
+  static int chunkStartMs = 0;
+
+  // ValueNotifier — وقتی chunk عوض شد فوری UI رو notify کنه
+  static final notifier = ValueNotifier<int>(0);
+
   static void reset(){
     cancelled=false; transcribedMs=0; totalMs=0; chunksDone=0; chunksTotal=0;
     chunkStartMs = DateTime.now().millisecondsSinceEpoch;
+    notifier.value = 0;
   }
+
+  static void notify() => notifier.value++;
 
   static int get chunkElapsedSec =>
     ((DateTime.now().millisecondsSinceEpoch - chunkStartMs) / 1000).round();
@@ -925,6 +932,7 @@ Future<String> transcribeLive({
   try {
     final chunksTotal = (durationMs / config.chunkMs).ceil().clamp(1, 9999);
     LiveSubState.chunksTotal = chunksTotal;
+    LiveSubState.notify(); // بعد از ست شدن total، badge رو آپدیت کن
     final allSegs = <_Seg>[];
 
     for (int i = 0; i < chunksTotal; i++) {
@@ -940,7 +948,8 @@ Future<String> transcribeLive({
       final extractDur  = chunkEnd - extractStart;
 
       LiveSubState.chunksDone = i;
-      LiveSubState.chunkStartMs = DateTime.now().millisecondsSinceEpoch; // ریست timer این تکه
+      LiveSubState.chunkStartMs = DateTime.now().millisecondsSinceEpoch;
+      LiveSubState.notify(); // فوری UI رو آپدیت کنه
       onChunk(chunkStart, durationMs, i, chunksTotal);
 
       final tmpWav = p.join(cacheDir.path, '${videoPath.hashCode.abs()}_$i.wav');
@@ -980,6 +989,7 @@ Future<String> transcribeLive({
         File(srtFile).writeAsStringSync(_liveSegsToSrt(allSegs), encoding: utf8);
         LiveSubState.transcribedMs = chunkEnd;
         LiveSubState.chunksDone = i + 1;
+        LiveSubState.notify();
         onSrtUpdated();
       }
     }
