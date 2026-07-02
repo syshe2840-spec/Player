@@ -151,6 +151,21 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+                "extractAudioRange" -> {
+                    val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
+                    val output = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
+                    val startMs = (call.argument<Int>("startMs") ?: 0).toLong()
+                    val durMs   = (call.argument<Int>("durationMs") ?: 30000).toLong()
+                    extractCancel.set(false)
+                    executor.execute {
+                        try {
+                            extractAudioWavRange(input, output, extractCancel, startMs, durMs)
+                            handler.post { result.success(output) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("EXTRACT_RANGE_FAILED", e.message, null) }
+                        }
+                    }
+                }
                 "cancelExtraction" -> { extractCancel.set(true); result.success(null) }
                 "getCacheDir" -> result.success(cacheDir.absolutePath)
                 "getDeviceInfo" -> {
@@ -401,6 +416,71 @@ class MainActivity : FlutterActivity() {
         writeWav(outputPath, out, 16000)
     }
 
+    /** استخراج یه بازه‌ی زمانی از صدای ویدیو — برای زیرنویس زنده */
+    private fun extractAudioWavRange(videoPath: String, outputPath: String, cancel: AtomicBoolean, startMs: Long, durationMs: Long) {
+        val extractor = MediaExtractor()
+        extractor.setDataSource(videoPath)
+        var audioIdx = -1; lateinit var audioFmt: MediaFormat
+        for (i in 0 until extractor.trackCount) {
+            val fmt = extractor.getTrackFormat(i)
+            val mime = fmt.getString(MediaFormat.KEY_MIME) ?: continue
+            if (mime.startsWith("audio/")) { audioIdx = i; audioFmt = fmt; break }
+        }
+        require(audioIdx >= 0) { "No audio track found" }
+        extractor.selectTrack(audioIdx)
+        extractor.seekTo(startMs * 1000L, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+
+        val origRate = audioFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+        val channels = audioFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        val mime = audioFmt.getString(MediaFormat.KEY_MIME)!!
+        val codec = MediaCodec.createDecoderByType(mime)
+        codec.configure(audioFmt, null, null, 0); codec.start()
+        val bufInfo = MediaCodec.BufferInfo()
+        val endUs = (startMs + durationMs) * 1000L
+
+        val estSamples = ((durationMs / 1000.0) * origRate).toInt() + 4096
+        var pcm = ShortArray(estSamples.coerceAtLeast(4096))
+        var pcmLen = 0
+        fun ensureCap(extra: Int) {
+            if (pcmLen + extra > pcm.size) pcm = pcm.copyOf(maxOf(pcm.size * 2, pcmLen + extra))
+        }
+        var inputDone = false
+        try {
+            while (!cancel.get()) {
+                if (!inputDone) {
+                    val inIdx = codec.dequeueInputBuffer(10_000)
+                    if (inIdx >= 0) {
+                        val buf = codec.getInputBuffer(inIdx)!!
+                        val sz = extractor.readSampleData(buf, 0)
+                        val sampleTime = extractor.sampleTime
+                        if (sz < 0 || sampleTime >= endUs) {
+                            codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true
+                        } else {
+                            codec.queueInputBuffer(inIdx, 0, sz, sampleTime, 0); extractor.advance()
+                        }
+                    }
+                }
+                val outIdx = codec.dequeueOutputBuffer(bufInfo, 10_000)
+                if (outIdx >= 0) {
+                    val buf = codec.getOutputBuffer(outIdx)!!
+                    val s = ShortArray(bufInfo.size / 2)
+                    buf.order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s)
+                    codec.releaseOutputBuffer(outIdx, false)
+                    if (channels >= 2) {
+                        ensureCap(s.size / channels)
+                        var i = 0; while (i + 1 < s.size) { pcm[pcmLen++] = ((s[i].toInt() + s[i+1].toInt()) / 2).toShort(); i += channels }
+                    } else {
+                        ensureCap(s.size); System.arraycopy(s, 0, pcm, pcmLen, s.size); pcmLen += s.size
+                    }
+                    if (bufInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                }
+            }
+        } finally { codec.stop(); codec.release(); extractor.release() }
+        if (cancel.get()) throw Exception("cancelled")
+        val trimmed = pcm.copyOf(pcmLen)
+        val out = if (origRate == 16000) trimmed else resamplePcm(trimmed, origRate, 16000)
+        writeWav(outputPath, out, 16000)
+    }
     private fun resamplePcm(src: ShortArray, from: Int, to: Int): ShortArray {
         val out = ShortArray((src.size.toLong() * to / from).toInt())
         val ratio = from.toDouble() / to.toDouble()
@@ -547,4 +627,3 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
-
