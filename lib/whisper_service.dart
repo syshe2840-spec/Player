@@ -945,13 +945,20 @@ Future<String> transcribeLive({
   }
 }
 
+String _fmtSrtTime(Duration d) =>
+    '${d.inHours.toString().padLeft(2,'0')}:'
+    '${(d.inMinutes%60).toString().padLeft(2,'0')}:'
+    '${(d.inSeconds%60).toString().padLeft(2,'0')},'
+    '${(d.inMilliseconds%1000).toString().padLeft(3,'0')}';
+
 String _liveSegsToSrt(List<_Seg> segs) {
   final b = StringBuffer();
   for (int i = 0; i < segs.length; i++) {
     b.writeln('${i + 1}');
-    b.writeln('${_d(segs[i].from)} --> ${_d(segs[i].to)}');
+    b.writeln('${_fmtSrtTime(segs[i].from)} --> ${_fmtSrtTime(segs[i].to)}');
     b.writeln(segs[i].text.trim());
     b.writeln();
   }
   return b.toString();
 }
+
