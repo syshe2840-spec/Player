@@ -1477,8 +1477,17 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         const Divider(color:Colors.white12),
         const SizedBox(height:12),
 
-        _row('⏱ زمان گذشته', _fmt(elapsed)),
-        const SizedBox(height:6),
+        // ── زمان این تکه (ریست میشه) ──
+        _row('⏱ این تکه', '${_fmt(LiveSubState.chunkElapsedSec)} از ~${_fmt(chunkSec)}'),
+        const SizedBox(height:4),
+        LinearProgressIndicator(
+          value: chunkSec > 0 ? (LiveSubState.chunkElapsedSec / chunkSec).clamp(0.0,1.0) : 0,
+          backgroundColor:Colors.white12, color:Colors.orange),
+        const SizedBox(height:10),
+
+        // ── کل زمان (ریست نمیشه) ──
+        _row('⏰ کل گذشته', _fmt(elapsed)),
+        const SizedBox(height:4),
         LinearProgressIndicator(
           value: totalSec>0 ? (transcribed/totalSec).clamp(0.0,1.0) : 0,
           backgroundColor:Colors.white12, color:Colors.red),
