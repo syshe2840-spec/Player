@@ -119,9 +119,24 @@ class SrtTranslationService {
   }) async {
     _cancelled = false;
     onStatus?.call('خواندن فایل...', 0.05);
+
+    // ── محدودیت حجم — بیشتر از ۳۰۰۰ خط قابل پردازش نیست ──
+    // دلیل: سهمیه رایگان Cloudflare Workers AI روزانه محدوده
     final content = await File(srtPath).readAsString(encoding: utf8);
     final entries = parseSrt(content);
     if (entries.isEmpty) throw Exception('فایل SRT خالی یا نامعتبر است');
+
+    // چک حجم — حداکثر ۳۰۰۰ خط (معادل ~۳ ساعت فیلم)
+    final totalTextLines = entries.fold(0, (s, e) => s + e.textLines.length);
+    if (totalTextLines > 3000) {
+      throw Exception(
+        'متأسفم، این فایل زیرنویس خیلی بزرگ است ($totalTextLines خط).\n\n'
+        'سرویس ترجمه ما از پلن رایگان Cloudflare استفاده می‌کند که محدودیت روزانه دارد '
+        'و از فایل‌های بیشتر از ۳۰۰۰ خط پشتیبانی نمی‌کند.\n\n'
+        'پیشنهاد: از ابزارهای ترجمه دیگری مانند Google Translate، DeepL یا '
+        'اپلیکیشن‌های ترجمه SRT آنلاین استفاده کنید.'
+      );
+    }
 
     // جمع‌آوری همه خطوط متن (بدون timestamp و index)
     final allTextLines = <String>[];
@@ -168,7 +183,19 @@ class SrtTranslationService {
         req.add(bodyBytes);
         final res = await req.close();
         responseBody = await res.transform(utf8.decoder).join();
-        if (res.statusCode != 200) throw Exception('خطای سرور (${res.statusCode}): $responseBody');
+        if (res.statusCode != 200) {
+          // چک محدودیت روزانه Cloudflare
+          if (res.statusCode == 429 || responseBody.contains('Too Many Requests') ||
+              responseBody.contains('rate limit') || responseBody.contains('quota')) {
+            throw Exception(
+              'سرویس ترجمه امروز به محدودیت رسیده است.\n\n'
+              'سرویس ما از پلن رایگان Cloudflare AI استفاده می‌کند که سهمیه روزانه دارد. '
+              'فردا دوباره امتحان کنید.\n\n'
+              'یا از ابزارهای جایگزین مانند Google Translate یا DeepL استفاده کنید.'
+            );
+          }
+          throw Exception('خطای سرور (${res.statusCode}): $responseBody');
+        }
       } finally {
         client.close();
       }
