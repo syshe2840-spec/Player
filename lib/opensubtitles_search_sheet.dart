@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'opensubtitles_service.dart';
+import 'srt_translate_sheet.dart';
 
 /// شیت جستجو و دانلود زیرنویس آنلاین از OpenSubtitles
 class OpenSubtitlesSheet extends StatefulWidget {
@@ -93,9 +94,18 @@ class _State extends State<OpenSubtitlesSheet> {
       if (mounted) {
         Navigator.pop(context);
         widget.onDone(path);
+        // بعد از دانلود: پیشنهاد ترجمه
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(remaining != null ? 'زیرنویس دانلود شد — ${remaining} دانلود باقی‌مانده امروز' : 'زیرنویس دانلود شد'),
-          backgroundColor: const Color(0xFF7C3AED)));
+          backgroundColor: const Color(0xFF7C3AED),
+          action: SnackBarAction(
+            label: 'ترجمه',
+            textColor: Colors.white,
+            onPressed: () => SrtTranslateSheet.show(context, path, (translated) {
+              widget.onDone(translated);
+            }),
+          ),
+        ));
       }
     } catch (e) {
       if (mounted) setState((){ _error = '$e'; _loading = false; });
