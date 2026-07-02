@@ -20,6 +20,7 @@ import 'store.dart';
 import 'vez_service.dart';
 import 'ai_subtitle_sheet.dart';
 import 'opensubtitles_search_sheet.dart';
+import 'live_sub_sheet.dart';
 import 'settings.dart';
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
@@ -108,8 +109,16 @@ class _PlayerState extends State<PlayerScreen>{
   double _fastSeekSpeed=3.0; // ثانیه در ثانیه
   double _fastSeekBaseSpeed=3.0;
   Timer? _fastSeekTimer;
-  bool _fastSeekLocked=false; // کشیدن بالا → قفل، بعد از رهاکردن انگشت هم ادامه پیدا می‌کند
+  bool _fastSeekLocked=false;
   double _fastSeekDragStartY=0;
+
+  // ── زیرنویس زنده ──
+  bool _liveSubActive=false;
+  String? _liveSubSrtPath;
+  Timer? _liveSubRefreshTimer;
+  bool _liveSubPaused=false; // توسط live mode متوقف شده (نه کاربر)
+  LiveBehindAction _liveBehindAction=LiveBehindAction.pause;
+  double _liveBehindSpeed=0.75;
   Timer? _thumbTimer;
 
   // UI
@@ -632,6 +641,84 @@ class _PlayerState extends State<PlayerScreen>{
     }
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  زیرنویس زنده
+  // ══════════════════════════════════════════════════════════
+  void _startLiveSub(LiveSubConfig config) {
+    _liveBehindAction = config.behindAction;
+    _liveBehindSpeed  = config.behindSpeed;
+    setState(() => _liveSubActive = true);
+
+    final srtPath = liveSrtPath(_curPath, config.language);
+    _liveSubSrtPath = srtPath;
+
+    // timer بررسی sync + refresh SRT هر ۳ ثانیه
+    _liveSubRefreshTimer?.cancel();
+    _liveSubRefreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => _liveSubTick());
+
+    // شروع transcription در پس‌زمینه
+    transcribeLive(
+      videoPath: _curPath,
+      config: config,
+      onChunk: (startMs, totalMs, done, total) {
+        // نیازی به UI update نیست — ticker کافیه
+      },
+      onSrtUpdated: () {
+        if (mounted) _loadSub(srtPath, secondary: false);
+      },
+    ).then((_) {
+      if (mounted) {
+        setState(() => _liveSubActive = false);
+        _liveSubRefreshTimer?.cancel();
+        // اگه توسط buffer pause شده بود، resume کن
+        if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('✓ زیرنویس زنده کامل شد'),
+          backgroundColor: Color(0xFF7C3AED)));
+      }
+    }).catchError((e) {
+      if (mounted) {
+        setState(() => _liveSubActive = false);
+        _liveSubRefreshTimer?.cancel();
+        if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
+        if (!e.toString().contains('لغو')) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('خطا: $e'), backgroundColor: Colors.red));
+        }
+      }
+    });
+  }
+
+  void _stopLiveSub() {
+    cancelLiveSub();
+    _liveSubRefreshTimer?.cancel();
+    if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
+    setState(() => _liveSubActive = false);
+  }
+
+  void _liveSubTick() {
+    if (!_liveSubActive || !mounted) return;
+    final posMs = _position.inMilliseconds;
+    final transcribed = LiveSubState.transcribedMs;
+    final buffer = LiveSubState.totalMs > 0 ? 5000 : 0; // ۵ ثانیه buffer
+
+    if (transcribed == 0) return; // هنوز اول کار
+
+    if (posMs > transcribed - buffer) {
+      // پشت ماند — اعمال استراتژی
+      if (_liveBehindAction == LiveBehindAction.pause) {
+        if (!_liveSubPaused) { _liveSubPaused = true; player.pause(); }
+      } else {
+        if (_liveSubPaused) { _liveSubPaused = false; }
+        player.setRate(_liveBehindSpeed);
+      }
+    } else {
+      // به خودش رسید — برگشت به حالت عادی
+      if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
+      if (_vs.speed != 1.0 && _liveBehindAction == LiveBehindAction.slowDown) player.setRate(_vs.speed);
+    }
+  }
+
   void _startFastSeek(bool forward){
     // forward=true → جلو (چپ صفحه)، forward=false → عقب (راست صفحه)
     if(_locked)return;
@@ -675,6 +762,8 @@ class _PlayerState extends State<PlayerScreen>{
     try{VolumeController.instance.showSystemUI=true;}catch(_){}
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _liveSubRefreshTimer?.cancel();
+    if (_liveSubActive) cancelLiveSub();
     player.dispose();
     super.dispose();
   }
@@ -989,6 +1078,27 @@ class _PlayerState extends State<PlayerScreen>{
           ),
 
         // ── پیام وسط ──
+        // ── نشانگر زیرنویس زنده ──
+        if(_liveSubActive)
+          Positioned(
+            top: 80, left: 0, right: 0,
+            child: Center(child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(20)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.fiber_smart_record, color: Colors.red, size: 12),
+                const SizedBox(width: 4),
+                Text(
+                  _liveSubPaused
+                    ? 'در حال پردازش... (${(LiveSubState.transcribedMs/1000).toInt()}s/${(LiveSubState.totalMs/1000).toInt()}s)'
+                    : 'زیرنویس زنده — ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal} تکه',
+                  style: const TextStyle(color: Colors.white, fontSize: 10)),
+                const SizedBox(width: 6),
+                GestureDetector(onTap: _stopLiveSub, child: const Icon(Icons.close, color: Colors.white54, size: 14)),
+              ]),
+            )),
+          ),
+
         if(_overlay!=null)Center(child:Container(
           padding:const EdgeInsets.symmetric(horizontal:20,vertical:10),
           decoration:BoxDecoration(color:Colors.black.withOpacity(0.65),borderRadius:BorderRadius.circular(10)),
@@ -1105,16 +1215,31 @@ class _PlayerState extends State<PlayerScreen>{
                     ),
                   );
                   break;
+                case 'live':
+                  if (_liveSubActive) {
+                    _stopLiveSub();
+                  } else {
+                    LiveSubSheet.show(context, _curPath, _startLiveSub);
+                  }
+                  break;
               }
             },
-            itemBuilder:(_)=>const [
-              PopupMenuItem(value:'ai',child:Row(children:[
+            itemBuilder:(_)=>[
+              if (_liveSubActive)
+                const PopupMenuItem(value:'live',child:Row(children:[
+                  Icon(Icons.stop_circle,size:18,color:Colors.red),SizedBox(width:10),Text('توقف زیرنویس زنده'),
+                ]))
+              else
+                const PopupMenuItem(value:'live',child:Row(children:[
+                  Icon(Icons.fiber_smart_record,size:18,color:Colors.red),SizedBox(width:10),Text('زیرنویس زنده (V2)'),
+                ])),
+              const PopupMenuItem(value:'ai',child:Row(children:[
                 Icon(Icons.auto_awesome,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('زیرنویس AI (آفلاین)'),
               ])),
-              PopupMenuItem(value:'online',child:Row(children:[
+              const PopupMenuItem(value:'online',child:Row(children:[
                 Icon(Icons.cloud_download_outlined,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('زیرنویس آنلاین'),
               ])),
-              PopupMenuItem(value:'settings',child:Row(children:[
+              const PopupMenuItem(value:'settings',child:Row(children:[
                 Icon(Icons.tune,size:18,color:Colors.white70),SizedBox(width:10),Text('تنظیمات نمایش زیرنویس'),
               ])),
             ],
