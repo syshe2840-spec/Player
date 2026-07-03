@@ -106,21 +106,6 @@ class _State extends State<SrtTranslateSheet> {
           ),
           const SizedBox(height: 14),
 
-          if (_error != null) Container(
-            padding: const EdgeInsets.all(10),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(color: Colors.red.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-            child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-          ),
-
-          if (_running) ...[
-            Text(_status, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: _progress > 0 ? _progress : null,
-              backgroundColor: Colors.white12, color: const Color(0xFF7C3AED)),
-            const SizedBox(height: 12),
-          ],
-
           SizedBox(width: double.infinity, child: FilledButton.icon(
             onPressed: _start,
             icon: const Icon(Icons.translate),
