@@ -1036,21 +1036,27 @@ class _PlayerState extends State<PlayerScreen>{
           left:12,right:12,
           bottom:_vs2.bottomPadding+navBottom,
           child:GestureDetector(
-            onVerticalDragUpdate:(d)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-d.delta.dy).clamp(4.0,_size.height*0.85)),
+            onVerticalDragUpdate: _vs2.showSubToolbar
+              ? (d)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-d.delta.dy).clamp(4.0,_size.height*0.85))
+              : null,
             child:Align(alignment:Alignment.bottomCenter,child:Container(
               padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
               decoration:BoxDecoration(color:Color(_vs2.bgColor).withOpacity(_vs2.bgOpacity),borderRadius:BorderRadius.circular(5)),
               child:Row(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.center,children:[
-                const Icon(Icons.drag_handle,color:Colors.white24,size:14),
-                const SizedBox(width:4),
+                if(_vs2.showSubToolbar)...[
+                  const Icon(Icons.drag_handle,color:Colors.white24,size:14),
+                  const SizedBox(width:4),
+                ],
                 Flexible(child:Text(sub2,textAlign:TextAlign.center,style:TextStyle(
                   fontFamily:_vs2.fontFamily.isEmpty?null:_vs2.fontFamily,
                   fontSize:_vs2.fontSize,color:Color(_vs2.textColor),
                   fontWeight:_vs2.bold?FontWeight.bold:FontWeight.normal,height:1.4))),
-                const SizedBox(width:4),
-                GestureDetector(
-                  onTap:()=>_copyToClipboard(sub2),
-                  child:const Icon(Icons.copy,color:Colors.white38,size:13)),
+                if(_vs2.showSubToolbar)...[
+                  const SizedBox(width:4),
+                  GestureDetector(
+                    onTap:()=>_copyToClipboard(sub2),
+                    child:const Icon(Icons.copy,color:Colors.white38,size:13)),
+                ],
               ]),
             )),
           ),
