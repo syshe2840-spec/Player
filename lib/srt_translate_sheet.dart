@@ -6,9 +6,10 @@ import 'whisper_service.dart' show WhisperService;
 
 /// شیت ترجمه زیرنویس با Cloudflare AI
 class SrtTranslateSheet extends StatefulWidget {
-  final String srtPath;           // مسیر SRT
+  final String srtPath;
   final String? srtContent;
   final void Function(String translatedPath) onDone;
+  final void Function(String translatedPath)? onDoneSecondary;
   final void Function(String partialPath)? onSrtUpdated;
 
   const SrtTranslateSheet({
@@ -16,6 +17,7 @@ class SrtTranslateSheet extends StatefulWidget {
     required this.srtPath,
     this.srtContent,
     required this.onDone,
+    this.onDoneSecondary,
     this.onSrtUpdated,
   });
 
@@ -23,13 +25,14 @@ class SrtTranslateSheet extends StatefulWidget {
     BuildContext ctx,
     String srtPath,
     void Function(String) onDone, {
+    void Function(String)? onDoneSecondary,
     String? srtContent,
     void Function(String)? onSrtUpdated,
   }) => showModalBottomSheet(
     context: ctx, isScrollControlled: true,
     backgroundColor: const Color(0xFF1C1C22),
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (_) => SrtTranslateSheet(srtPath: srtPath, srtContent: srtContent, onDone: onDone, onSrtUpdated: onSrtUpdated),
+    builder: (_) => SrtTranslateSheet(srtPath: srtPath, srtContent: srtContent, onDone: onDone, onDoneSecondary: onDoneSecondary, onSrtUpdated: onSrtUpdated),
   );
 
   @override State<SrtTranslateSheet> createState() => _State();
@@ -37,6 +40,7 @@ class SrtTranslateSheet extends StatefulWidget {
 
 class _State extends State<SrtTranslateSheet> {
   String _targetLang = 'fa';
+  int _subTarget = 0; // 0=sub1, 1=sub2, 2=هر دو
 
   void _start() {
     // فوری sheet رو می‌بندیم — ترجمه در پس‌زمینه ادامه میده
@@ -54,7 +58,13 @@ class _State extends State<SrtTranslateSheet> {
       srtPath: srtPath,
       targetLangCode: _targetLang,
       onSrtUpdated: (partial) => widget.onSrtUpdated?.call(partial),
-      onDone: (path) => widget.onDone(path),
+      onDone: (path) {
+        switch(_subTarget){
+          case 0: widget.onDone(path); break;
+          case 1: widget.onDoneSecondary?.call(path); break;
+          case 2: widget.onDone(path); widget.onDoneSecondary?.call(path); break;
+        }
+      },
       onError: (err) {
         // نشون دادن خطا از طریق notification
         WhisperService.updateProgressNotification('⚠ خطا: $err', 0);
@@ -105,6 +115,18 @@ class _State extends State<SrtTranslateSheet> {
               )),
             ]),
           ),
+          const SizedBox(height: 12),
+
+          // ── انتخاب Sub1 / Sub2 / هر دو ──
+          Row(children:[
+            const Text('اعمال روی:', style: TextStyle(color: Colors.white60, fontSize: 12)),
+            const SizedBox(width: 10),
+            _chip('Sub 1', 0),
+            const SizedBox(width: 6),
+            _chip('Sub 2', 1),
+            const SizedBox(width: 6),
+            _chip('هر دو', 2),
+          ]),
           const SizedBox(height: 14),
 
           SizedBox(width: double.infinity, child: FilledButton.icon(
@@ -119,5 +141,15 @@ class _State extends State<SrtTranslateSheet> {
       ),
     ),
   );
-}
 
+  Widget _chip(String label, int idx) => GestureDetector(
+    onTap: () => setState(() => _subTarget = idx),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: _subTarget == idx ? const Color(0xFF7C3AED) : const Color(0xFF2A2A35),
+        borderRadius: BorderRadius.circular(16)),
+      child: Text(label, style: TextStyle(color: _subTarget == idx ? Colors.white : Colors.white60, fontSize: 11)),
+    ),
+  );
+}
