@@ -1031,36 +1031,42 @@ class _PlayerState extends State<PlayerScreen>{
           ),
         ),
 
-        // ── زیرنویس ۲ — تنظیمات مستقل از sub1 ──
+        // ── toolbar زیرنویس ۲ (جدا از متن، مثل sub1) ──
+        if(sub2!=null&&!_locked&&_vs2.showSubToolbar)
+          Positioned(
+            right:8,
+            bottom:_vs2.bottomPadding+navBottom+_vs2.fontSize*1.8+10,
+            child:Row(mainAxisSize:MainAxisSize.min,children:[
+              GestureDetector(onTap:()=>_copyToClipboard(sub2!),child:_subSmallBtn(Icons.copy_all_rounded,'کپی')),
+              const SizedBox(width:5),
+              Listener(
+                behavior:HitTestBehavior.opaque,
+                onPointerMove:(e)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
+                child:_subSmallBtn(Icons.drag_indicator,'جابجا کن'),
+              ),
+            ]),
+          ),
+
+        // ── زیرنویس ۲ — متن با تنظیمات کامل مستقل ──
         if(sub2!=null)Positioned(
           left:12,right:12,
           bottom:_vs2.bottomPadding+navBottom,
-          child:GestureDetector(
-            onVerticalDragUpdate: _vs2.showSubToolbar
-              ? (d)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-d.delta.dy).clamp(4.0,_size.height*0.85))
-              : null,
-            child:Align(alignment:Alignment.bottomCenter,child:Container(
+          child:Align(
+            alignment:_vs2.textAlign==1?Alignment.bottomRight:_vs2.textAlign==0?Alignment.bottomLeft:Alignment.bottomCenter,
+            child:Container(
               padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
               decoration:BoxDecoration(color:Color(_vs2.bgColor).withOpacity(_vs2.bgOpacity),borderRadius:BorderRadius.circular(5)),
-              child:Row(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.center,children:[
-                if(_vs2.showSubToolbar)...[
-                  const Icon(Icons.drag_handle,color:Colors.white24,size:14),
-                  const SizedBox(width:4),
-                ],
-                Flexible(child:Text(sub2,textAlign:TextAlign.center,style:TextStyle(
+              child:Text(sub2,
+                textAlign:TextAlign.values.elementAt(_vs2.textAlign.clamp(0,2)),
+                style:TextStyle(
                   fontFamily:_vs2.fontFamily.isEmpty?null:_vs2.fontFamily,
                   fontSize:_vs2.fontSize,color:Color(_vs2.textColor),
-                  fontWeight:_vs2.bold?FontWeight.bold:FontWeight.normal,height:1.4))),
-                if(_vs2.showSubToolbar)...[
-                  const SizedBox(width:4),
-                  GestureDetector(
-                    onTap:()=>_copyToClipboard(sub2),
-                    child:const Icon(Icons.copy,color:Colors.white38,size:13)),
-                ],
-              ]),
-            )),
+                  fontWeight:_vs2.bold?FontWeight.bold:FontWeight.normal,height:1.4,
+                  shadows:_vs2.shadowSize>0?[Shadow(blurRadius:_vs2.shadowSize*4,color:Colors.black87)]:null,
+                )),
+            ),
           ),
-        ),
+        )
 
 
         // ── A-B indicator ──
@@ -1180,7 +1186,7 @@ class _PlayerState extends State<PlayerScreen>{
           ),
 
         // ── badge ترجمه پس‌زمینه ──
-        if(_translating)
+        if(_translating && SrtTranslationService.isRunning)
           Positioned(
             top: _liveSubActive ? 108 : 80, left: 0, right: 0,
             child: ValueListenableBuilder<int>(
@@ -1353,21 +1359,31 @@ class _PlayerState extends State<PlayerScreen>{
                     SrtTranslateSheet.show(
                       context, _sub1Path!,
                       (translated) {
-                        // ترجمه کامل شد
+                        if(!mounted) return;
                         setState((){_translating=false; _translatingStatus='';});
                         _loadSub(translated, secondary: false);
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                           content: Text('✓ ترجمه کامل شد و اعمال شد'),
-                          backgroundColor: Color(0xFF7C3AED)));
+                          backgroundColor: Color(0xFF7C3AED),
+                          duration: Duration(seconds: 10),
+                          ));
+                      },
+                      onDoneSecondary: (translated) {
+                        if(!mounted) return;
+                        setState((){_translating=false; _translatingStatus='';});
+                        _loadSub(translated, secondary: true);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('✓ ترجمه روی Sub2 اعمال شد'),
+                          backgroundColor: Color(0xFF7C3AED),
+                          duration: Duration(seconds: 10)));
                       },
                       onSrtUpdated: (partial) {
-                        // هر batch که ذخیره شد — بروز کن
                         setState((){
                           _translating = true;
                           _translatingPartialPath = partial;
                           _translatingStatus = SrtTranslationServiceStatus.lastStatus;
                         });
-                        _loadSub(partial, secondary: false); // اعمال زنده روی پلیر
+                        _loadSub(partial, secondary: false);
                       },
                     );
                     setState((){_translating=true;});
