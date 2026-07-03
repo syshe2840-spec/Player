@@ -412,14 +412,16 @@ class WhisperService {
   //  کمبود حافظه پردازش را متوقف کند — این فقط نمایش وضعیت است، نه تضمین کامل.
   // ══════════════════════════════════════════════════════════
   static bool _cancelHandlerAttached = false;
+  /// callback اضافی هنگام دریافت cancel از notification — برای ترجمه آنلاین
+  static void Function()? onExternalCancel;
+
   static void _ensureCancelHandler() {
     if (_cancelHandlerAttached) return;
     _cancelHandlerAttached = true;
-    // به‌جای setMethodCallHandler (که handler قبلی رو kill می‌کنه)،
-    // از یه EventChannel جداگانه برای دریافت cancel از notification استفاده می‌کنیم
     const _cancelCh = EventChannel('com.vezoo.player/ai_cancel');
     _cancelCh.receiveBroadcastStream().listen((_) async {
       await cancelExtraction();
+      onExternalCancel?.call(); // ترجمه آنلاین رو هم لغو کن
     }, onError: (_) {});
   }
 
