@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'srt_translation_service.dart';
+import 'whisper_service.dart' show WhisperService;
 
 /// شیت ترجمه زیرنویس با Cloudflare AI
 class SrtTranslateSheet extends StatefulWidget {
@@ -55,8 +56,8 @@ class _State extends State<SrtTranslateSheet> {
       onSrtUpdated: (partial) => widget.onSrtUpdated?.call(partial),
       onDone: (path) => widget.onDone(path),
       onError: (err) {
-        // خطا از طریق snackbar نشون داده میشه (context ممکنه invalid باشه)
-        debugPrint('[SrtTranslate] error: $err');
+        // نشون دادن خطا از طریق notification
+        WhisperService.updateProgressNotification('⚠ خطا: $err', 0);
       },
     );
 
