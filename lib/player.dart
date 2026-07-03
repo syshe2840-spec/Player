@@ -1066,7 +1066,7 @@ class _PlayerState extends State<PlayerScreen>{
                 )),
             ),
           ),
-        )
+        ),
 
 
         // ── A-B indicator ──
