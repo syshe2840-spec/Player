@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
+import 'srt_translation_service.dart' show kTranslateLangDisplay, kTranslateLangs;
 
 /// تنظیمات زیرنویس زنده — قبل از شروع پردازش تکه‌تکه
 class LiveSubSheet extends StatefulWidget {
@@ -25,6 +26,8 @@ class _State extends State<LiveSubSheet> {
   bool _translate = false;
   int _chunkMs = 30000;
   bool _useOverlap = true;
+  bool _syncTranslate = false;  // همگام‌سازی با ترجمه آنلاین
+  String _syncLang = 'fa';      // زبان ترجمه
   LiveBehindAction _behindAction = LiveBehindAction.pause;
   double _behindSpeed = 0.75;
   bool _loading = true;
@@ -143,6 +146,31 @@ class _State extends State<LiveSubSheet> {
                     style:const TextStyle(color:Colors.white38,fontSize:10))),
                 const SizedBox(height:10),
 
+                // ── همگام‌سازی ترجمه آنلاین ──
+                _switchRow('ترجمه همزمان (Cloudflare AI)', _syncTranslate, (v) => setState(() => _syncTranslate = v)),
+                if(_syncTranslate)...[
+                  const SizedBox(height:6),
+                  Container(
+                    padding:const EdgeInsets.symmetric(horizontal:10,vertical:4),
+                    decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(8)),
+                    child:Row(children:[
+                      const Text('زبان ترجمه: ',style:TextStyle(color:Colors.white60,fontSize:12)),
+                      const SizedBox(width:8),
+                      Expanded(child:DropdownButton<String>(
+                        value:_syncLang,isExpanded:true,dropdownColor:const Color(0xFF2A2A35),
+                        style:const TextStyle(color:Colors.white,fontSize:12),
+                        items:kTranslateLangDisplay.entries.map((e)=>
+                          DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),
+                        onChanged:(v){if(v!=null)setState(()=>_syncLang=v);},
+                      )),
+                    ]),
+                  ),
+                  Padding(padding:const EdgeInsets.only(top:4,right:4),child:Text(
+                    'هر chunk که ساخته شد، موازی ترجمه میشه — کمترین تأخیر ممکن',
+                    style:const TextStyle(color:Colors.white38,fontSize:10))),
+                ],
+                const SizedBox(height:10),
+
                 // ── وقتی جا موند ──
                 Container(
                   padding: const EdgeInsets.all(10),
@@ -182,6 +210,8 @@ class _State extends State<LiveSubSheet> {
                       overlapMs: _useOverlap ? 5000 : 0,
                       language: _lang, model: _selected!,
                       isTranslate: _translate, behindAction: _behindAction, behindSpeed: _behindSpeed,
+                      syncTranslate: _syncTranslate,
+                      syncTranslateLang: _syncLang,
                     ));
                   },
                   icon: const Icon(Icons.play_arrow),
