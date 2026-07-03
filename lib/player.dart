@@ -1031,22 +1031,6 @@ class _PlayerState extends State<PlayerScreen>{
           ),
         ),
 
-        // ── toolbar زیرنویس ۲ (جدا از متن، مثل sub1) ──
-        if(sub2!=null&&!_locked&&_vs2.showSubToolbar)
-          Positioned(
-            right:8,
-            bottom:_vs2.bottomPadding+navBottom+_vs2.fontSize*1.8+10,
-            child:Row(mainAxisSize:MainAxisSize.min,children:[
-              GestureDetector(onTap:()=>_copyToClipboard(sub2!),child:_subSmallBtn(Icons.copy_all_rounded,'کپی')),
-              const SizedBox(width:5),
-              Listener(
-                behavior:HitTestBehavior.opaque,
-                onPointerMove:(e)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
-                child:_subSmallBtn(Icons.drag_indicator,'جابجا کن'),
-              ),
-            ]),
-          ),
-
         // ── زیرنویس ۲ — متن با تنظیمات کامل مستقل ──
         if(sub2!=null)Positioned(
           left:12,right:12,
@@ -1106,6 +1090,23 @@ class _PlayerState extends State<PlayerScreen>{
           onLongPressCancel:(){ if(!_fastSeekLocked)_stopFastSeek(); },
           child:const SizedBox.expand(),
         )),
+
+
+        // ── toolbar زیرنویس ۲ (بعد از GestureDetector — روی همه چیز) ──
+        if(sub2!=null&&!_locked&&_vs2.showSubToolbar)
+          Positioned(
+            right:8,
+            bottom:_vs2.bottomPadding+navBottom+_vs2.fontSize*1.8+10,
+            child:Row(mainAxisSize:MainAxisSize.min,children:[
+              GestureDetector(onTap:()=>_copyToClipboard(sub2!),child:_subSmallBtn(Icons.copy_all_rounded,'کپی')),
+              const SizedBox(width:5),
+              Listener(
+                behavior:HitTestBehavior.opaque,
+                onPointerMove:(e)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
+                child:_subSmallBtn(Icons.drag_indicator,'جابجا کن'),
+              ),
+            ]),
+          ),
 
         // ── سربرگ زیرنویس: فقط وقتی متن زیرنویس روی صفحه هست ──
         // شامل: دکمه کپی + drag handle برای جابجایی
