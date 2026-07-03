@@ -6,15 +6,16 @@ import 'srt_translate_sheet.dart';
 class OpenSubtitlesSheet extends StatefulWidget {
   final String videoPath;
   final void Function(String srtPath) onDone;
-  const OpenSubtitlesSheet({super.key, required this.videoPath, required this.onDone});
+  final void Function(String srtPath)? onDoneSecondary; // برای sub2
+  const OpenSubtitlesSheet({super.key, required this.videoPath, required this.onDone, this.onDoneSecondary});
 
-  static Future<void> show(BuildContext ctx, String videoPath, void Function(String) onDone) =>
+  static Future<void> show(BuildContext ctx, String videoPath, void Function(String) onDone, {void Function(String)? onDoneSecondary}) =>
       showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
         backgroundColor: const Color(0xFF1C1C22),
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (_) => OpenSubtitlesSheet(videoPath: videoPath, onDone: onDone),
+        builder: (_) => OpenSubtitlesSheet(videoPath: videoPath, onDone: onDone, onDoneSecondary: onDoneSecondary),
       );
 
   @override State<OpenSubtitlesSheet> createState() => _State();
@@ -27,6 +28,7 @@ class _State extends State<OpenSubtitlesSheet> {
   final _searchCtrl = TextEditingController();
   bool _loading = false;
   String? _error;
+  int _subTarget = 0; // 0=sub1, 1=sub2, 2=هر دو
 
   List<OsFeature> _titles = [];
   OsFeature? _selectedFeature;
@@ -93,10 +95,18 @@ class _State extends State<OpenSubtitlesSheet> {
       );
       if (mounted) {
         Navigator.pop(context);
-        widget.onDone(path);
+        // مسیردهی بر اساس انتخاب sub1/sub2/هر دو
+        switch (_subTarget) {
+          case 0: widget.onDone(path); break;
+          case 1: widget.onDoneSecondary?.call(path); break;
+          case 2: widget.onDone(path); widget.onDoneSecondary?.call(path); break;
+        }
+        final msg = remaining != null
+          ? 'زیرنویس دانلود شد — $remaining دانلود باقی‌مانده'
+          : _subTarget == 1 ? 'زیرنویس به Sub2 اعمال شد' : 'زیرنویس دانلود شد';
         // بعد از دانلود: پیشنهاد ترجمه
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(remaining != null ? 'زیرنویس دانلود شد — ${remaining} دانلود باقی‌مانده امروز' : 'زیرنویس دانلود شد'),
+          content: Text(msg),
           backgroundColor: const Color(0xFF7C3AED),
           action: SnackBarAction(
             label: 'ترجمه',
@@ -153,6 +163,16 @@ class _State extends State<OpenSubtitlesSheet> {
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), minimumSize: const Size(0, 44)),
               child: const Icon(Icons.search, size: 18),
             ),
+          ]),
+          const SizedBox(height: 10),
+
+          // ── انتخاب Sub1 / Sub2 / هر دو ──
+          Row(children: [
+            _subChip('Sub 1', 0),
+            const SizedBox(width: 6),
+            _subChip('Sub 2', 1),
+            const SizedBox(width: 6),
+            _subChip('هر دو', 2),
           ]),
           const SizedBox(height: 12),
 
@@ -273,6 +293,17 @@ class _State extends State<OpenSubtitlesSheet> {
       )),
     ];
   }
+
+  Widget _subChip(String label, int idx) => GestureDetector(
+    onTap: () => setState(() => _subTarget = idx),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: _subTarget == idx ? const Color(0xFF7C3AED) : const Color(0xFF2A2A35),
+        borderRadius: BorderRadius.circular(20)),
+      child: Text(label, style: TextStyle(color: _subTarget == idx ? Colors.white : Colors.white60, fontSize: 12)),
+    ),
+  );
 
   Widget _langChip(String label, String code) => GestureDetector(
     onTap: () { setState(() => _langFilter = code); _doSubsSearch(); },
