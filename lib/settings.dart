@@ -7,6 +7,8 @@ import 'store.dart';
 class PlayerSettings extends StatefulWidget {
   final VideoSettings vs;
   final ValueChanged<VideoSettings> onChanged;
+  final VideoSettings? vs2;
+  final ValueChanged<VideoSettings>? onChanged2;
   final bool sub1Visible, sub2Visible;
   final ValueChanged<bool> onSub1Visible, onSub2Visible;
   final String? sub2Path;
@@ -26,6 +28,7 @@ class PlayerSettings extends StatefulWidget {
   const PlayerSettings({
     super.key,
     required this.vs, required this.onChanged,
+    this.vs2, this.onChanged2,
     required this.sub1Visible, required this.onSub1Visible,
     required this.sub2Visible, required this.onSub2Visible,
     this.sub2Path,
@@ -249,32 +252,49 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   ]));
 
   // ──────── تب زیرنویس ۲ ────────
-  Widget _sub2Tab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('زیرنویس ۲ (همزمان)'),value:_s2v,
-        onChanged:(v){setState(()=>_s2v=v);widget.onSub2Visible(v);}),
-    OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickSub2();},
-        icon:const Icon(Icons.file_open),label:const Text('بارگذاری زیرنویس ۲')),
-    if(widget.sub2Path!=null)Text('فایل: ${widget.sub2Path!.split('/').last}',style:const TextStyle(fontSize:11,color:Colors.white54)),
-    const SizedBox(height:12),
-    const Text('دیلی زیرنویس ۲ (ms):'),const SizedBox(height:6),
-    Row(children:[
-      IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd2-=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='$_sd2';}),
-      Expanded(child:TextField(controller:_d2Ctrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
-        textAlign:TextAlign.center,
-        onChanged:(v){final n=int.tryParse(v);if(n!=null){setState(()=>_sd2=n);widget.onSubDelay2Ms(n);}},
-        decoration:const InputDecoration(suffixText:'ms',border:OutlineInputBorder(),isDense:true))),
-      IconButton(icon:const Icon(Icons.add),onPressed:(){setState(()=>_sd2+=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='$_sd2';}),
-    ]),
-    Slider(min:-10000,max:10000,value:_sd2.toDouble().clamp(-10000,10000),
-        onChanged:(v){setState(()=>_sd2=v.round());widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='$_sd2';}),
-    const SizedBox(height:12),
-    const Text('رنگ زیرنویس ۲'),const SizedBox(height:8),
-    Wrap(spacing:10,children:[Colors.white,const Color(0xFFFFEB3B),const Color(0xFF69F0AE),const Color(0xFF40C4FF),const Color(0xFFFF8A65)].map((c)=>
-      GestureDetector(onTap:(){setState(()=>_c2=c);widget.onColor2(c);},
-        child:Container(width:34,height:34,decoration:BoxDecoration(color:c,shape:BoxShape.circle,
-            border:Border.all(color:c.value==_c2.value?Colors.white:Colors.transparent,width:3))))).toList()),
-  ]));
-
+  Widget _sub2Tab(){
+    final vs2 = widget.vs2 ?? VideoSettings(fontSize:26,bold:false,textColor:0xFFFFFF99,bgOpacity:0.4,bottomPadding:90);
+    void ch2(void Function() fn){
+      setState(fn);
+      widget.onChanged2?.call(vs2);
+    }
+    return SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('زیرنویس ۲ (همزمان)'),value:_s2v,
+          onChanged:(v){setState(()=>_s2v=v);widget.onSub2Visible(v);}),
+      OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickSub2();},
+          icon:const Icon(Icons.file_open),label:const Text('بارگذاری زیرنویس ۲')),
+      if(widget.sub2Path!=null)Text('فایل: \${widget.sub2Path!.split('/').last}',style:const TextStyle(fontSize:11,color:Colors.white54)),
+      const SizedBox(height:14),
+      const Text('اندازه فونت:'),const SizedBox(height:4),
+      Row(children:[
+        IconButton(icon:const Icon(Icons.remove),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize-1).clamp(8,80));}),
+        Expanded(child:Slider(min:8,max:80,value:vs2.fontSize,onChanged:(v)=>ch2(()=>vs2.fontSize=v))),
+        Text('\${vs2.fontSize.round()}',style:const TextStyle(fontWeight:FontWeight.bold)),
+        IconButton(icon:const Icon(Icons.add),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize+1).clamp(8,80));}),
+      ]),
+      SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('Bold'),value:vs2.bold,onChanged:(v)=>ch2(()=>vs2.bold=v)),
+      const Text('رنگ متن:'),const SizedBox(height:8),
+      Wrap(spacing:10,children:[Colors.white,const Color(0xFFFFFF99),const Color(0xFFFFEB3B),const Color(0xFF69F0AE),const Color(0xFF40C4FF),const Color(0xFFFF8A65)].map((c)=>
+        GestureDetector(onTap:()=>ch2(()=>vs2.textColor=c.value),
+          child:Container(width:34,height:34,decoration:BoxDecoration(color:c,shape:BoxShape.circle,
+            border:Border.all(color:c.value==vs2.textColor?Colors.white:Colors.transparent,width:3))))).toList()),
+      const SizedBox(height:12),
+      const Text('شفافیت پس\u200cزمینه:'),
+      Slider(min:0,max:1,value:vs2.bgOpacity,onChanged:(v)=>ch2(()=>vs2.bgOpacity=v)),
+      const SizedBox(height:8),
+      const Text('دیلی زیرنویس ۲ (ms):'),const SizedBox(height:6),
+      Row(children:[
+        IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd2-=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='\$_sd2';}),
+        Expanded(child:TextField(controller:_d2Ctrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
+          textAlign:TextAlign.center,
+          onChanged:(v){final n=int.tryParse(v);if(n!=null){setState(()=>_sd2=n);widget.onSubDelay2Ms(n);}},
+          decoration:const InputDecoration(suffixText:'ms',border:OutlineInputBorder(),isDense:true))),
+        IconButton(icon:const Icon(Icons.add),onPressed:(){setState(()=>_sd2+=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='\$_sd2';}),
+      ]),
+      Slider(min:-10000,max:10000,value:_sd2.toDouble().clamp(-10000,10000),
+        onChanged:(v){setState(()=>_sd2=v.round());widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='\$_sd2';}),
+    ]));
+  }
   // ──────── تب سایر ────────
   Widget _otherTab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     // پیش‌نمایش اسکراب (دسترسی سریع)
