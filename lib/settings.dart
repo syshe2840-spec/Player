@@ -289,6 +289,49 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       const Text('شفافیت پس\u200cزمینه:'),
       Slider(min:0,max:1,value:vs2.bgOpacity,onChanged:(v)=>ch2(()=>vs2.bgOpacity=v)),
       const SizedBox(height:8),
+
+      // ── رنگ پس‌زمینه ──
+      const Text('رنگ پس\u200cزمینه:'),const SizedBox(height:8),
+      Wrap(spacing:10,children:[Colors.black,const Color(0xFF1A1A2E),const Color(0xFF16213E),Colors.transparent].map((c)=>
+        GestureDetector(onTap:()=>ch2(()=>vs2.bgColor=c.value),
+          child:Container(width:34,height:34,decoration:BoxDecoration(color:c==Colors.transparent?Colors.white12:c,shape:BoxShape.circle,
+            border:Border.all(color:c.value==vs2.bgColor?Colors.white:Colors.white24,width:c.value==vs2.bgColor?3:1)),
+            child:c==Colors.transparent?const Icon(Icons.block,size:18,color:Colors.white38):null))).toList()),
+      const SizedBox(height:12),
+
+      // ── چینش ──
+      const Text('چینش متن:'),const SizedBox(height:8),
+      Row(mainAxisAlignment:MainAxisAlignment.start,children:[
+        for(final e in [('چپ',0),('وسط',2),('راست',1)])...[
+          GestureDetector(onTap:()=>ch2(()=>vs2.textAlign=e.$2),
+            child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+              decoration:BoxDecoration(color:vs2.textAlign==e.$2?const Color(0xFF7C3AED):const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(8)),
+              child:Text(e.$1,style:TextStyle(color:vs2.textAlign==e.$2?Colors.white:Colors.white60,fontSize:12)))),
+          const SizedBox(width:6),
+        ],
+      ]),
+      const SizedBox(height:12),
+
+      // ── سایه ──
+      Row(children:[
+        const Text('سایه:',style:TextStyle(fontSize:13)),
+        const SizedBox(width:8),
+        Expanded(child:Slider(min:0,max:3,value:vs2.shadowSize,onChanged:(v)=>ch2(()=>vs2.shadowSize=v))),
+        Text('${vs2.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
+      ]),
+      const SizedBox(height:12),
+
+      // ── انتخاب فونت ──
+      const Divider(color:Colors.white12),
+      const Text('فونت:',style:TextStyle(fontSize:13)),const SizedBox(height:8),
+      Wrap(spacing:8,runSpacing:6,children:['','Vazirmatn','IRANSansMobile','Roboto','Tahoma'].map((f)=>
+        GestureDetector(onTap:()=>ch2(()=>vs2.fontFamily=f),
+          child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
+            decoration:BoxDecoration(color:vs2.fontFamily==f?const Color(0xFF7C3AED):const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(8)),
+            child:Text(f.isEmpty?'پیش‌فرض':f,style:TextStyle(color:vs2.fontFamily==f?Colors.white:Colors.white60,fontSize:12,fontFamily:f.isEmpty?null:f))))).toList()),
+      const SizedBox(height:12),
+
+      // ── دیلی ──
       const Text('دیلی زیرنویس ۲ (ms):'),const SizedBox(height:6),
       Row(children:[
         IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd2-=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='\$_sd2';}),
