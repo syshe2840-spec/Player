@@ -1,6 +1,7 @@
 // lib/settings.dart — تنظیمات پلیر
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 
@@ -263,13 +264,19 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
           onChanged:(v){setState(()=>_s2v=v);widget.onSub2Visible(v);}),
       OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickSub2();},
           icon:const Icon(Icons.file_open),label:const Text('بارگذاری زیرنویس ۲')),
-      if(widget.sub2Path!=null)Text('فایل: \${widget.sub2Path!.split('/').last}',style:const TextStyle(fontSize:11,color:Colors.white54)),
-      const SizedBox(height:14),
+      if(widget.sub2Path!=null)Text('فایل: '+p.basename(widget.sub2Path!),style:const TextStyle(fontSize:11,color:Colors.white54)),
+      const SizedBox(height:8),
+      SwitchListTile(contentPadding:EdgeInsets.zero,
+        title:const Text('نمایش دکمه drag و کپی'),
+        subtitle:const Text('مثل زیرنویس ۱',style:TextStyle(fontSize:11)),
+        value:vs2.showSubToolbar,
+        onChanged:(v)=>ch2(()=>vs2.showSubToolbar=v)),
+      const SizedBox(height:8),
       const Text('اندازه فونت:'),const SizedBox(height:4),
       Row(children:[
         IconButton(icon:const Icon(Icons.remove),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize-1).clamp(8,80));}),
         Expanded(child:Slider(min:8,max:80,value:vs2.fontSize,onChanged:(v)=>ch2(()=>vs2.fontSize=v))),
-        Text('\${vs2.fontSize.round()}',style:const TextStyle(fontWeight:FontWeight.bold)),
+        Text('${vs2.fontSize.round()}',style:const TextStyle(fontWeight:FontWeight.bold)),
         IconButton(icon:const Icon(Icons.add),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize+1).clamp(8,80));}),
       ]),
       SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('Bold'),value:vs2.bold,onChanged:(v)=>ch2(()=>vs2.bold=v)),
