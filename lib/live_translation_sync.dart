@@ -8,8 +8,8 @@ import 'srt_translation_service.dart';
 /// همگام‌سازی ترجمه با زیرنویس زنده — پردازش موازی
 /// هر بار chunk جدیدی از live subtitle میاد، خطوط جدید موازی ترجمه میشن
 class LiveTranslationSync {
-  static const _maxConcurrent = 3; // حداکثر درخواست موازی به Cloudflare
-  static const _batchSize = 30;    // خط در هر درخواست
+  static const _maxConcurrent = 5; // ۵ request موازی // حداکثر درخواست موازی به Cloudflare
+  static const _batchSize = 50; // ۵۰ خط در هر request    // خط در هر درخواست
 
   final String targetLangCode;
   bool _cancelled = false;
