@@ -1,17 +1,21 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'srt_translation_service.dart';
 
 /// شیت ترجمه زیرنویس با Cloudflare AI
 class SrtTranslateSheet extends StatefulWidget {
   final String srtPath;           // مسیر SRT
-  final String? srtContent;       // محتوا (اگه فایل نداره)
+  final String? srtContent;
   final void Function(String translatedPath) onDone;
+  final void Function(String partialPath)? onSrtUpdated;
 
   const SrtTranslateSheet({
     super.key,
     required this.srtPath,
     this.srtContent,
     required this.onDone,
+    this.onSrtUpdated,
   });
 
   static Future<void> show(
@@ -19,11 +23,12 @@ class SrtTranslateSheet extends StatefulWidget {
     String srtPath,
     void Function(String) onDone, {
     String? srtContent,
+    void Function(String)? onSrtUpdated,
   }) => showModalBottomSheet(
     context: ctx, isScrollControlled: true,
     backgroundColor: const Color(0xFF1C1C22),
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (_) => SrtTranslateSheet(srtPath: srtPath, srtContent: srtContent, onDone: onDone),
+    builder: (_) => SrtTranslateSheet(srtPath: srtPath, srtContent: srtContent, onDone: onDone, onSrtUpdated: onSrtUpdated),
   );
 
   @override State<SrtTranslateSheet> createState() => _State();
@@ -31,38 +36,35 @@ class SrtTranslateSheet extends StatefulWidget {
 
 class _State extends State<SrtTranslateSheet> {
   String _targetLang = 'fa';
-  bool _running = false;
-  String _status = '';
-  double _progress = 0;
-  String? _error;
 
-  Future<void> _start() async {
-    setState(() { _running = true; _error = null; _status = 'شروع...'; _progress = 0; });
-    try {
-      String path;
-      if (widget.srtContent != null) {
-        path = await SrtTranslationService.translateSrtContent(
-          content: widget.srtContent!,
-          targetLangCode: _targetLang,
-          onStatus: (s, p) { if (mounted) setState(() { _status = s; _progress = p; }); },
-        );
-      } else {
-        path = await SrtTranslationService.translateSrtFile(
-          srtPath: widget.srtPath,
-          targetLangCode: _targetLang,
-          onStatus: (s, p) { if (mounted) setState(() { _status = s; _progress = p; }); },
-        );
-      }
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onDone(path);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('✓ ترجمه شد به ${kTranslateLangDisplay[_targetLang] ?? _targetLang}'),
-          backgroundColor: const Color(0xFF7C3AED)));
-      }
-    } catch (e) {
-      if (mounted) setState(() { _running = false; _error = '$e'; });
+  void _start() {
+    // فوری sheet رو می‌بندیم — ترجمه در پس‌زمینه ادامه میده
+    Navigator.pop(context);
+
+    // اگه content داشت اول ذخیره کن
+    String srtPath = widget.srtPath;
+    if (widget.srtContent != null) {
+      final tmp = File('${Directory.systemTemp.path}/tmp_srt_translate.srt');
+      tmp.writeAsStringSync(widget.srtContent!, encoding: utf8);
+      srtPath = tmp.path;
     }
+
+    SrtTranslationService.startBackground(
+      srtPath: srtPath,
+      targetLangCode: _targetLang,
+      onSrtUpdated: (partial) => widget.onSrtUpdated?.call(partial),
+      onDone: (path) => widget.onDone(path),
+      onError: (err) {
+        // خطا از طریق snackbar نشون داده میشه (context ممکنه invalid باشه)
+        debugPrint('[SrtTranslate] error: $err');
+      },
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('ترجمه به ${kTranslateLangDisplay[_targetLang] ?? _targetLang} در پس‌زمینه شروع شد'),
+      backgroundColor: const Color(0xFF7C3AED),
+      duration: const Duration(seconds: 3),
+    ));
   }
 
   @override
@@ -79,7 +81,7 @@ class _State extends State<SrtTranslateSheet> {
             const SizedBox(width: 8),
             const Text('ترجمه زیرنویس', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
             const Spacer(),
-            TextButton(onPressed: _running ? null : () => Navigator.pop(ctx), child: const Text('بستن')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('بستن')),
           ]),
           const SizedBox(height: 4),
           const Text('متن توسط Cloudflare AI ترجمه میشه — timestamp ها دست‌نخورده می‌مونن',
@@ -98,7 +100,7 @@ class _State extends State<SrtTranslateSheet> {
                 style: const TextStyle(color: Colors.white, fontSize: 13),
                 items: kTranslateLangDisplay.entries.map((e) =>
                   DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                onChanged: _running ? null : (v) { if (v != null) setState(() => _targetLang = v); },
+                onChanged: (v) { if (v != null) setState(() => _targetLang = v); },
               )),
             ]),
           ),
@@ -120,11 +122,9 @@ class _State extends State<SrtTranslateSheet> {
           ],
 
           SizedBox(width: double.infinity, child: FilledButton.icon(
-            onPressed: _running ? null : _start,
-            icon: _running
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.translate),
-            label: Text(_running ? _status : 'ترجمه کن'),
+            onPressed: _start,
+            icon: const Icon(Icons.translate),
+            label: const Text('شروع ترجمه در پس‌زمینه'),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF7C3AED),
               padding: const EdgeInsets.symmetric(vertical: 14)),
@@ -134,4 +134,4 @@ class _State extends State<SrtTranslateSheet> {
     ),
   );
 }
- 
+
