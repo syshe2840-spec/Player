@@ -824,12 +824,14 @@ enum LiveBehindAction { pause, slowDown }
 
 class LiveSubConfig {
   final int chunkMs;
-  final int overlapMs; // اگه ۰ باشه overlap غیرفعاله
+  final int overlapMs;
   final String language;
   final WhisperModelDef model;
   final bool isTranslate;
   final LiveBehindAction behindAction;
   final double behindSpeed;
+  final bool syncTranslate;      // همگام‌سازی ترجمه آنلاین
+  final String syncTranslateLang;
   const LiveSubConfig({
     this.chunkMs = 30000,
     this.overlapMs = 5000,
@@ -838,6 +840,8 @@ class LiveSubConfig {
     this.isTranslate = false,
     this.behindAction = LiveBehindAction.pause,
     this.behindSpeed = 0.75,
+    this.syncTranslate = false,
+    this.syncTranslateLang = 'fa',
   });
 }
 
