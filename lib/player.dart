@@ -22,6 +22,7 @@ import 'ai_subtitle_sheet.dart';
 import 'opensubtitles_search_sheet.dart';
 import 'live_sub_sheet.dart';
 import 'srt_translate_sheet.dart';
+import 'srt_translation_service.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
 
@@ -117,6 +118,11 @@ class _PlayerState extends State<PlayerScreen>{
 
   // ── زیرنویس زنده ──
   bool _liveSubActive=false;
+  // ── ترجمه پس‌زمینه ──
+  bool _translating=false;
+  String _translatingLang='';
+  String _translatingStatus='';
+  String? _translatingPartialPath;
   String? _liveSubSrtPath;
   Timer? _liveSubRefreshTimer;
   Timer? _liveSubSecondTimer;
@@ -1129,6 +1135,43 @@ class _PlayerState extends State<PlayerScreen>{
             ),
           ),
 
+        // ── badge ترجمه پس‌زمینه ──
+        if(_translating)
+          Positioned(
+            top: _liveSubActive ? 108 : 80, left: 0, right: 0,
+            child: ValueListenableBuilder<int>(
+              valueListenable: SrtTranslationServiceStatus.notifier,
+              builder: (_,__,___) => Center(child: Container(
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.75), borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Padding(padding: EdgeInsets.only(left: 10, top: 6, bottom: 6),
+                    child: Icon(Icons.translate, color: Color(0xFF7C3AED), size: 12)),
+                  const SizedBox(width: 5),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      SrtTranslationServiceStatus.lastStatus.isEmpty
+                        ? 'در حال ترجمه...'
+                        : SrtTranslationServiceStatus.lastStatus,
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      SrtTranslationService.cancel();
+                      setState((){_translating=false; _translatingStatus='';});
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('ترجمه لغو شد'), backgroundColor: Colors.orange));
+                    },
+                    child: const Padding(padding: EdgeInsets.fromLTRB(4,6,10,6),
+                      child: Icon(Icons.close, color: Colors.white54, size: 13)),
+                  ),
+                ]),
+              )),
+            ),
+          ),
+
         // ── پیام وسط ──
         // ── نشانگر زیرنویس زنده ──
         if(_liveSubActive && _liveBadgeVisible)
@@ -1263,9 +1306,27 @@ class _PlayerState extends State<PlayerScreen>{
                   break;
                 case 'translate':
                   if (_sub1Path != null) {
-                    SrtTranslateSheet.show(context, _sub1Path!, (translated) {
-                      _loadSub(translated, secondary: false);
-                    });
+                    SrtTranslateSheet.show(
+                      context, _sub1Path!,
+                      (translated) {
+                        // ترجمه کامل شد
+                        setState((){_translating=false; _translatingStatus='';});
+                        _loadSub(translated, secondary: false);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('✓ ترجمه کامل شد و اعمال شد'),
+                          backgroundColor: Color(0xFF7C3AED)));
+                      },
+                      onSrtUpdated: (partial) {
+                        // هر batch که ذخیره شد — بروز کن
+                        setState((){
+                          _translating = true;
+                          _translatingPartialPath = partial;
+                          _translatingStatus = SrtTranslationServiceStatus.lastStatus;
+                        });
+                        _loadSub(partial, secondary: false); // اعمال زنده روی پلیر
+                      },
+                    );
+                    setState((){_translating=true;});
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('ابتدا یک زیرنویس بارگذاری کنید'),
@@ -1581,3 +1642,4 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
+
