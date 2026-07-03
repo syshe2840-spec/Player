@@ -60,6 +60,7 @@ class _PlayerState extends State<PlayerScreen>{
 
   // تنظیمات قابل ذخیره
   late VideoSettings _vs=VideoSettings();
+  late VideoSettings _vs2=VideoSettings(fontSize:26,bold:false,textColor:0xFFFFFF99,bgOpacity:0.4,bottomPadding:90);
   int _subDelayMs=0,_subDelay2Ms=0,_audioDelayMs=0;
   Color _color2=const Color(0xFFFFEB3B);
 
@@ -337,6 +338,11 @@ class _PlayerState extends State<PlayerScreen>{
       Clipboard.setData(ClipboardData(text:text));
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد')));
     }
+  }
+
+  void _copyToClipboard(String text){
+    Clipboard.setData(ClipboardData(text:text));
+    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد'),duration:Duration(seconds:2)));
   }
 
   Future<void> _translateSubText()async{
@@ -1025,17 +1031,29 @@ class _PlayerState extends State<PlayerScreen>{
           ),
         ),
 
-        // ── زیرنویس ۲ ──
+        // ── زیرنویس ۲ — تنظیمات مستقل از sub1 ──
         if(sub2!=null)Positioned(
           left:12,right:12,
-          bottom:_vs.bottomPadding+navBottom+_vs.fontSize*1.9+10,
-          child:Align(alignment:Alignment.bottomCenter,child:Container(
-            padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
-            decoration:BoxDecoration(color:Colors.black.withOpacity(0.55),borderRadius:BorderRadius.circular(5)),
-            child:Text(sub2,textAlign:TextAlign.center,style:TextStyle(
-              fontFamily:_vs.fontFamily.isEmpty?null:_vs.fontFamily,
-              fontSize:_vs.fontSize*0.9,color:_color2,fontWeight:FontWeight.bold,height:1.4)),
-          )),
+          bottom:_vs2.bottomPadding+navBottom,
+          child:GestureDetector(
+            onVerticalDragUpdate:(d)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-d.delta.dy).clamp(4.0,_size.height*0.85)),
+            child:Align(alignment:Alignment.bottomCenter,child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+              decoration:BoxDecoration(color:Color(_vs2.bgColor).withOpacity(_vs2.bgOpacity),borderRadius:BorderRadius.circular(5)),
+              child:Row(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.center,children:[
+                const Icon(Icons.drag_handle,color:Colors.white24,size:14),
+                const SizedBox(width:4),
+                Flexible(child:Text(sub2,textAlign:TextAlign.center,style:TextStyle(
+                  fontFamily:_vs2.fontFamily.isEmpty?null:_vs2.fontFamily,
+                  fontSize:_vs2.fontSize,color:Color(_vs2.textColor),
+                  fontWeight:_vs2.bold?FontWeight.bold:FontWeight.normal,height:1.4))),
+                const SizedBox(width:4),
+                GestureDetector(
+                  onTap:()=>_copyToClipboard(sub2),
+                  child:const Icon(Icons.copy,color:Colors.white38,size:13)),
+              ]),
+            )),
+          ),
         ),
 
 
@@ -1359,6 +1377,7 @@ class _PlayerState extends State<PlayerScreen>{
                     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
                     builder:(ctx)=>PlayerSettings(
                       vs:_vs,onChanged:(vs){setState(()=>_vs=vs);},
+                      vs2:_vs2,onChanged2:(vs){setState(()=>_vs2=vs);},
                       sub1Visible:_sub1Visible,onSub1Visible:(v)=>setState(()=>_sub1Visible=v),
                       sub2Visible:_sub2Visible,onSub2Visible:(v)=>setState(()=>_sub2Visible=v),
                       sub2Path:_sub2Path,
