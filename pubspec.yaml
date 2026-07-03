@@ -1,0 +1,49 @@
+name: player
+description: پلیر ویدیو با زیرنویس رمزگذاری‌شده
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # موتور پخش ویدیو (بر پایه mpv) و پشتیبانی اندروید
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_video: ^1.0.7
+
+  # انتخاب دستی زیرنویس
+  file_picker: ^8.0.0
+
+  # دسترسی به حافظه گوشی
+  permission_handler: ^11.3.0
+
+  # کار با مسیر فایل‌ها (پیدا کردن زیرنویس هم‌اسم)
+  path: ^1.8.0
+
+  # ذخیره ویدیوهای دیده‌شده و آخرین موقعیت پخش
+  shared_preferences: ^2.2.0
+
+  # کنترل نور صفحه با اشاره
+  screen_brightness: ^2.1.11
+
+  # روشن نگه داشتن صفحه هنگام پخش
+  wakelock_plus: ^1.1.1
+
+  # کنترل صدای سیستم گوشی
+  volume_controller: ^3.6.0
+  url_launcher: ^6.2.5
+  whisper_ggml_plus: ^1.1.0
+  path_provider: ^2.1.2
+  share_plus: ^11.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
