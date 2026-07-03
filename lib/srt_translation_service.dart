@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'api_service.dart';
+import 'whisper_service.dart' show WhisperService;
 
 // ── زبان‌های پشتیبانی‌شده برای ترجمه (نام کامل برای Llama) ──
 const kTranslateLangs = {
@@ -65,11 +66,58 @@ class SrtEntry2 {
   SrtEntry2(this.index, this.timestamp, this.textLines);
 }
 
+/// وضعیت زنده برای badge پلیر
+class SrtTranslationServiceStatus {
+  static String lastStatus = '';
+  static final notifier = ValueNotifier<int>(0);
+  static void update(String s) { lastStatus = s; notifier.value++; }
+}
+
 class SrtTranslationService {
   static const _workerBase = 'https://player.lastofanarchy.workers.dev';
   static bool _cancelled = false;
+  static bool isRunning = false; // آیا ترجمه در پس‌زمینه در حال اجراست
 
-  static void cancel() => _cancelled = true;
+  static void cancel() { _cancelled = true; }
+
+  /// شروع ترجمه در پس‌زمینه — بلافاصله برمی‌گرده
+  /// نتیجه از طریق onSrtUpdated و onDone دریافت می‌شه
+  static void startBackground({
+    required String srtPath,
+    required String targetLangCode,
+    required void Function(String srtPath) onDone,
+    void Function(String partialPath)? onSrtUpdated,
+    void Function(String error)? onError,
+  }) {
+    _cancelled = false;
+    isRunning = true;
+
+    // cancel hook — notification لغو → ترجمه هم لغو
+    WhisperService.onExternalCancel = () => cancel();
+
+    // شروع notification (EventChannel cancel رو هم راه‌اندازی می‌کنه)
+    WhisperService.showProgressNotification('ترجمه زیرنویس در پس\u200cزمینه');
+
+    translateSrtFile(
+      srtPath: srtPath,
+      targetLangCode: targetLangCode,
+      onSrtUpdated: onSrtUpdated,
+      onStatus: (s, p) {
+        SrtTranslationServiceStatus.update(s);
+        WhisperService.updateProgressNotification(s, p);
+      },
+    ).then((path) {
+      isRunning = false;
+      WhisperService.onExternalCancel = null;
+      WhisperService.hideProgressNotification();
+      onDone(path);
+    }).catchError((e) {
+      isRunning = false;
+      WhisperService.onExternalCancel = null;
+      WhisperService.hideProgressNotification();
+      if (!_cancelled) onError?.call('$e');
+    });
+  }
 
   /// پارس SRT و جدا کردن متن از timestamp/index
   static List<SrtEntry2> parseSrt(String content) {
