@@ -202,7 +202,7 @@ class SrtTranslationService {
 
     // ── Client-side batching: هر request فقط ۳۰ خط ──
     // این از timeout شدن Worker جلوگیری می‌کنه
-    const batchSize = 30;
+    const batchSize = 50; // بزرگتر = کمتر رفت و برگشت
     final translatedLines = <String>[];
     final totalBatches = (allTextLines.length / batchSize).ceil();
 
