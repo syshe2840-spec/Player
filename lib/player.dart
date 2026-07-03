@@ -23,6 +23,7 @@ import 'opensubtitles_search_sheet.dart';
 import 'live_sub_sheet.dart';
 import 'srt_translate_sheet.dart';
 import 'srt_translation_service.dart';
+import 'live_translation_sync.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
 
@@ -118,6 +119,7 @@ class _PlayerState extends State<PlayerScreen>{
 
   // ── زیرنویس زنده ──
   bool _liveSubActive=false;
+  LiveTranslationSync? _liveTransSync; // همگام‌سازی ترجمه با زیرنویس زنده
   // ── ترجمه پس‌زمینه ──
   bool _translating=false;
   String _translatingLang='';
@@ -686,6 +688,16 @@ class _PlayerState extends State<PlayerScreen>{
       });
     });
 
+    // ── همگام‌سازی ترجمه آنلاین ──
+    if (config.syncTranslate) {
+      _liveTransSync?.cancel();
+      _liveTransSync = LiveTranslationSync(targetLangCode: config.syncTranslateLang);
+      _liveTransSync!.onUpdated = (translatedPath) {
+        // SRT ترجمه‌شده آماده شد — بارگذاری به‌عنوان زیرنویس دوم
+        if (mounted) _loadSub(translatedPath, secondary: true);
+      };
+    }
+
     // شروع transcription در پس‌زمینه
     transcribeLive(
       videoPath: _curPath,
@@ -695,7 +707,13 @@ class _PlayerState extends State<PlayerScreen>{
       },
       onSrtUpdated: () {
         if (mounted) _loadSub(srtPath, secondary: false);
+        // اگه sync translate فعاله، chunk جدید رو بفرست برای ترجمه
+        if (config.syncTranslate && _liveTransSync != null) {
+          final outputPath = LiveTranslationSync.outputPath(srtPath, config.syncTranslateLang);
+          _liveTransSync!.onLiveSubUpdated(srtPath, outputPath);
+        }
       },
+
     ).then((_) {
       if (mounted) {
         setState(() => _liveSubActive = false);
@@ -748,6 +766,8 @@ class _PlayerState extends State<PlayerScreen>{
 
   void _stopLiveSub() {
     cancelLiveSub();
+    _liveTransSync?.cancel();
+    _liveTransSync = null;
     _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
     _liveStopwatch.stop();
     if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
