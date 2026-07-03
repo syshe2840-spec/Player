@@ -124,7 +124,36 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Get version from pubspec
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//')
+          BUILD=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Vezoo v${{ steps.version.outputs.version }}
+          body: |
+            ## Vezoo v${{ steps.version.outputs.version }}
+
+            پلیر ویدیو هوشمند اندروید با زیرنویس AI آفلاین
+
+            ### نصب
+            فایل `Vezoo-v${{ steps.version.outputs.version }}.apk` را دانلود و نصب کنید.
+
+            > اگر نصب نشد: تنظیمات → امنیت → نصب از منابع ناشناس را فعال کنید.
+          files: build/app/outputs/flutter-apk/app-release.apk
+          fail_on_unmatched_files: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: subtitle-player-apk
