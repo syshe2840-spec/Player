@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'store.dart';
 import 'ai_models_screen.dart';
 import 'api_service.dart';
+import 'online_player_sheet.dart';
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
 
@@ -473,6 +474,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
       ],
       IconButton(icon:Icon(_searching?Icons.close_rounded:Icons.search_rounded,size:20),
           onPressed:(){setState((){_searching=!_searching;if(!_searching){_searchQuery='';_searchCtrl.clear();_searchResults=[];_globalSearch=false;}});}),
+      // دکمه پخش آنلاین
+      if(!_searching)IconButton(
+        icon:const Icon(Icons.wifi_tethering_rounded,size:20),
+        tooltip:'پخش آنلاین',
+        onPressed:()=>OnlinePlayerSheet.show(context)),
       if(!_searching)...[
         if(_path!=root)IconButton(
           icon:Icon(isSaved?Icons.push_pin_rounded:Icons.push_pin_outlined,color:isSaved?kAmber:kTextSec,size:20),
