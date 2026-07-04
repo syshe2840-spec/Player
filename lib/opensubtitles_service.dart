@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'subtitle_storage.dart';
 
 // ── ثابت‌ها ──
 const String _osBaseUrl = 'https://api.opensubtitles.com/api/v1';
@@ -204,9 +205,7 @@ class OpenSubtitlesService {
       client2.close();
     }
 
-    final base = p.basenameWithoutExtension(videoPath);
-    final dir = p.dirname(videoPath);
-    final out = p.join(dir, '${base}_os_${sub.language}.srt');
+    final out = await SubtitleStorage.onlineSubtitlePath(videoPath, sub.language);
     await File(out).writeAsString(content, encoding: utf8);
     return out;
   }
@@ -255,4 +254,3 @@ class OpenSubtitlesService {
     return ParsedFileInfo(title: cutTitle, year: year, season: season, episode: episode, isSeries: isSeries);
   }
 }
-
