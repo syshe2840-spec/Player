@@ -34,7 +34,8 @@ class PlayerScreen extends StatefulWidget {
   final String? subtitlePath;
   final List<File> playlist;
   final int playlistIndex;
-  const PlayerScreen({super.key,this.subtitlePath,required this.playlist,required this.playlistIndex});
+  final bool isOnlineUrl; // آدرس آنلاین (نه فایل محلی)
+  const PlayerScreen({super.key,this.subtitlePath,required this.playlist,required this.playlistIndex,this.isOnlineUrl=false});
   @override State<PlayerScreen> createState()=>_PlayerState();
 }
 
@@ -152,7 +153,9 @@ class _PlayerState extends State<PlayerScreen>{
   Size _size=Size.zero;
   final GlobalKey _videoKey=GlobalKey();
 
-  String get _curPath=>widget.playlist[_idx].path;
+  String get _curPath => widget.isOnlineUrl
+    ? widget.playlist[_idx].path  // برای URL، path = خود URL
+    : widget.playlist[_idx].path;
   bool get _hasPrev=>_idx>0;
   bool get _hasNext=>_idx<widget.playlist.length-1;
 
