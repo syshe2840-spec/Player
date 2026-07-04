@@ -24,6 +24,7 @@ import 'live_sub_sheet.dart';
 import 'srt_translate_sheet.dart';
 import 'srt_translation_service.dart';
 import 'live_translation_sync.dart';
+import 'subtitle_storage.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
 
@@ -676,7 +677,7 @@ class _PlayerState extends State<PlayerScreen>{
     _liveBadgeVisible = true; // هر session جدید badge دیده میشه
     setState(() => _liveSubActive = true);
 
-    final srtPath = liveSrtPath(_curPath, config.language);
+    final srtPath = await liveSrtPath(_curPath, config.language);
     _liveSubSrtPath = srtPath;
 
     // timer بررسی sync + refresh SRT هر ۳ ثانیه
@@ -718,7 +719,7 @@ class _PlayerState extends State<PlayerScreen>{
         if (mounted) _loadSub(srtPath, secondary: false);
         // اگه sync translate فعاله، chunk جدید رو بفرست برای ترجمه
         if (config.syncTranslate && _liveTransSync != null) {
-          final outputPath = LiveTranslationSync.outputPath(srtPath, config.syncTranslateLang);
+          final outputPath = await LiveTranslationSync.outputPath(_curPath, config.syncTranslateLang);
           _liveTransSync!.onLiveSubUpdated(srtPath, outputPath);
         }
       },
@@ -1247,7 +1248,7 @@ class _PlayerState extends State<PlayerScreen>{
                         const SizedBox(width: 5),
                         Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(
-                            'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveStopwatch.elapsed.inSeconds}s گذشت',
+                            LiveSubState.chunksTotal == 0 ? 'در حال آماده‌سازی...' : 'تکه \${LiveSubState.chunksDone}/\${LiveSubState.chunksTotal}  •  \${_liveStopwatch.elapsed.inSeconds}s گذشت',
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                           if(_liveTotalEstSec > 0)
                             Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
