@@ -670,7 +670,7 @@ class _PlayerState extends State<PlayerScreen>{
   // ══════════════════════════════════════════════════════════
   //  زیرنویس زنده
   // ══════════════════════════════════════════════════════════
-  void _startLiveSub(LiveSubConfig config) {
+  Future<void> _startLiveSub(LiveSubConfig config) async {
     _liveBehindAction = config.behindAction;
     _liveBehindSpeed  = config.behindSpeed;
     LiveSubState.reset();
