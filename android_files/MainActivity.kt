@@ -184,7 +184,11 @@ class MainActivity : FlutterActivity() {
                     executor.execute {
                         try {
                             val r = MediaMetadataRetriever()
-                            r.setDataSource(applicationContext, Uri.fromFile(File(path)))
+                            if (path.startsWith("http://") || path.startsWith("https://")) {
+                                r.setDataSource(path, mapOf("User-Agent" to "Vezoo/1.0"))
+                            } else {
+                                r.setDataSource(applicationContext, Uri.fromFile(File(path)))
+                            }
                             val dur = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
                             r.release()
                             handler.post { result.success(dur.toInt()) }
@@ -365,7 +369,9 @@ class MainActivity : FlutterActivity() {
     // ── Audio Extraction for Whisper ──
     private fun extractAudioWav(videoPath: String, outputPath: String, cancel: AtomicBoolean) {
         val extractor = MediaExtractor()
-        extractor.setDataSource(videoPath)
+        if (videoPath.startsWith("http://") || videoPath.startsWith("https://"))
+            extractor.setDataSource(videoPath, mapOf("User-Agent" to "Vezoo/1.0"))
+        else extractor.setDataSource(videoPath)
         var audioIdx = -1
         lateinit var audioFmt: MediaFormat
         for (i in 0 until extractor.trackCount) {
@@ -438,7 +444,9 @@ class MainActivity : FlutterActivity() {
     /** استخراج یه بازه‌ی زمانی از صدای ویدیو — برای زیرنویس زنده */
     private fun extractAudioWavRange(videoPath: String, outputPath: String, cancel: AtomicBoolean, startMs: Long, durationMs: Long) {
         val extractor = MediaExtractor()
-        extractor.setDataSource(videoPath)
+        if (videoPath.startsWith("http://") || videoPath.startsWith("https://"))
+            extractor.setDataSource(videoPath, mapOf("User-Agent" to "Vezoo/1.0"))
+        else extractor.setDataSource(videoPath)
         var audioIdx = -1; lateinit var audioFmt: MediaFormat
         for (i in 0 until extractor.trackCount) {
             val fmt = extractor.getTrackFormat(i)
@@ -646,3 +654,4 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
