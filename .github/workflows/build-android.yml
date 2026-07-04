@@ -28,7 +28,7 @@ jobs:
 
       - name: Restore our files
         run: |
-          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt lib/srt_editor_screen.dart lib/ai_batch_queue_screen.dart lib/ai_history_screen.dart lib/opensubtitles_service.dart lib/opensubtitles_search_sheet.dart lib/live_sub_sheet.dart android_files/LiveSubService.kt lib/srt_translation_service.dart lib/srt_translate_sheet.dart lib/live_translation_sync.dart
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt lib/srt_editor_screen.dart lib/ai_batch_queue_screen.dart lib/ai_history_screen.dart lib/opensubtitles_service.dart lib/opensubtitles_search_sheet.dart lib/live_sub_sheet.dart android_files/LiveSubService.kt lib/srt_translation_service.dart lib/srt_translate_sheet.dart lib/live_translation_sync.dart lib/online_player_sheet.dart
           MAKT=$(find android -name "MainActivity.kt" | head -1)
           echo "=== Found MainActivity at: $MAKT ==="
           if [ -n "$MAKT" ]; then
@@ -124,7 +124,36 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Get version from pubspec
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//')
+          BUILD=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Vezoo v${{ steps.version.outputs.version }}
+          body: |
+            ## Vezoo v${{ steps.version.outputs.version }}
+
+            پلیر ویدیو هوشمند اندروید با زیرنویس AI آفلاین
+
+            ### نصب
+            فایل `Vezoo-v${{ steps.version.outputs.version }}.apk` را دانلود و نصب کنید.
+
+            > اگر نصب نشد: تنظیمات → امنیت → نصب از منابع ناشناس را فعال کنید.
+          files: build/app/outputs/flutter-apk/app-release.apk
+          fail_on_unmatched_files: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: subtitle-player-apk
