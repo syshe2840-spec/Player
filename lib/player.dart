@@ -717,10 +717,12 @@ class _PlayerState extends State<PlayerScreen>{
       },
       onSrtUpdated: () {
         if (mounted) _loadSub(srtPath, secondary: false);
-        // اگه sync translate فعاله، chunk جدید رو بفرست برای ترجمه
         if (config.syncTranslate && _liveTransSync != null) {
-          final outputPath = await LiveTranslationSync.outputPath(_curPath, config.syncTranslateLang);
-          _liveTransSync!.onLiveSubUpdated(srtPath, outputPath);
+          // async wrapper برای await داخل callback معمولی
+          () async {
+            final outputPath = await LiveTranslationSync.outputPath(_curPath, config.syncTranslateLang);
+            _liveTransSync!.onLiveSubUpdated(srtPath, outputPath);
+          }();
         }
       },
 
