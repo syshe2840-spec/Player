@@ -254,3 +254,4 @@ class OpenSubtitlesService {
     return ParsedFileInfo(title: cutTitle, year: year, season: season, episode: episode, isSeries: isSeries);
   }
 }
+
