@@ -153,7 +153,31 @@ class _State extends State<AiSubtitleSheet> {
   }
 
   @override
-  Widget build(BuildContext ctx) => SafeArea(
+  Widget build(BuildContext ctx) {
+    final isOnline = widget.videoPath.startsWith('http://') || widget.videoPath.startsWith('https://');
+    if (isOnline) return SafeArea(child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width:40,height:4,margin:const EdgeInsets.only(bottom:20),
+          decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2))),
+        const Icon(Icons.wifi_off_rounded, color: Colors.white38, size: 48),
+        const SizedBox(height:16),
+        const Text('زیرنویس AI آفلاین', style: TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
+        const SizedBox(height:8),
+        const Text(
+          'این ویژگی فقط برای فایل‌های ویدیوی محلی در دسترس است.\n\n'
+          'برای ویدیوی آنلاین از «زیرنویس زنده» استفاده کنید که صدا را تکه‌تکه پردازش می‌کند.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color:Colors.white60, fontSize:13, height:1.6)),
+        const SizedBox(height:20),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
+          child: const Text('بستن')),
+      ]),
+    ));  // end online SafeArea
+
+    return SafeArea(
     child:ConstrainedBox(
       constraints:BoxConstraints(maxHeight:MediaQuery.of(ctx).size.height*0.85),
       child:SingleChildScrollView(
@@ -569,7 +593,7 @@ class _State extends State<AiSubtitleSheet> {
         ]),
       ),
     );
-  }
+  } // end build
 
   Widget _row({required IconData icon, required Widget child, Widget? trailing})=>Container(
     padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
@@ -582,4 +606,5 @@ class _State extends State<AiSubtitleSheet> {
     ]),
   );
 }
+} // end _State
 
