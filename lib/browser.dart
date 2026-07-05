@@ -818,8 +818,10 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           Tab(icon:Icon(Icons.settings_rounded,size:16),text:'اپ')]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
-      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber,showRemove:true),
-      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink,showRemove:true),
+      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber,
+        onRemove:(path)async{await Store.toggleBookmark(path);setState((){}); }),
+      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink,
+        onRemove:(path)async{await Store.toggleFavorite(path);setState((){}); }),
       _folderList(),_playlistTab(),_sponsorTab(),_settingsTab(),
     ])),
     SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
@@ -841,7 +843,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         onLongPress:(path)async{await Store.removeFromHistory(path);setState((){});})),
   ]);
 
-  Widget _vList(List<String> paths,IconData icon,Color color,{Function(String)?onLongPress, bool showRemove=false}){
+  Widget _vList(List<String> paths,IconData icon,Color color,{Function(String)?onLongPress, void Function(String)?onRemove}){
     if(paths.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
           child:Icon(icon,size:32,color:color.withOpacity(0.4))),
@@ -859,12 +861,9 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         title:Text(displayName,maxLines:1,overflow:TextOverflow.ellipsis,
             style:TextStyle(fontSize:13,color:exists?Colors.white:kTextDim)),
         subtitle:Text(displaySub,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
-        trailing:showRemove?IconButton(
+        trailing:onRemove!=null?IconButton(
           icon:const Icon(Icons.close,size:14,color:kRed),
-          onPressed:(){
-            if(paths==Store.bookmarked.toList()){Store.toggleBookmark(path);setState((){});}
-            else if(paths==Store.favorited.toList()){Store.toggleFavorite(path);setState((){});}
-          }):null,
+          onPressed:()=>onRemove(path)):null,
         onTap:exists?(){
           if(isUrl) widget.onVideoTap(path);
           else widget.onVideoTap(path);
