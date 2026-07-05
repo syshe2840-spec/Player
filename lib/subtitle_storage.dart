@@ -1,29 +1,20 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'opensubtitles_service.dart' show OpenSubtitlesService;
+import 'opensubtitles_service.dart' show OpenSubtitlesService, ParsedFileInfo;
 
-/// مدیریت مسیر زیرنویس
-/// فایل محلی: کنار خود ویدیو (سازگار با قبل)
-/// URL آنلاین: Documents/Vezoo Subtitles/[نام فایل]/
+/// مدیریت مسیر زیرنویس با ساختار پوشه‌بندی هوشمند
+/// فیلم:   [dir]/[اسم فیلم]/subtitle.srt
+/// سریال:  [dir]/[اسم سریال]/Season XX/EXX/subtitle.srt
+/// ناشناس: [dir]/Other/subtitle.srt
+/// URL:    /storage/emulated/0/Download/Vezoo Subtitles/[همان ساختار]
 class SubtitleStorage {
 
   static bool _isUrl(String path) =>
     path.startsWith('http://') || path.startsWith('https://');
 
-  /// پوشه ذخیره زیرنویس برای یه ویدیو
-  static Future<String> subtitleDir(String videoPath) async {
-    if (_isUrl(videoPath)) {
-      // URL آنلاین: /storage/emulated/0/Download/Vezoo Subtitles/[نام]/
-      const downloadPath = '/storage/emulated/0/Download';
-      final uri = Uri.parse(videoPath);
-      final name = p.basenameWithoutExtension(
-        uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => 'video'));
-      final dir = p.join(downloadPath, 'Vezoo Subtitles', name);
-      await Directory(dir).create(recursive: true);
-      return dir;
-    }
-    // فایل محلی: همان پوشه ویدیو
+  /// ریشه پوشه‌بندی (پوشه ویدیو یا Download برای URL)
+  static String _baseDir(String videoPath) {
+    if (_isUrl(videoPath)) return '/storage/emulated/0/Download/Vezoo Subtitles';
     return p.dirname(videoPath);
   }
 
@@ -36,41 +27,89 @@ class SubtitleStorage {
     return p.basenameWithoutExtension(videoPath);
   }
 
+  static String _clean(String s) =>
+    s.replaceAll(RegExp(r'[<>:"/\\|?*]'), ' ').trim().replaceAll(RegExp(r'\s+'), ' ');
+
+  /// ساخت مسیر پوشه بر اساس اطلاعات فایل
+  static String _buildSubDir(String baseDir, ParsedFileInfo info, String originalName) {
+    if (info.isSeries && info.title.isNotEmpty) {
+      // سریال با اسم شناخته‌شده
+      final s = info.season;
+      final e = info.episode;
+      if (s != null && e != null) {
+        return p.join(baseDir, _clean(info.title),
+          'Season ${s.toString().padLeft(2,'0')}',
+          'E${e.toString().padLeft(2,'0')}');
+      } else if (s != null) {
+        return p.join(baseDir, _clean(info.title),
+          'Season ${s.toString().padLeft(2,'0')}');
+      }
+      return p.join(baseDir, _clean(info.title));
+    } else if (!info.isSeries && info.title.isNotEmpty) {
+      // فیلم با اسم شناخته‌شده
+      final year = info.year != null ? ' (${info.year})' : '';
+      return p.join(baseDir, _clean('${info.title}$year'));
+    } else {
+      // نتونست تشخیص بده → Other
+      return p.join(baseDir, 'Other');
+    }
+  }
+
+  /// پوشه کامل برای ذخیره زیرنویس
+  static Future<String> subtitleDir(String videoPath) async {
+    final baseDir = _baseDir(videoPath);
+    final name = _baseName(videoPath);
+    ParsedFileInfo info;
+    try {
+      info = OpenSubtitlesService.parseFilename(name);
+    } catch (_) {
+      info = ParsedFileInfo(title: '', isSeries: false);
+    }
+    final dir = _buildSubDir(baseDir, info, name);
+    await Directory(dir).create(recursive: true);
+    return dir;
+  }
+
+  /// مسیر کامل فایل زیرنویس
   static Future<String> subtitlePath(String videoPath, {required String suffix, String ext = 'srt'}) async {
     final dir = await subtitleDir(videoPath);
     return p.join(dir, '${_baseName(videoPath)}$suffix.$ext');
   }
 
-  static Future<String> aiSubtitlePath(String videoPath, String lang) =>
-    subtitlePath(videoPath, suffix: '_ai_$lang');
+  static Future<String> aiSubtitlePath(String vp, String lang) => subtitlePath(vp, suffix: '_ai_$lang');
+  static Future<String> onlineSubtitlePath(String vp, String lang) => subtitlePath(vp, suffix: '_os_$lang');
+  static Future<String> liveSubtitlePath(String vp, String lang) => subtitlePath(vp, suffix: '_live_$lang');
+  static Future<String> liveTranslatedPath(String vp, String lang) => subtitlePath(vp, suffix: '_live_translated_$lang');
+  static Future<String> translatedPath(String vp, String lang) => subtitlePath(vp, suffix: '_translated_$lang');
 
-  static Future<String> onlineSubtitlePath(String videoPath, String lang) =>
-    subtitlePath(videoPath, suffix: '_os_$lang');
-
-  static Future<String> liveSubtitlePath(String videoPath, String lang) =>
-    subtitlePath(videoPath, suffix: '_live_$lang');
-
-  static Future<String> liveTranslatedPath(String videoPath, String lang) =>
-    subtitlePath(videoPath, suffix: '_live_translated_$lang');
-
-  static Future<String> translatedPath(String videoPath, String lang) =>
-    subtitlePath(videoPath, suffix: '_translated_$lang');
-
-  /// لیست همه زیرنویس‌های این ویدیو
+  /// جستجوی زیرنویس در هر دو مکان (قدیمی کنار فایل + جدید در پوشه)
   static Future<List<File>> listSubtitles(String videoPath) async {
+    final found = <File>{};
+    final base = _baseName(videoPath);
+    final exts = ['.srt','.ass','.vtt'];
+
+    // مکان قدیمی (کنار فایل)
     try {
-      final dir = await subtitleDir(videoPath);
-      final base = _baseName(videoPath);
-      return Directory(dir).listSync()
-        .whereType<File>()
-        .where((f) {
-          final name = p.basename(f.path);
-          final ext = p.extension(f.path).toLowerCase();
-          return name.startsWith(base) && ['.srt','.ass','.vtt'].contains(ext);
-        })
-        .toList()
-        ..sort((a,b) => b.statSync().modified.compareTo(a.statSync().modified));
-    } catch (_) { return []; }
+      final oldDir = Directory(p.dirname(videoPath));
+      if (oldDir.existsSync()) {
+        for (final f in oldDir.listSync().whereType<File>()) {
+          final n = p.basename(f.path);
+          if (n.startsWith(base) && exts.contains(p.extension(n).toLowerCase())) found.add(f);
+        }
+      }
+    } catch (_) {}
+
+    // مکان جدید (پوشه‌بندی)
+    try {
+      final newDir = Directory(await subtitleDir(videoPath));
+      if (newDir.existsSync()) {
+        for (final f in newDir.listSync().whereType<File>()) {
+          if (exts.contains(p.extension(f.path).toLowerCase())) found.add(f);
+        }
+      }
+    } catch (_) {}
+
+    return found.toList()..sort((a,b) => b.statSync().modified.compareTo(a.statSync().modified));
   }
 }
 
