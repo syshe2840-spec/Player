@@ -14,12 +14,12 @@ class SubtitleStorage {
   /// پوشه ذخیره زیرنویس برای یه ویدیو
   static Future<String> subtitleDir(String videoPath) async {
     if (_isUrl(videoPath)) {
-      // URL آنلاین: Documents/Vezoo Subtitles/[نام]/
-      final docs = await getApplicationDocumentsDirectory();
+      // URL آنلاین: /storage/emulated/0/Download/Vezoo Subtitles/[نام]/
+      const downloadPath = '/storage/emulated/0/Download';
       final uri = Uri.parse(videoPath);
       final name = p.basenameWithoutExtension(
         uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => 'video'));
-      final dir = p.join(docs.path, 'Vezoo Subtitles', name);
+      final dir = p.join(downloadPath, 'Vezoo Subtitles', name);
       await Directory(dir).create(recursive: true);
       return dir;
     }
