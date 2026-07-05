@@ -237,8 +237,7 @@ class _State extends State<OnlinePlayerSheet> {
                 ),
               ]),
             ),
-            Flexible(child: ListView.builder(
-              shrinkWrap: true,
+            SizedBox(height: 220, child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _recent.length,
               itemBuilder: (_, i) {
