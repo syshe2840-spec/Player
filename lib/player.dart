@@ -22,7 +22,7 @@ import 'ai_subtitle_sheet.dart';
 import 'opensubtitles_search_sheet.dart';
 import 'live_sub_sheet.dart';
 import 'srt_translate_sheet.dart';
-import 'srt_translation_service.dart';
+import 'srt_translation_service.dart' show SrtTranslationService, SrtTranslationServiceStatus, kTranslateLangDisplay;
 import 'live_translation_sync.dart';
 import 'subtitle_storage.dart';
 import 'whisper_service.dart';
@@ -750,6 +750,23 @@ class _PlayerState extends State<PlayerScreen>{
     });
   }
 
+  void _showTranslationPanel() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C22),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _TranslationInfoPanel(
+        onCancel: () {
+          Navigator.pop(context);
+          SrtTranslationService.cancel();
+          setState((){_translating=false; _translatingStatus='';});
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('ترجمه لغو شد'), backgroundColor: Colors.orange));
+        },
+      ),
+    );
+  }
+
   void _showLivePanel() {
     showModalBottomSheet(
       context: context,
@@ -1198,33 +1215,38 @@ class _PlayerState extends State<PlayerScreen>{
             top: _liveSubActive ? 108 : 80, left: 0, right: 0,
             child: ValueListenableBuilder<int>(
               valueListenable: SrtTranslationServiceStatus.notifier,
-              builder: (_,__,___) => Center(child: Container(
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.75), borderRadius: BorderRadius.circular(20)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Padding(padding: EdgeInsets.only(left: 10, top: 6, bottom: 6),
-                    child: Icon(Icons.translate, color: Color(0xFF7C3AED), size: 12)),
-                  const SizedBox(width: 5),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text(
-                      SrtTranslationServiceStatus.lastStatus.isEmpty
-                        ? 'در حال ترجمه...'
-                        : SrtTranslationServiceStatus.lastStatus,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      SrtTranslationService.cancel();
-                      setState((){_translating=false; _translatingStatus='';});
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('ترجمه لغو شد'), backgroundColor: Colors.orange));
-                    },
-                    child: const Padding(padding: EdgeInsets.fromLTRB(4,6,10,6),
-                      child: Icon(Icons.close, color: Colors.white54, size: 13)),
-                  ),
-                ]),
+              builder: (_,__,___) => Center(child: GestureDetector(
+                onTap: _showTranslationPanel,
+                child: Container(
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.75), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Padding(padding: EdgeInsets.only(left: 10, top: 6, bottom: 6),
+                      child: Icon(Icons.translate, color: Color(0xFF7C3AED), size: 12)),
+                    const SizedBox(width: 5),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        SrtTranslationServiceStatus.batchTotal > 0
+                          ? 'ترجمه ${SrtTranslationServiceStatus.batchDone}/${SrtTranslationServiceStatus.batchTotal} تکه'
+                          : 'در حال ترجمه...',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 4),
+                    const Padding(padding: EdgeInsets.only(right: 6),
+                      child: Icon(Icons.info_outline, color: Colors.white38, size: 12)),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        SrtTranslationService.cancel();
+                        setState((){_translating=false; _translatingStatus='';});
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('ترجمه لغو شد'), backgroundColor: Colors.orange));
+                      },
+                      child: const Padding(padding: EdgeInsets.fromLTRB(2,6,10,6),
+                        child: Icon(Icons.close, color: Colors.white54, size: 13)),
+                    ),
+                  ]),
+                ),
               )),
             ),
           ),
@@ -1250,7 +1272,7 @@ class _PlayerState extends State<PlayerScreen>{
                         const SizedBox(width: 5),
                         Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(
-                            LiveSubState.chunksTotal == 0 ? 'در حال آماده‌سازی...' : 'تکه \${LiveSubState.chunksDone}/\${LiveSubState.chunksTotal}  •  \${_liveStopwatch.elapsed.inSeconds}s گذشت',
+                            LiveSubState.chunksTotal == 0 ? 'در حال آماده‌سازی...' : 'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveStopwatch.elapsed.inSeconds}s گذشت',
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                           if(_liveTotalEstSec > 0)
                             Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
@@ -1702,6 +1724,90 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
     ));
       }, // end ValueListenableBuilder builder
     ); // end ValueListenableBuilder
+  }
+
+  Widget _row(String label, String value) => Row(children:[
+    Text(label,style:const TextStyle(color:Colors.white60,fontSize:13)),
+    const Spacer(),
+    Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
+  ]);
+}
+
+// ── پنل اطلاعات ترجمه آنلاین (مثل live subtitle panel) ──
+class _TranslationInfoPanel extends StatefulWidget {
+  final VoidCallback onCancel;
+  const _TranslationInfoPanel({required this.onCancel});
+  @override State<_TranslationInfoPanel> createState() => _TranslationInfoPanelState();
+}
+
+class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
+  Timer? _t;
+  @override void initState() { super.initState(); _t = Timer.periodic(const Duration(seconds:1),(_){ if(mounted)setState((){}); }); }
+  @override void dispose() { _t?.cancel(); super.dispose(); }
+
+  String _fmt(int s) => s < 60 ? '${s}s' : '${s~/60}m ${s%60}s';
+
+  @override
+  Widget build(BuildContext ctx) {
+    final done = SrtTranslationServiceStatus.batchDone;
+    final total = SrtTranslationServiceStatus.batchTotal;
+    final elapsed = SrtTranslationServiceStatus.sw.elapsed.inSeconds;
+    final lang = kTranslateLangDisplay[SrtTranslationServiceStatus.targetLang]
+      ?? SrtTranslationServiceStatus.targetLang;
+    final remaining = total > 0 && done > 0
+      ? ((elapsed / done) * (total - done)).round() : 0;
+
+    return SafeArea(child: SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width:40,height:4,margin:const EdgeInsets.only(bottom:14),
+          decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2))),
+        Row(children:[
+          const Icon(Icons.translate,color:Color(0xFF7C3AED),size:18),
+          const SizedBox(width:8),
+          const Expanded(child:Text('ترجمه آنلاین در حال اجرا',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
+          IconButton(icon:const Icon(Icons.close,color:Colors.white54,size:20),
+            onPressed:()=>Navigator.pop(ctx),constraints:const BoxConstraints(),padding:const EdgeInsets.all(4)),
+        ]),
+        const SizedBox(height:12),
+        const Divider(color:Colors.white12),
+        const SizedBox(height:12),
+
+        ValueListenableBuilder<int>(
+          valueListenable: SrtTranslationServiceStatus.notifier,
+          builder:(_,__,___) => Column(children:[
+            Row(children:[
+              const Icon(Icons.translate,color:Color(0xFF7C3AED),size:14),
+              const SizedBox(width:6),
+              const Text('زبان مقصد: ',style:TextStyle(color:Colors.white60,fontSize:13)),
+              Text(lang,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
+            ]),
+            const SizedBox(height:8),
+            _row('⏱ زمان گذشته', _fmt(elapsed)),
+            const SizedBox(height:4),
+            _row('📊 تکه‌ها', '$done از $total'),
+            const SizedBox(height:4),
+            if(remaining>0) _row('⏳ تخمین مانده','~${_fmt(remaining)}'),
+            const SizedBox(height:6),
+            LinearProgressIndicator(
+              value: total>0 ? (done/total).clamp(0.0,1.0) : null,
+              backgroundColor:Colors.white12,color:const Color(0xFF7C3AED)),
+            const SizedBox(height:4),
+            Text(SrtTranslationServiceStatus.lastStatus,
+              style:const TextStyle(color:Colors.white54,fontSize:11)),
+          ]),
+        ),
+        const SizedBox(height:16),
+        const Divider(color:Colors.white12),
+        const SizedBox(height:12),
+        SizedBox(width:double.infinity,child:FilledButton.icon(
+          onPressed:widget.onCancel,
+          icon:const Icon(Icons.stop,size:16),
+          label:const Text('لغو ترجمه'),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red,padding:const EdgeInsets.symmetric(vertical:12)),
+        )),
+      ]),
+    ));
   }
 
   Widget _row(String label, String value) => Row(children:[
