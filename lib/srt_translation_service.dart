@@ -70,8 +70,17 @@ class SrtEntry2 {
 /// وضعیت زنده برای badge پلیر
 class SrtTranslationServiceStatus {
   static String lastStatus = '';
+  static String targetLang = '';
+  static int batchDone = 0;
+  static int batchTotal = 0;
+  static final sw = Stopwatch();
   static final notifier = ValueNotifier<int>(0);
+
+  static void reset() {
+    lastStatus=''; batchDone=0; batchTotal=0; sw.reset(); sw.start();
+  }
   static void update(String s) { lastStatus = s; notifier.value++; }
+  static void setBatch(int done, int total) { batchDone=done; batchTotal=total; notifier.value++; }
 }
 
 class SrtTranslationService {
@@ -92,6 +101,8 @@ class SrtTranslationService {
   }) {
     _cancelled = false;
     isRunning = true;
+    SrtTranslationServiceStatus.reset();
+    SrtTranslationServiceStatus.targetLang = targetLangCode;
 
     // cancel hook — notification لغو → ترجمه هم لغو
     WhisperService.onExternalCancel = () => cancel();
@@ -216,6 +227,7 @@ class SrtTranslationService {
 
       final progress = 0.2 + (b / totalBatches) * 0.65;
       onStatus?.call('ترجمه تکه ${b + 1} از $totalBatches...', progress);
+      SrtTranslationServiceStatus.setBatch(b + 1, totalBatches);
 
       final body = jsonEncode({
         'lines': batchLines,
