@@ -178,6 +178,7 @@ class LiveTranslationSync {
         b.writeln();
       }
 
+      if (_outputSrtPath == null) return;
       File(_outputSrtPath!).writeAsStringSync(b.toString(), encoding: utf8);
       onUpdated?.call(_outputSrtPath!);
     } catch (e) {
