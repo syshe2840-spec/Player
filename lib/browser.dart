@@ -818,8 +818,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           Tab(icon:Icon(Icons.settings_rounded,size:16),text:'اپ')]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
-      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber),
-      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink),
+      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber,showRemove:true),
+      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink,showRemove:true),
       _folderList(),_playlistTab(),_sponsorTab(),_settingsTab(),
     ])),
     SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
@@ -841,22 +841,41 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         onLongPress:(path)async{await Store.removeFromHistory(path);setState((){});})),
   ]);
 
-  Widget _vList(List<String> paths,IconData icon,Color color,{Function(String)?onLongPress}){
+  Widget _vList(List<String> paths,IconData icon,Color color,{Function(String)?onLongPress, bool showRemove=false}){
     if(paths.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
           child:Icon(icon,size:32,color:color.withOpacity(0.4))),
       const SizedBox(height:12),const Text('هنوز چیزی نیست',style:TextStyle(color:kTextSec)),
     ]));
     return ListView.builder(itemCount:paths.length,padding:const EdgeInsets.only(bottom:8),itemBuilder:(_,i){
-      final path=paths[i];final exists=File(path).existsSync();
+      final path=paths[i];
+      final isUrl = path.startsWith('http://') || path.startsWith('https://');
+      final exists = isUrl ? true : File(path).existsSync();
+      final displayName = isUrl ? Uri.parse(path).pathSegments.lastWhere((s)=>s.isNotEmpty,orElse:()=>path) : p.basename(path);
+      final displaySub = isUrl ? path : p.dirname(path);
       return ListTile(dense:true,
         leading:Container(width:30,height:30,decoration:BoxDecoration(color:color.withOpacity(0.1),borderRadius:BorderRadius.circular(7)),
-            child:Icon(icon,color:exists?color:kTextDim,size:15)),
-        title:Text(p.basename(path),maxLines:1,overflow:TextOverflow.ellipsis,
+            child:Icon(isUrl ? Icons.link_rounded : icon,color:exists?color:kTextDim,size:15)),
+        title:Text(displayName,maxLines:1,overflow:TextOverflow.ellipsis,
             style:TextStyle(fontSize:13,color:exists?Colors.white:kTextDim)),
-        subtitle:Text(p.dirname(path),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
-        onTap:exists?()=>widget.onVideoTap(path):null,
-        onLongPress:onLongPress!=null?()=>onLongPress(path):null);
+        subtitle:Text(displaySub,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
+        trailing:showRemove?IconButton(
+          icon:const Icon(Icons.close,size:14,color:kRed),
+          onPressed:(){
+            if(paths==Store.bookmarked.toList()){Store.toggleBookmark(path);setState((){});}
+            else if(paths==Store.favorited.toList()){Store.toggleFavorite(path);setState((){});}
+          }):null,
+        onTap:exists?(){
+          if(isUrl) widget.onVideoTap(path);
+          else widget.onVideoTap(path);
+        }:null,
+        onLongPress:(){
+          if(isUrl){
+            Clipboard.setData(ClipboardData(text:path));
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content:Text('لینک کپی شد'),duration:Duration(seconds:2),backgroundColor:Color(0xFF7C3AED)));
+          } else if(onLongPress!=null) onLongPress(path);
+        });
     });
   }
 
