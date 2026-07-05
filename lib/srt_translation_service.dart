@@ -126,8 +126,16 @@ class SrtTranslationService {
     }).catchError((e) {
       isRunning = false;
       WhisperService.onExternalCancel = null;
-      WhisperService.hideProgressNotification();
-      if (!_cancelled) onError?.call('$e');
+      if (!_cancelled) {
+        // نشون دادن خطا در notification و بعد ۳ ثانیه بستن
+        WhisperService.updateProgressNotification('خطا: $e', 0);
+        Future.delayed(const Duration(seconds: 3), () {
+          WhisperService.hideProgressNotification();
+        });
+        onError?.call('$e');
+      } else {
+        WhisperService.hideProgressNotification();
+      }
     });
   }
 
