@@ -207,6 +207,7 @@ class _State extends State<AiSubtitleSheet> {
       ),
     ),
   );
+  } // close build method
 
   // ── حالت انتخاب: زبان‌های موجود + ساخت جدید ──
   List<Widget> _buildPick()=>[
@@ -593,7 +594,6 @@ class _State extends State<AiSubtitleSheet> {
         ]),
       ),
     );
-  } // end build
 
   Widget _row({required IconData icon, required Widget child, Widget? trailing})=>Container(
     padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
@@ -605,6 +605,5 @@ class _State extends State<AiSubtitleSheet> {
       if(trailing!=null) trailing,
     ]),
   );
-}
-} // end _State
+}}
 
