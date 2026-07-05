@@ -1384,7 +1384,10 @@ class _PlayerState extends State<PlayerScreen>{
                   });
                   break;
                 case 'translate':
-                  if (_sub1Path != null) {
+                  if (_translating && SrtTranslationService.isRunning) {
+                    // ترجمه در حال اجراست — پنل وضعیت رو نشون بده
+                    _showTranslationPanel();
+                  } else if (_sub1Path != null) {
                     SrtTranslateSheet.show(
                       context, _sub1Path!,
                       (translated) {
@@ -1816,4 +1819,3 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
-
