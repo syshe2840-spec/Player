@@ -918,8 +918,17 @@ Future<String> transcribeLive({
   await _startLiveSubService(p.basenameWithoutExtension(videoPath));
   const ch = MethodChannel('com.vezoo.player/whisper');
 
-  final durationMs = await WhisperService.getVideoDurationMs(videoPath);
-  if (durationMs <= 0) throw Exception('مدت ویدیو قابل تشخیص نیست');
+  final isOnline = videoPath.startsWith('http://') || videoPath.startsWith('https://');
+  // برای URL آنلاین، timeout ۸ ثانیه — اگه دیر شد با تخمین ادامه بده
+  int durationMs;
+  if (isOnline) {
+    durationMs = await WhisperService.getVideoDurationMs(videoPath)
+      .timeout(const Duration(seconds: 8), onTimeout: () => 0);
+    if (durationMs <= 0) durationMs = 3600000; // فرض ۱ ساعت برای URL
+  } else {
+    durationMs = await WhisperService.getVideoDurationMs(videoPath);
+    if (durationMs <= 0) throw Exception('مدت ویدیو قابل تشخیص نیست');
+  }
   LiveSubState.totalMs = durationMs;
   LiveSubState.chunkMs = config.chunkMs;
   LiveSubState.language = config.language;
