@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import 'subtitle_storage.dart';
 import 'srt_translation_service.dart';
 
 /// همگام‌سازی ترجمه با زیرنویس زنده — پردازش موازی
@@ -188,10 +189,7 @@ class LiveTranslationSync {
   bool get isComplete => _translated.every((t) => t != null) && _queue.isEmpty && _running == 0;
 
   /// نام فایل خروجی برای یه SRT زنده
-  static String outputPath(String liveSrtPath, String targetLangCode) {
-    final dir = p.dirname(liveSrtPath);
-    final base = p.basenameWithoutExtension(liveSrtPath);
-    return p.join(dir, '${base}_translated_$targetLangCode.srt');
-  }
+  static Future<String> outputPath(String videoPath, String targetLangCode) =>
+    SubtitleStorage.liveTranslatedPath(videoPath, targetLangCode);
 }
 

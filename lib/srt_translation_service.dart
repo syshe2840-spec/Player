@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'api_service.dart';
 import 'whisper_service.dart' show WhisperService;
+import 'subtitle_storage.dart';
 
 // ── زبان‌های پشتیبانی‌شده برای ترجمه (نام کامل برای Llama) ──
 const kTranslateLangs = {
@@ -69,8 +70,17 @@ class SrtEntry2 {
 /// وضعیت زنده برای badge پلیر
 class SrtTranslationServiceStatus {
   static String lastStatus = '';
+  static String targetLang = '';
+  static int batchDone = 0;
+  static int batchTotal = 0;
+  static final sw = Stopwatch();
   static final notifier = ValueNotifier<int>(0);
+
+  static void reset() {
+    lastStatus=''; batchDone=0; batchTotal=0; sw.reset(); sw.start();
+  }
   static void update(String s) { lastStatus = s; notifier.value++; }
+  static void setBatch(int done, int total) { batchDone=done; batchTotal=total; notifier.value++; }
 }
 
 class SrtTranslationService {
@@ -91,6 +101,8 @@ class SrtTranslationService {
   }) {
     _cancelled = false;
     isRunning = true;
+    SrtTranslationServiceStatus.reset();
+    SrtTranslationServiceStatus.targetLang = targetLangCode;
 
     // cancel hook — notification لغو → ترجمه هم لغو
     WhisperService.onExternalCancel = () => cancel();
@@ -215,6 +227,7 @@ class SrtTranslationService {
 
       final progress = 0.2 + (b / totalBatches) * 0.65;
       onStatus?.call('ترجمه تکه ${b + 1} از $totalBatches...', progress);
+      SrtTranslationServiceStatus.setBatch(b + 1, totalBatches);
 
       final body = jsonEncode({
         'lines': batchLines,
@@ -258,10 +271,7 @@ class SrtTranslationService {
       }
 
       // ── ذخیره تدریجی بعد از هر batch ──
-      // اگه لغو شد یا خطا بود، تا اینجا ذخیره شده
-      final partialDir = p.dirname(srtPath);
-      final partialBase = p.basenameWithoutExtension(srtPath);
-      final partialPath = p.join(partialDir, '${partialBase}_$targetLangCode.srt');
+      final partialPath = await SubtitleStorage.translatedPath(srtPath, targetLangCode);
 
       // بازسازی entries تا اینجا با ترجمه + بقیه با متن اصلی
       int lineIdx2 = 0;
@@ -269,12 +279,12 @@ class SrtTranslationService {
         final newTexts = e.textLines.map((orig) {
           if (lineIdx2 < translatedLines.length) return translatedLines[lineIdx2++];
           lineIdx2++;
-          return orig; // هنوز ترجمه نشده → اصل
+          return orig;
         }).toList();
         return SrtEntry2(e.index, e.timestamp, newTexts);
       }).toList();
       await File(partialPath).writeAsString(buildSrt(partialEntries), encoding: utf8);
-      onSrtUpdated?.call(partialPath); // اپلای روی پلیر (اختیاری)
+      onSrtUpdated?.call(partialPath);
     }
 
     if (translatedLines.length != allTextLines.length) {
@@ -282,9 +292,7 @@ class SrtTranslationService {
     }
 
     // ── ذخیره نهایی کامل ──
-    final dir = p.dirname(srtPath);
-    final base = p.basenameWithoutExtension(srtPath);
-    final outPath = p.join(dir, '${base}_$targetLangCode.srt');
+    final outPath = await SubtitleStorage.translatedPath(srtPath, targetLangCode);
     int lineIdx = 0;
     final newEntries = entries.map((e) {
       final newTexts = e.textLines.map((_) => translatedLines[lineIdx++]).toList();

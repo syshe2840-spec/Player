@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:whisper_ggml_plus/whisper_ggml_plus.dart';
+import 'subtitle_storage.dart';
 
 // ══════════════════════════════════════════════════════════
 //  تعریف مدل‌ها
@@ -228,6 +229,11 @@ class WhisperService {
   }
 
   // ── کش زیرنویس — بر اساس زبان ──
+  /// مسیر فایل SRT (async — از SubtitleStorage استفاده می‌کند)
+  static Future<String> srtPathAsync(String videoPath, String language) =>
+    SubtitleStorage.aiSubtitlePath(videoPath, language);
+
+  /// مسیر همزمان (fallback — فقط برای سازگاری قدیم)
   static String srtPath(String videoPath, String language) {
     final ext = p.extension(videoPath);
     final base = videoPath.replaceFirst(RegExp('${RegExp.escape(ext)}\$'), '');
@@ -511,7 +517,7 @@ class WhisperService {
       srt = _textToSrt(result.text, _wavDurationSeconds(wav));
     }
 
-    final out = srtPath(videoPath, language);
+    final out = await srtPathAsync(videoPath, language);
     File(out).writeAsStringSync(srt, encoding: utf8);
     await _addToHistory(videoPath);
 
@@ -575,7 +581,7 @@ class WhisperService {
       onStatus('ساخت فایل SRT...', 0.9);
       final srt = _v2RawToSrt(raw);
 
-      final out = srtPath(videoPath, language);
+      final out = await srtPathAsync(videoPath, language);
       File(out).writeAsStringSync(srt, encoding: utf8);
       await _addToHistory(videoPath);
 
@@ -872,9 +878,8 @@ class LiveSubState {
 }
 
 /// مسیر فایل SRT زنده (کنار فایل ویدیو ذخیره میشه)
-String liveSrtPath(String videoPath, String language) {
-  return p.join(p.dirname(videoPath), '${p.basenameWithoutExtension(videoPath)}_live_$language.srt');
-}
+Future<String> liveSrtPath(String videoPath, String language) =>
+  SubtitleStorage.liveSubtitlePath(videoPath, language);
 
 /// لغو زیرنویس زنده
 Future<void> cancelLiveSub() async {
@@ -913,14 +918,23 @@ Future<String> transcribeLive({
   await _startLiveSubService(p.basenameWithoutExtension(videoPath));
   const ch = MethodChannel('com.vezoo.player/whisper');
 
-  final durationMs = await WhisperService.getVideoDurationMs(videoPath);
-  if (durationMs <= 0) throw Exception('مدت ویدیو قابل تشخیص نیست');
+  final isOnline = videoPath.startsWith('http://') || videoPath.startsWith('https://');
+  // برای URL آنلاین، timeout ۸ ثانیه — اگه دیر شد با تخمین ادامه بده
+  int durationMs;
+  if (isOnline) {
+    durationMs = await WhisperService.getVideoDurationMs(videoPath)
+      .timeout(const Duration(seconds: 8), onTimeout: () => 0);
+    if (durationMs <= 0) durationMs = 3600000; // فرض ۱ ساعت برای URL
+  } else {
+    durationMs = await WhisperService.getVideoDurationMs(videoPath);
+    if (durationMs <= 0) throw Exception('مدت ویدیو قابل تشخیص نیست');
+  }
   LiveSubState.totalMs = durationMs;
   LiveSubState.chunkMs = config.chunkMs;
   LiveSubState.language = config.language;
   LiveSubState.useOverlap = config.overlapMs > 0;
 
-  final srtFile = liveSrtPath(videoPath, config.language);
+  final srtFile = await liveSrtPath(videoPath, config.language);
   File(srtFile).writeAsStringSync('', encoding: utf8);
 
   final mPath = await WhisperService.modelFilePath(config.model);
