@@ -1132,8 +1132,6 @@ class _PlayerState extends State<PlayerScreen>{
           ),
 
         // ── سربرگ زیرنویس: فقط وقتی متن زیرنویس روی صفحه هست ──
-        // شامل: دکمه کپی + drag handle برای جابجایی
-        // بالای متن قرار می‌گیره تا روی متن نیاد
         if(sub!=null&&!_locked&&_vs.showSubToolbar)
           Positioned(
             right:8,
