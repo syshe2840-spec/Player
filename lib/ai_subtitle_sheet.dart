@@ -594,6 +594,7 @@ class _State extends State<AiSubtitleSheet> {
         ]),
       ),
     );
+  }
 
   Widget _row({required IconData icon, required Widget child, Widget? trailing})=>Container(
     padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
@@ -605,5 +606,5 @@ class _State extends State<AiSubtitleSheet> {
       if(trailing!=null) trailing,
     ]),
   );
-}}
+}
 
