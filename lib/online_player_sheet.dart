@@ -21,6 +21,8 @@ class _State extends State<OnlinePlayerSheet> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
   List<String> _recent = [];
+  List<String> _favorites = [];
+  bool _showFavs = false;
   bool _loading = false;
   String? _error;
 
@@ -51,8 +53,21 @@ class _State extends State<OnlinePlayerSheet> {
 
   Future<void> _loadRecent() async {
     final p = await SharedPreferences.getInstance();
-    setState(() => _recent = p.getStringList('recent_online_urls') ?? []);
+    setState(() {
+      _recent = p.getStringList('recent_online_urls') ?? [];
+      _favorites = p.getStringList('fav_online_urls') ?? [];
+    });
   }
+
+  Future<void> _toggleFavorite(String url) async {
+    final p = await SharedPreferences.getInstance();
+    final favs = p.getStringList('fav_online_urls') ?? [];
+    if (favs.contains(url)) favs.remove(url); else favs.insert(0, url);
+    await p.setStringList('fav_online_urls', favs);
+    setState(() => _favorites = favs);
+  }
+
+  bool _isFavorite(String url) => _favorites.contains(url);
 
   Future<void> _saveRecent(String url) async {
     final p = await SharedPreferences.getInstance();
@@ -211,6 +226,15 @@ class _State extends State<OnlinePlayerSheet> {
                 const Icon(Icons.history, color: Colors.white38, size: 14),
                 const SizedBox(width: 6),
                 const Text('اخیر', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () async {
+                    final p = await SharedPreferences.getInstance();
+                    await p.remove('recent_online_urls');
+                    setState(() => _recent = []);
+                  },
+                  child: const Text('حذف همه', style: TextStyle(color: Colors.red, fontSize: 11)),
+                ),
               ]),
             ),
             Flexible(child: ListView.builder(
@@ -225,14 +249,27 @@ class _State extends State<OnlinePlayerSheet> {
                   decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
                     onTap: () { _ctrl.text = url; _play(url); },
+                    onLongPress: () {
+                      Clipboard.setData(ClipboardData(text: url));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('لینک کپی شد'),
+                        duration: Duration(seconds: 2),
+                        backgroundColor: Color(0xFF7C3AED)));
+                    },
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                     leading: Container(width: 32, height: 32,
                       decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.15), shape: BoxShape.circle),
                       child: Icon(isHls ? Icons.stream : Icons.movie_outlined, color: const Color(0xFF7C3AED), size: 16)),
                     title: Text(url, style: const TextStyle(color: Colors.white, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                     subtitle: Text(isHls ? 'HLS Stream' : 'Video', style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                    trailing: IconButton(icon: const Icon(Icons.close, color: Colors.white24, size: 16),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      GestureDetector(onTap: () => _toggleFavorite(url),
+                        child: Icon(_isFavorite(url) ? Icons.star_rounded : Icons.star_border_rounded,
+                          color: _isFavorite(url) ? Colors.amber : Colors.white24, size: 18)),
+                      const SizedBox(width: 4),
+                      IconButton(icon: const Icon(Icons.close, color: Colors.white24, size: 16),
                       onPressed: () => _removeRecent(url), constraints: const BoxConstraints(), padding: const EdgeInsets.all(4)),
+                    ]),
                   ),
                 );
               },
