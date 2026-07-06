@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 /// سرویس yt-dlp — پشتیبانی از ۱۰۰۰+ سایت
-/// binary اولین بار دانلود میشه و cache میشه
+/// برای YouTube از youtube_explode_dart استفاده میشه (پایدارتر)
+/// برای بقیه سایت‌ها از yt-dlp binary
 class YtDlpService {
   static const _ch = MethodChannel('com.vezoo.player/whisper');
 
@@ -37,13 +39,34 @@ class YtDlpService {
   }
 
   /// گرفتن URL مستقیم stream از هر لینک
+  /// YouTube → youtube_explode_dart (پایدار، بدون binary)
+  /// بقیه → yt-dlp binary
   static Future<String> getStreamUrl(String url) async {
+    if (_isYouTubeUrl(url)) {
+      return _getYouTubeStreamUrl(url);
+    }
     if (!await isInstalled()) {
       await download();
     }
     final streamUrl = await _ch.invokeMethod<String>('ytdlpGetUrl', {'url': url});
     if (streamUrl == null || streamUrl.isEmpty) throw Exception('لینک stream یافت نشد');
     return streamUrl;
+  }
+
+  static bool _isYouTubeUrl(String url) =>
+    url.contains('youtube.com') || url.contains('youtu.be');
+
+  static Future<String> _getYouTubeStreamUrl(String url) async {
+    final yt = YoutubeExplode();
+    try {
+      final videoId = VideoId(url);
+      final manifest = await yt.videos.streamsClient.getManifest(videoId);
+      // بهترین کیفیت muxed (ویدیو+صدا در یه فایل)
+      final stream = manifest.muxed.sortByVideoQuality().first;
+      return stream.url.toString();
+    } finally {
+      yt.close();
+    }
   }
 
   /// گرفتن اطلاعات ویدیو (عنوان، مدت، thumbnail)
@@ -63,18 +86,19 @@ class YtDlpService {
     } catch (_) { return null; }
   }
 
-  /// چک کردن اینکه URL توسط yt-dlp پشتیبانی میشه
+  /// چک کردن اینکه URL توسط این سرویس پشتیبانی میشه
   static bool isSupportedUrl(String url) {
     if (!url.startsWith('http')) return false;
-    // سایت‌هایی که MediaKit مستقیم پشتیبانی می‌کنه
     final directPlay = ['.mp4','.mkv','.avi','.m3u8','.mpd','.ts'];
     if (directPlay.any((e) => url.contains(e))) return false;
-    // سایت‌هایی که نیاز به yt-dlp دارن
+    // YouTube از youtube_explode_dart
+    if (_isYouTubeUrl(url)) return true;
+    // بقیه از yt-dlp
     final ytdlpSites = [
-      'youtube.com','youtu.be','twitch.tv','vimeo.com',
-      'twitter.com','x.com','instagram.com','tiktok.com',
-      'dailymotion.com','reddit.com','facebook.com',
-      'bilibili.com','nicovideo.jp','soundcloud.com',
+      'twitch.tv','vimeo.com','twitter.com','x.com',
+      'instagram.com','tiktok.com','dailymotion.com',
+      'reddit.com','facebook.com','bilibili.com',
+      'nicovideo.jp','soundcloud.com',
     ];
     return ytdlpSites.any((s) => url.contains(s));
   }
