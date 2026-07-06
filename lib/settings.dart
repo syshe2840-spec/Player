@@ -1,5 +1,5 @@
-
 // lib/settings.dart — تنظیمات پلیر
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -424,18 +424,19 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   bool _loading = false;
   String _status = '';
   int _progress = 0;
+  StreamSubscription? _progressSub;
 
   @override
   void initState() {
     super.initState();
     _checkInstalled();
-    // گوش دادن به progress دانلود
-    const MethodChannel('com.vezoo.player/whisper').setMethodCallHandler((call) async {
-      if (call.method == 'ytdlpProgress' && mounted) {
-        setState(() => _progress = (call.arguments['percent'] as int?) ?? 0);
-      }
-    });
+    _progressSub = YtDlpService.progressStream.listen((pct) {
+      if (mounted) setState(() => _progress = pct);
+    }, onError: (_) {});
   }
+
+  @override
+  void dispose() { _progressSub?.cancel(); super.dispose(); }
 
   Future<void> _checkInstalled() async {
     final v = await YtDlpService.isInstalled();
@@ -659,4 +660,5 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     ]),
   );
 }
+
 
