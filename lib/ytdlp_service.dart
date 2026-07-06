@@ -14,6 +14,8 @@ class YtDlpService {
     return _installed!;
   }
 
+  static void resetCache() => _installed = null;
+
   /// دانلود binary — اولین بار (~15MB)
   static Future<void> download({void Function(String)? onStatus}) async {
     onStatus?.call('دانلود yt-dlp...');
