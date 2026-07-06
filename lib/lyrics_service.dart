@@ -111,7 +111,7 @@ class LyricsService {
         ? entries[i + 1].time - const Duration(milliseconds: 100)
         : entries[i].time + const Duration(seconds: 5);
       b.writeln(i + 1);
-      b.writeln('${_t(start)} --> ${_t(end)}');
+      b.writeln('${formatSrtTime(start)} --> ${formatSrtTime(end)}');
       b.writeln(entries[i].text);
       b.writeln();
     }
