@@ -256,8 +256,8 @@ class MainActivity : FlutterActivity() {
                             // چند مسیر احتمالی مدل‌ها
                             val possibleDirs = listOf(
                                 java.io.File(filesDir, "whisper_models"),
-                                java.io.File(filesDir.parentFile, "app_flutter/whisper_models"),
-                                java.io.File(filesDir, "models"),
+                                java.io.File(filesDir.parentFile, "files/whisper_models"),
+                                java.io.File(getExternalFilesDir(null), "whisper_models"),
                             )
                             val dest = java.io.File(destDir).also { it.mkdirs() }
                             val copied = mutableListOf<String>()
@@ -523,7 +523,8 @@ class MainActivity : FlutterActivity() {
     // ── Audio Extraction for Whisper ──
     // ── yt-dlp helpers ──
     private fun getApplicationSupportDirectory(): String {
-        return java.io.File(filesDir.parentFile, "app_support").also { it.mkdirs() }.absolutePath
+        // در Flutter، getApplicationSupportDirectory() روی Android همان filesDir است
+        return filesDir.absolutePath
     }
 
     private fun getYtDlpPath(): String? {
@@ -573,6 +574,13 @@ class MainActivity : FlutterActivity() {
             android.system.Os.chmod(outFile.absolutePath, 493) // 0755
         } catch (_: Exception) {
             outFile.setExecutable(true, true)
+        }
+        // تست اجرا
+        try {
+            val test = ProcessBuilder(outFile.absolutePath, "--version").start()
+            test.waitFor()
+        } catch (e: Exception) {
+            throw Exception("اجرای yt-dlp ناموفق: ${e.message}")
         }
         return outFile.absolutePath
     }
