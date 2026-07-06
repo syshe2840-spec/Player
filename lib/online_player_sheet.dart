@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'player.dart';
+import 'ytdlp_service.dart';
 
 class OnlinePlayerSheet extends StatefulWidget {
   const OnlinePlayerSheet({super.key});
@@ -101,12 +102,34 @@ class _State extends State<OnlinePlayerSheet> {
       return;
     }
     setState(() { _loading = true; _error = null; });
+
+    String playUrl = url;
+
+    // اگه URL نیاز به yt-dlp داره، stream URL رو بگیر
+    if (YtDlpService.isSupportedUrl(url)) {
+      setState(() => _error = null);
+      try {
+        // اول info بگیر برای نشون دادن عنوان
+        final info = await YtDlpService.getInfo(url);
+        if (info != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('📺 ${info.title}'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF2A2A35)));
+        }
+        playUrl = await YtDlpService.getStreamUrl(url);
+      } catch (e) {
+        if (mounted) setState(() { _loading = false; _error = 'خطا: $e\n(شاید yt-dlp نیاز به نصب داشته باشد)'; });
+        return;
+      }
+    }
+
     await _saveRecent(url);
     if (!mounted) return;
     Navigator.pop(context);
     await Navigator.push(context, MaterialPageRoute(
       builder: (_) => PlayerScreen(
-        playlist: [File(url)], // MediaKit accepts URLs as file paths
+        playlist: [File(playUrl)],
         playlistIndex: 0,
         isOnlineUrl: true,
       ),
