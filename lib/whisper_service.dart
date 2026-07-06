@@ -12,31 +12,31 @@ import 'subtitle_storage.dart';
 //  تعریف مدل‌ها
 // ══════════════════════════════════════════════════════════
 class WhisperModelDef {
-  final String id;           // شناسه یکتا: 'tiny-q5_1'
-  final WhisperModel base;   // WhisperModel enum
-  final String name;         // نام نمایشی
-  final String variant;      // '' | 'q5_1' | 'q8_0' | 'q5_0' | 'q6_k'
+  final String id;
+  final WhisperModel base;
+  final String name;
+  final String variant;
   final int sizeMb;
   final int speedStars;
   final int accStars;
   final String desc;
+  final String? customPath; // برای مدل‌های ایمپورتی
 
   const WhisperModelDef({required this.id, required this.base, required this.name,
     required this.variant, required this.sizeMb,
-    required this.speedStars, required this.accStars, required this.desc});
+    required this.speedStars, required this.accStars, required this.desc,
+    this.customPath});
 
-  // URL دانلود — همان URL که package خودش استفاده می‌کند
   String get url =>
     'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-$id.bin';
 
-  // نام فایل: ggml-{base.modelName}.bin (بدون variant suffix)
   String get filename => 'ggml-${base.modelName}.bin';
 
-  // پوشه مخصوص این variant: {modelsRoot}/{id}/
   String dirPath(String root) => p.join(root, id);
-  String filePath(String root) => p.join(dirPath(root), filename);
+  String filePath(String root) => customPath ?? p.join(dirPath(root), filename);
 
   bool get isQuantized => variant.isNotEmpty;
+  bool get isCustom => customPath != null;
 }
 
 const kWhisperModels = [
@@ -132,6 +132,55 @@ class WhisperService {
       if (await isDownloaded(m)) result.add(m);
     }
     return result;
+  }
+
+  /// همه مدل‌های دانلودشده + ایمپورتی (با نام خوانا)
+  static Future<List<WhisperModelDef>> allDownloadedModels() async {
+    final known = await downloadedModels();
+    final knownIds = known.map((m) => m.id).toSet();
+    final root = await _modelsRoot();
+
+    // اسکن همه فایل‌های .bin در پوشه root (مستقیم — مدل‌های ایمپورتی)
+    final dir = Directory(root);
+    if (dir.existsSync()) {
+      for (final file in dir.listSync().whereType<File>()) {
+        final fname = p.basename(file.path);
+        if (!fname.endsWith('.bin')) continue;
+        // اگه با یه مدل شناخته‌شده match میشه، skip کن
+        final matched = kWhisperModels.any((m) => m.filename == fname);
+        if (matched) continue;
+        // مدل ناشناس — اسم خوانا از نام فایل
+        final id = 'custom_${p.basenameWithoutExtension(fname)}';
+        if (knownIds.contains(id)) continue;
+        // ساخت نام خوانا از نام فایل
+        final readableName = _fileToReadableName(fname);
+        known.add(WhisperModelDef(
+          id: id,
+          base: WhisperModel.base, // فقط برای ساختار
+          name: readableName,
+          variant: 'custom',
+          sizeMb: (file.lengthSync() / (1024 * 1024)).round(),
+          speedStars: 3, accStars: 4,
+          desc: 'ایمپورت‌شده • ${fname}',
+          customPath: file.path,
+        ));
+      }
+    }
+    return known;
+  }
+
+  static String _fileToReadableName(String filename) {
+    // ggml-base-q5_1.bin → Base Q5
+    // ggml-large-v3-turbo.bin → Large V3 Turbo
+    var name = filename
+      .replaceAll('ggml-', '')
+      .replaceAll('.bin', '')
+      .replaceAll('-', ' ')
+      .replaceAll('_', '.')
+      .split(' ')
+      .map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : w)
+      .join(' ');
+    return name;
   }
 
   // ── مدل فعال ──
