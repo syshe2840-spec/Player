@@ -410,11 +410,11 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   );
 
   // ──────── تب ابزارها ────────
-  Widget _toolsTab() => const ToolsTabBody();
+  Widget _toolsTab() => ToolsTabBody();
 }
 
 class ToolsTabBody extends StatefulWidget {
-  @override State<_ToolsTabBody> createState() => _ToolsTabBodyState();
+  @override State<ToolsTabBody> createState() => ToolsTabBodyState();
 }
 
 class ToolsTabBodyState extends State<ToolsTabBody> {
