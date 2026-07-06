@@ -207,6 +207,66 @@ class MainActivity : FlutterActivity() {
                     java.io.File(filesDir, "yt-dlp").delete()
                     result.success(null)
                 }
+
+                // نصب دستی yt-dlp از فایل انتخاب‌شده
+                "ytdlpInstallFromFile" -> {
+                    val srcPath = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val src = java.io.File(srcPath)
+                            val dst = java.io.File(filesDir, "yt-dlp")
+                            src.copyTo(dst, overwrite = true)
+                            dst.setExecutable(true, false)
+                            handler.post { result.success(dst.absolutePath) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("INSTALL_FAILED", e.message, null) }
+                        }
+                    }
+                }
+
+                // بکاپ مدل‌های AI به Downloads/Vezoo/
+                "backupModels" -> {
+                    val destDir = call.argument<String>("destDir") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            // مسیر درست مدل‌ها — همون مسیری که Flutter استفاده میکنه
+                            val modelsDir = java.io.File(filesDir, "whisper_models")
+                            val modelFiles = (modelsDir.listFiles() ?: emptyArray())
+                                .filter { it.extension == "bin" || it.name.contains("ggml") }
+                            val dest = java.io.File(destDir).also { it.mkdirs() }
+                            val copied = mutableListOf<String>()
+                            for (f in modelFiles) {
+                                f.copyTo(java.io.File(dest, f.name), overwrite = true)
+                                copied.add(f.name)
+                            }
+                            // backup yt-dlp هم
+                            val ytdlp = java.io.File(filesDir, "yt-dlp")
+                            if (ytdlp.exists()) {
+                                ytdlp.copyTo(java.io.File(dest, "yt-dlp"), overwrite = true)
+                                copied.add("yt-dlp")
+                            }
+                            handler.post { result.success(copied) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("BACKUP_FAILED", e.message, null) }
+                        }
+                    }
+                }
+
+                // ایمپورت مدل از فایل
+                "importModel" -> {
+                    val srcPath = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val src = java.io.File(srcPath)
+                            val modelsDir = java.io.File(filesDir, "whisper_models").also { it.mkdirs() }
+                            val dst = java.io.File(modelsDir, src.name)
+                            src.copyTo(dst, overwrite = true)
+                            handler.post { result.success(dst.absolutePath) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("IMPORT_FAILED", e.message, null) }
+                        }
+                    }
+                }
                 "extractAudioRange" -> {
                     val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
                     val output = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
@@ -424,6 +484,10 @@ class MainActivity : FlutterActivity() {
 
     // ── Audio Extraction for Whisper ──
     // ── yt-dlp helpers ──
+    private fun getApplicationSupportDirectory(): String {
+        return java.io.File(filesDir.parentFile, "app_support").also { it.mkdirs() }.absolutePath
+    }
+
     private fun getYtDlpPath(): String? {
         val f = java.io.File(filesDir, "yt-dlp")
         return if (f.exists() && f.canExecute()) f.absolutePath else null
