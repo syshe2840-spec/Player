@@ -9,6 +9,8 @@ class YtDlpService {
   // ── وضعیت ──
   static bool? _installed;
 
+  static void resetCache() => _installed = null;
+
   static Future<bool> isInstalled() async {
     _installed ??= await _ch.invokeMethod<bool>('ytdlpIsInstalled') ?? false;
     return _installed!;
