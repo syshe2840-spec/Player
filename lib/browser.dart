@@ -825,7 +825,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         onRemove:(path)async{await Store.toggleBookmark(path);setState((){}); }),
       _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink,
         onRemove:(path)async{await Store.toggleFavorite(path);setState((){}); }),
-      _folderList(),_playlistTab(),_sponsorTab(),const ToolsTabBody(),_settingsTab(),
+      _folderList(),_playlistTab(),_sponsorTab(),ToolsTabBody(),_settingsTab(),
     ])),
     SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
   ]);
