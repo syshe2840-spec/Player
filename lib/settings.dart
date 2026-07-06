@@ -1,3 +1,4 @@
+
 // lib/settings.dart — تنظیمات پلیر
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -422,16 +423,29 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   bool? _installed;
   bool _loading = false;
   String _status = '';
+  int _progress = 0;
 
   @override
   void initState() {
     super.initState();
     _checkInstalled();
+    // گوش دادن به progress دانلود
+    const MethodChannel('com.vezoo.player/whisper').setMethodCallHandler((call) async {
+      if (call.method == 'ytdlpProgress' && mounted) {
+        setState(() => _progress = (call.arguments['percent'] as int?) ?? 0);
+      }
+    });
   }
 
   Future<void> _checkInstalled() async {
     final v = await YtDlpService.isInstalled();
-    if (mounted) setState(() => _installed = v);
+    String version = '';
+    if (v) {
+      try {
+        version = await YtDlpService.getVersion() ?? '';
+      } catch (_) {}
+    }
+    if (mounted) setState(() { _installed = v; if (version.isNotEmpty) _status = 'نسخه: $version'; });
   }
 
   Future<void> _install() async {
@@ -563,7 +577,15 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
           ],
           if (_loading) ...[
             const SizedBox(height: 8),
-            const LinearProgressIndicator(color: Color(0xFF7C3AED), backgroundColor: Colors.white12),
+            Row(children: [
+              Expanded(child: LinearProgressIndicator(
+                value: _progress > 0 ? _progress / 100 : null,
+                color: const Color(0xFF7C3AED), backgroundColor: Colors.white12)),
+              if (_progress > 0) ...[
+                const SizedBox(width: 8),
+                Text('$_progress%', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              ],
+            ]),
           ],
           const SizedBox(height: 12),
           Row(children: [
@@ -637,5 +659,4 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     ]),
   );
 }
-
 
