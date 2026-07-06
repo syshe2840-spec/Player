@@ -118,6 +118,11 @@ class MyApp extends StatelessWidget {
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(foregroundColor: const Color(0xFF7C3AED)),
         ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ),
       ),
       builder: (ctx, child) =>
           Directionality(textDirection: TextDirection.rtl, child: child!),
