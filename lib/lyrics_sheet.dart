@@ -2,6 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'lyrics_service.dart';
 
+String _lrcT(Duration d) =>
+  '${d.inHours.toString().padLeft(2,'0')}:'
+  '${(d.inMinutes%60).toString().padLeft(2,'0')}:'
+  '${(d.inSeconds%60).toString().padLeft(2,'0')},'
+  '${(d.inMilliseconds%1000).toString().padLeft(3,'0')}';
+
+
 class LyricsSheet extends StatefulWidget {
   final String videoPath;
   final String? initialQuery;
@@ -72,7 +79,7 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
             final start = Duration(seconds: i * 4);
             final end = Duration(seconds: (i + 1) * 4);
             b.writeln(i + 1);
-            b.writeln('${LyricsService._t(start)} --> ${LyricsService._t(end)}');
+            b.writeln('${_lrcT(start)} --> ${_lrcT(end)}');
             b.writeln(lines[i]);
             b.writeln();
           }
@@ -217,3 +224,4 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
     );
   }
 }
+
