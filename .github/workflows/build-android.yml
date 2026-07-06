@@ -26,43 +26,6 @@ jobs:
       - name: Generate Android files
         run: flutter create --platforms=android --org com.vezoo --project-name player .
 
-      - name: Configure signing in build.gradle
-        run: |
-          # اضافه کردن signing config به build.gradle
-          cat > /tmp/signing_patch.py << 'PYEOF'
-          import re
-          path = 'android/app/build.gradle'
-          src = open(path).read()
-
-          # اضافه کردن signingConfigs قبل از buildTypes
-          signing_config = """
-              signingConfigs {
-                  release {
-                      def props = new Properties()
-                      def propFile = rootProject.file('key.properties')
-                      if (propFile.exists()) { props.load(new FileInputStream(propFile)) }
-                      keyAlias props['keyAlias'] ?: ''
-                      keyPassword props['keyPassword'] ?: ''
-                      storeFile props['storeFile'] ? file("${props['storeFile']}") : null
-                      storePassword props['storePassword'] ?: ''
-                  }
-              }
-          """
-          if 'signingConfigs' not in src:
-              src = src.replace('    buildTypes {', signing_config + '    buildTypes {')
-
-          # اضافه کردن signingConfig به release buildType
-          if 'signingConfig signingConfigs.release' not in src:
-              src = src.replace(
-                  'release {',
-                  'release {\n                signingConfig signingConfigs.release',
-                  1
-              )
-          open(path, 'w').write(src)
-          print("build.gradle signing configured")
-          PYEOF
-          python3 /tmp/signing_patch.py
-
       - name: Restore our files
         run: |
           git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt lib/srt_editor_screen.dart lib/ai_batch_queue_screen.dart lib/ai_history_screen.dart lib/opensubtitles_service.dart lib/opensubtitles_search_sheet.dart lib/live_sub_sheet.dart android_files/LiveSubService.kt lib/srt_translation_service.dart lib/srt_translate_sheet.dart lib/live_translation_sync.dart lib/online_player_sheet.dart lib/subtitle_storage.dart
@@ -112,6 +75,12 @@ jobs:
           if [ ! -f "$APP" ]; then APP=android/app/build.gradle; fi
           if ! grep -q "externalNativeBuild" "$APP"; then
             sed -i "/^android {/a\\    externalNativeBuild { cmake { path(\\\"src/main/cpp/CMakeLists.txt\\\"); version = \\\"3.22.1\\\" } }" "$APP" || true
+          fi
+          # اضافه کردن signing config به build.gradle
+          if ! grep -q "signingConfigs" "$APP"; then
+            sed -i 's/buildTypes {/signingConfigs {\n        release {\n            def props = new Properties()\n            def kf = rootProject.file("key.properties")\n            if (kf.exists()) props.load(new FileInputStream(kf))\n            keyAlias = props["keyAlias"] ?: ""\n            keyPassword = props["keyPassword"] ?: ""\n            storePassword = props["storePassword"] ?: ""\n            storeFile = kf.exists() ? file(props["storeFile"] ?: "") : null\n        }\n    }\n    buildTypes {/' "$APP" || true
+            sed -i 's/release {$/release {\n            signingConfig signingConfigs.release/' "$APP" || true
+            echo "=== Signing config added ==="
           fi
 
       - name: Set app icon
