@@ -1,3 +1,4 @@
+
 package com.vezoo.player
 
 import android.app.NotificationChannel
@@ -169,11 +170,14 @@ class MainActivity : FlutterActivity() {
                             if (binPath == null) { handler.post { result.error("NO_YTDLP","yt-dlp نصب نشده",null) }; return@execute }
                             // auto re-chmod در صورت نیاز
                             try { android.system.Os.chmod(binPath, 493) } catch (_: Exception) {}
-                            val proc = ProcessBuilder("/system/bin/sh", "-c", "$binPath -g --no-playlist --no-warnings '$url'")
+                            val proc = ProcessBuilder("/system/bin/sh", "-c",
+                                "$binPath -g --no-playlist --no-warnings -f 'best[ext=mp4]/bestvideo+bestaudio/best' '$url'")
                                 .redirectErrorStream(false)
                                 .start()
-                            val streamUrl = proc.inputStream.bufferedReader().readLine()?.trim() ?: ""
+                            val lines = proc.inputStream.bufferedReader().readLines().filter { it.startsWith("http") }
                             proc.waitFor()
+                            // اگه دو URL بود (ویدیو+صدا) → اول رو برگردون (MediaKit هر دو رو هندل می‌کنه)
+                            val streamUrl = lines.firstOrNull()?.trim() ?: ""
                             handler.post { if (streamUrl.isNotEmpty()) result.success(streamUrl) else result.error("NO_STREAM","لینک stream یافت نشد",null) }
                         } catch (e: Exception) {
                             handler.post { result.error("YTDLP_FAILED", e.message, null) }
@@ -544,18 +548,22 @@ class MainActivity : FlutterActivity() {
         }
         val downloadUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/$filename"
         val outFile = java.io.File(filesDir, "yt-dlp")
+        val existingSize = if (outFile.exists()) outFile.length() else 0L
         val url = java.net.URL(downloadUrl)
         val conn = url.openConnection() as java.net.HttpURLConnection
         conn.connectTimeout = 30_000; conn.readTimeout = 300_000
         conn.instanceFollowRedirects = true
+        if (existingSize > 0) conn.setRequestProperty("Range", "bytes=$existingSize-")
         conn.connect()
-        val totalBytes = conn.contentLengthLong
+        val resuming = conn.responseCode == 206
+        val totalBytes = if (resuming) existingSize + conn.contentLengthLong else conn.contentLengthLong
+        val fos = if (resuming) java.io.FileOutputStream(outFile, true) else outFile.outputStream()
 
         conn.inputStream.use { input ->
-            outFile.outputStream().use { output ->
+            fos.use { output ->
                 val buf = ByteArray(8192)
-                var downloaded = 0L
-                var lastNotify = 0L
+                var downloaded = if (resuming) existingSize else 0L
+                var lastNotify = downloaded
                 while (true) {
                     val n = input.read(buf)
                     if (n < 0) break
@@ -563,7 +571,7 @@ class MainActivity : FlutterActivity() {
                     downloaded += n
                     if (totalBytes > 0 && downloaded - lastNotify > 500_000) {
                         val pct = (downloaded * 100 / totalBytes).toInt()
-                    handler.post { ytdlpProgressSink?.success(pct) }
+                        handler.post { ytdlpProgressSink?.success(pct) }
                         lastNotify = downloaded
                     }
                 }
@@ -874,4 +882,3 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
-
