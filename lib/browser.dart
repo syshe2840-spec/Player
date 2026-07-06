@@ -11,6 +11,8 @@ import 'store.dart';
 import 'ai_models_screen.dart';
 import 'api_service.dart';
 import 'online_player_sheet.dart';
+import 'ytdlp_service.dart';
+import 'settings.dart' show ToolsTabBody;
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
 
@@ -801,7 +803,7 @@ class BottomPanel extends StatefulWidget{
 }
 class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStateMixin{
   late TabController _tab;
-  @override void initState(){super.initState();_tab=TabController(length:7,vsync:this,initialIndex:widget.initialPage.clamp(0,5));}
+  @override void initState(){super.initState();_tab=TabController(length:8,vsync:this,initialIndex:widget.initialPage.clamp(0,6));}
   @override void dispose(){_tab.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Column(children:[
     const SizedBox(height:10),
@@ -815,6 +817,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:'پوشه‌ها'),
           Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:'پلی‌لیست'),
           Tab(icon:Icon(Icons.star_rounded,size:16),text:'اسپانسر'),
+          Tab(icon:Icon(Icons.build_rounded,size:16),text:'ابزارها'),
           Tab(icon:Icon(Icons.settings_rounded,size:16),text:'اپ')]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
@@ -822,7 +825,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         onRemove:(path)async{await Store.toggleBookmark(path);setState((){}); }),
       _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink,
         onRemove:(path)async{await Store.toggleFavorite(path);setState((){}); }),
-      _folderList(),_playlistTab(),_sponsorTab(),_settingsTab(),
+      _folderList(),_playlistTab(),_sponsorTab(),const ToolsTabBody(),_settingsTab(),
     ])),
     SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
   ]);
