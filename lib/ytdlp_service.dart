@@ -14,7 +14,10 @@ class YtDlpService {
     return _installed!;
   }
 
-  static void resetCache() => _installed = null;
+  static const _progressCh = EventChannel('com.vezoo.player/ytdlp_progress');
+
+  static Stream<int> get progressStream =>
+    _progressCh.receiveBroadcastStream().map((e) => (e as int?) ?? 0);
 
   static Future<String?> getVersion() async {
     try {
