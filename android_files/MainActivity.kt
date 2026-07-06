@@ -151,6 +151,57 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+
+                // ── yt-dlp: دانلود binary و گرفتن stream URL ──
+                "ytdlpGetUrl" -> {
+                    val url = call.argument<String>("url") ?: run { result.error("NO_URL","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val binPath = getYtDlpPath()
+                            if (binPath == null) { handler.post { result.error("NO_YTDLP","yt-dlp نصب نشده",null) }; return@execute }
+                            val proc = ProcessBuilder(binPath, "-g", "--no-playlist", "--no-warnings", url)
+                                .redirectErrorStream(false)
+                                .start()
+                            val streamUrl = proc.inputStream.bufferedReader().readLine()?.trim() ?: ""
+                            proc.waitFor()
+                            handler.post { if (streamUrl.isNotEmpty()) result.success(streamUrl) else result.error("NO_STREAM","لینک stream یافت نشد",null) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("YTDLP_FAILED", e.message, null) }
+                        }
+                    }
+                }
+
+                "ytdlpGetInfo" -> {
+                    val url = call.argument<String>("url") ?: run { result.error("NO_URL","",null); return@setMethodCallHandler }
+                    executor.execute {
+                        try {
+                            val binPath = getYtDlpPath() ?: run { handler.post { result.error("NO_YTDLP","",null) }; return@execute }
+                            val proc = ProcessBuilder(binPath, "--dump-json", "--no-playlist", "--no-warnings", url)
+                                .redirectErrorStream(false).start()
+                            val json = proc.inputStream.bufferedReader().readText().trim()
+                            proc.waitFor()
+                            handler.post { result.success(json) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("YTDLP_FAILED", e.message, null) }
+                        }
+                    }
+                }
+
+                "ytdlpDownload" -> {
+                    // دانلود binary از GitHub releases
+                    executor.execute {
+                        try {
+                            val path = downloadYtDlp()
+                            handler.post { result.success(path) }
+                        } catch (e: Exception) {
+                            handler.post { result.error("DOWNLOAD_FAILED", e.message, null) }
+                        }
+                    }
+                }
+
+                "ytdlpIsInstalled" -> {
+                    result.success(getYtDlpPath() != null)
+                }
                 "extractAudioRange" -> {
                     val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
                     val output = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
@@ -367,6 +418,29 @@ class MainActivity : FlutterActivity() {
     }
 
     // ── Audio Extraction for Whisper ──
+    // ── yt-dlp helpers ──
+    private fun getYtDlpPath(): String? {
+        val f = java.io.File(filesDir, "yt-dlp")
+        return if (f.exists() && f.canExecute()) f.absolutePath else null
+    }
+
+    private fun downloadYtDlp(): String {
+        val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
+        // yt-dlp_android برای همه ABI ها کار می‌کنه
+        val downloadUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_android"
+        val outFile = java.io.File(filesDir, "yt-dlp")
+        val url = java.net.URL(downloadUrl)
+        val conn = url.openConnection() as java.net.HttpURLConnection
+        conn.connectTimeout = 30_000; conn.readTimeout = 120_000
+        conn.connect()
+        conn.inputStream.use { input ->
+            outFile.outputStream().use { output -> input.copyTo(output) }
+        }
+        conn.disconnect()
+        outFile.setExecutable(true, false)
+        return outFile.absolutePath
+    }
+
     private fun extractAudioWav(videoPath: String, outputPath: String, cancel: AtomicBoolean) {
         val extractor = MediaExtractor()
         if (videoPath.startsWith("http://") || videoPath.startsWith("https://"))
