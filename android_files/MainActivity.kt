@@ -203,6 +203,18 @@ class MainActivity : FlutterActivity() {
                     result.success(getYtDlpPath() != null)
                 }
 
+                "ytdlpGetVersion" -> {
+                    executor.execute {
+                        try {
+                            val bin = getYtDlpPath() ?: run { handler.post { result.success(null) }; return@execute }
+                            val proc = ProcessBuilder(bin, "--version").redirectErrorStream(true).start()
+                            val ver = proc.inputStream.bufferedReader().readLine()?.trim()
+                            proc.waitFor()
+                            handler.post { result.success(ver) }
+                        } catch (e: Exception) { handler.post { result.success(null) } }
+                    }
+                }
+
                 "ytdlpDelete" -> {
                     java.io.File(filesDir, "yt-dlp").delete()
                     result.success(null)
@@ -216,7 +228,11 @@ class MainActivity : FlutterActivity() {
                             val src = java.io.File(srcPath)
                             val dst = java.io.File(filesDir, "yt-dlp")
                             src.copyTo(dst, overwrite = true)
-                            dst.setExecutable(true, false)
+                            try {
+                                android.system.Os.chmod(dst.absolutePath, 493) // 0755
+                            } catch (_: Exception) {
+                                dst.setExecutable(true, true)
+                            }
                             handler.post { result.success(dst.absolutePath) }
                         } catch (e: Exception) {
                             handler.post { result.error("INSTALL_FAILED", e.message, null) }
@@ -229,23 +245,37 @@ class MainActivity : FlutterActivity() {
                     val destDir = call.argument<String>("destDir") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
                     executor.execute {
                         try {
-                            // مسیر درست مدل‌ها — همون مسیری که Flutter استفاده میکنه
-                            val modelsDir = java.io.File(filesDir, "whisper_models")
-                            val modelFiles = (modelsDir.listFiles() ?: emptyArray())
-                                .filter { it.extension == "bin" || it.name.contains("ggml") }
+                            // چند مسیر احتمالی مدل‌ها
+                            val possibleDirs = listOf(
+                                java.io.File(filesDir, "whisper_models"),
+                                java.io.File(filesDir.parentFile, "app_flutter/whisper_models"),
+                                java.io.File(filesDir, "models"),
+                            )
                             val dest = java.io.File(destDir).also { it.mkdirs() }
                             val copied = mutableListOf<String>()
-                            for (f in modelFiles) {
-                                f.copyTo(java.io.File(dest, f.name), overwrite = true)
-                                copied.add(f.name)
+
+                            for (modelsDir in possibleDirs) {
+                                if (!modelsDir.exists()) continue
+                                for (f in modelsDir.listFiles() ?: emptyArray()) {
+                                    if (f.extension == "bin" || f.name.contains("ggml") || f.name.contains("whisper")) {
+                                        f.copyTo(java.io.File(dest, f.name), overwrite = true)
+                                        if (!copied.contains(f.name)) copied.add(f.name)
+                                    }
+                                }
                             }
+
                             // backup yt-dlp هم
                             val ytdlp = java.io.File(filesDir, "yt-dlp")
                             if (ytdlp.exists()) {
                                 ytdlp.copyTo(java.io.File(dest, "yt-dlp"), overwrite = true)
                                 copied.add("yt-dlp")
                             }
-                            handler.post { result.success(copied) }
+
+                            if (copied.isEmpty()) {
+                                handler.post { result.error("NO_FILES","هیچ فایلی برای بکاپ یافت نشد",null) }
+                            } else {
+                                handler.post { result.success(copied) }
+                            }
                         } catch (e: Exception) {
                             handler.post { result.error("BACKUP_FAILED", e.message, null) }
                         }
@@ -505,14 +535,37 @@ class MainActivity : FlutterActivity() {
         val outFile = java.io.File(filesDir, "yt-dlp")
         val url = java.net.URL(downloadUrl)
         val conn = url.openConnection() as java.net.HttpURLConnection
-        conn.connectTimeout = 30_000; conn.readTimeout = 120_000
+        conn.connectTimeout = 30_000; conn.readTimeout = 300_000
         conn.instanceFollowRedirects = true
         conn.connect()
+        val totalBytes = conn.contentLengthLong
+
         conn.inputStream.use { input ->
-            outFile.outputStream().use { output -> input.copyTo(output) }
+            outFile.outputStream().use { output ->
+                val buf = ByteArray(8192)
+                var downloaded = 0L
+                var lastNotify = 0L
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    output.write(buf, 0, n)
+                    downloaded += n
+                    if (totalBytes > 0 && downloaded - lastNotify > 500_000) {
+                        val pct = (downloaded * 100 / totalBytes).toInt()
+                        handler.post { whisperCh?.invokeMethod("ytdlpProgress", mapOf("percent" to pct)) }
+                        lastNotify = downloaded
+                    }
+                }
+            }
         }
         conn.disconnect()
-        outFile.setExecutable(true, false)
+
+        // chmod با Os.chmod — مستقیم system call، مطمئن‌ترین روش روی Android
+        try {
+            android.system.Os.chmod(outFile.absolutePath, 493) // 0755
+        } catch (_: Exception) {
+            outFile.setExecutable(true, true)
+        }
         return outFile.absolutePath
     }
 
