@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'ytdlp_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 class PlayerSettings extends StatefulWidget {
   final VideoSettings vs;
@@ -445,6 +446,59 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     }
   }
 
+  Future<void> _installFromFile() async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (res == null || res.files.single.path == null) return;
+    setState(() { _loading = true; _status = 'در حال کپی...'; });
+    try {
+      await const MethodChannel('com.vezoo.player/whisper')
+        .invokeMethod('ytdlpInstallFromFile', {'path': res.files.single.path!});
+      YtDlpService.resetCache();
+      if (mounted) setState(() { _loading = false; _installed = true; _status = '✓ نصب از فایل موفق'; });
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
+    }
+  }
+
+  Future<void> _backupAll() async {
+    const destDir = '/storage/emulated/0/Download/Vezoo/Backup';
+    setState(() { _loading = true; _status = 'در حال بکاپ...'; });
+    try {
+      final copied = await const MethodChannel('com.vezoo.player/whisper')
+        .invokeMethod<List>('backupModels', {'destDir': destDir});
+      if (mounted) setState(() {
+        _loading = false;
+        _status = '✓ بکاپ در Download/Vezoo/Backup\n${(copied ?? []).join(', ')}';
+      });
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
+    }
+  }
+
+  Future<void> _importModel() async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (res == null || res.files.single.path == null) return;
+    setState(() { _loading = true; _status = 'در حال ایمپورت مدل...'; });
+    try {
+      final path = res.files.single.path!;
+      final fname = path.split('/').last;
+      // اگه yt-dlp هست → نصب به عنوان binary
+      if (fname == 'yt-dlp' || fname.startsWith('yt-dlp_')) {
+        await const MethodChannel('com.vezoo.player/whisper')
+          .invokeMethod('ytdlpInstallFromFile', {'path': path});
+        YtDlpService.resetCache();
+        if (mounted) setState(() { _loading = false; _installed = true; _status = '✓ yt-dlp نصب شد'; });
+      } else {
+        // مدل AI
+        await const MethodChannel('com.vezoo.player/whisper')
+          .invokeMethod('importModel', {'path': path});
+        if (mounted) setState(() { _loading = false; _status = '✓ مدل ایمپورت شد: $fname'; });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
+    }
+  }
+
   Future<void> _update() async {
     setState(() { _loading = true; _status = 'در حال آپدیت...'; });
     try {
@@ -532,6 +586,42 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red))),
             ],
           ]),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _loading ? null : _installFromFile,
+            icon: const Icon(Icons.folder_open_rounded, size: 16),
+            label: const Text('نصب دستی از فایل'),
+            style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 38))),
+        ]),
+      ),
+      const SizedBox(height: 12),
+
+      // ── بکاپ و ایمپورت ──
+      Container(padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(children: [
+            Icon(Icons.backup_rounded, color: Color(0xFF22c55e), size: 18),
+            SizedBox(width: 8),
+            Text('بکاپ و ایمپورت', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 4),
+          const Text('مدل‌های AI + yt-dlp', style: TextStyle(color: Colors.white54, fontSize: 11)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: FilledButton.icon(
+              onPressed: _loading ? null : _backupAll,
+              icon: const Icon(Icons.save_alt_rounded, size: 16),
+              label: const Text('بکاپ'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF22c55e)))),
+            const SizedBox(width: 8),
+            Expanded(child: OutlinedButton.icon(
+              onPressed: _loading ? null : _importModel,
+              icon: const Icon(Icons.upload_file_rounded, size: 16),
+              label: const Text('ایمپورت'))),
+          ]),
+          const SizedBox(height: 6),
+          const Text('بکاپ در: Download/Vezoo/Backup/', style: TextStyle(color: Colors.white38, fontSize: 10)),
         ]),
       ),
       const SizedBox(height: 12),
