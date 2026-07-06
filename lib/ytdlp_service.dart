@@ -16,6 +16,13 @@ class YtDlpService {
 
   static void resetCache() => _installed = null;
 
+  static Future<String?> getVersion() async {
+    try {
+      final v = await _ch.invokeMethod<String>('ytdlpGetVersion');
+      return v;
+    } catch (_) { return null; }
+  }
+
   /// دانلود binary — اولین بار (~15MB)
   static Future<void> download({void Function(String)? onStatus}) async {
     onStatus?.call('دانلود yt-dlp...');
