@@ -1,7 +1,7 @@
 name: player
 description: پلیر ویدیو با زیرنویس رمزگذاری‌شده
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -39,6 +39,7 @@ dependencies:
   whisper_ggml_plus: ^1.1.0
   path_provider: ^2.1.2
   share_plus: ^11.0.0
+  youtube_explode_dart: ^2.2.5
 
 dev_dependencies:
   flutter_test:
