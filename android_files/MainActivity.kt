@@ -167,7 +167,9 @@ class MainActivity : FlutterActivity() {
                         try {
                             val binPath = getYtDlpPath()
                             if (binPath == null) { handler.post { result.error("NO_YTDLP","yt-dlp نصب نشده",null) }; return@execute }
-                            val proc = ProcessBuilder(binPath, "-g", "--no-playlist", "--no-warnings", url)
+                            // auto re-chmod در صورت نیاز
+                            try { android.system.Os.chmod(binPath, 493) } catch (_: Exception) {}
+                            val proc = ProcessBuilder("/system/bin/sh", "-c", "$binPath -g --no-playlist --no-warnings '$url'")
                                 .redirectErrorStream(false)
                                 .start()
                             val streamUrl = proc.inputStream.bufferedReader().readLine()?.trim() ?: ""
@@ -184,7 +186,7 @@ class MainActivity : FlutterActivity() {
                     executor.execute {
                         try {
                             val binPath = getYtDlpPath() ?: run { handler.post { result.error("NO_YTDLP","",null) }; return@execute }
-                            val proc = ProcessBuilder(binPath, "--dump-json", "--no-playlist", "--no-warnings", url)
+                            val proc = ProcessBuilder("/system/bin/sh", "-c", "$binPath --dump-json --no-playlist --no-warnings '$url'")
                                 .redirectErrorStream(false).start()
                             val json = proc.inputStream.bufferedReader().readText().trim()
                             proc.waitFor()
@@ -215,7 +217,7 @@ class MainActivity : FlutterActivity() {
                     executor.execute {
                         try {
                             val bin = getYtDlpPath() ?: run { handler.post { result.success(null) }; return@execute }
-                            val proc = ProcessBuilder(bin, "--version").redirectErrorStream(true).start()
+                            val proc = ProcessBuilder("/system/bin/sh", "-c", "$bin --version").redirectErrorStream(true).start()
                             val ver = proc.inputStream.bufferedReader().readLine()?.trim()
                             proc.waitFor()
                             handler.post { result.success(ver) }
@@ -577,7 +579,7 @@ class MainActivity : FlutterActivity() {
         }
         // تست اجرا
         try {
-            val test = ProcessBuilder(outFile.absolutePath, "--version").start()
+            val test = ProcessBuilder("/system/bin/sh", "-c", "${outFile.absolutePath} --version").start()
             test.waitFor()
         } catch (e: Exception) {
             throw Exception("اجرای yt-dlp ناموفق: ${e.message}")
