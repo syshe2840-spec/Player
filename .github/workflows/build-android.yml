@@ -135,12 +135,12 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/vezoo.jks
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/VezooTM.jks
             cat > android/key.properties << EOF
           storePassword=$KEYSTORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
-          storeFile=vezoo.jks
+          storeFile=VezooTM.jks
           EOF
             echo "✓ Keystore configured"
           else
