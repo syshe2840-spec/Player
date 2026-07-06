@@ -56,6 +56,7 @@ class MainActivity : FlutterActivity() {
     private val A_AI_CANCEL = "com.vezoo.AI_CANCEL"
     private var whisperCh: MethodChannel? = null
     private var aiCancelSink: io.flutter.plugin.common.EventChannel.EventSink? = null
+    private var ytdlpProgressSink: io.flutter.plugin.common.EventChannel.EventSink? = null
 
     // ── ثابت‌های کریپتو ──
     private val APP_HALF = byteArrayOf(
@@ -136,6 +137,13 @@ class MainActivity : FlutterActivity() {
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
                 override fun onListen(args: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) { aiCancelSink = sink }
                 override fun onCancel(args: Any?) { aiCancelSink = null }
+            })
+
+        // ── EventChannel برای progress دانلود yt-dlp ──
+        io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp_progress")
+            .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
+                override fun onListen(args: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) { ytdlpProgressSink = sink }
+                override fun onCancel(args: Any?) { ytdlpProgressSink = null }
             })
             when (call.method) {
                 "extractAudio" -> {
@@ -552,7 +560,7 @@ class MainActivity : FlutterActivity() {
                     downloaded += n
                     if (totalBytes > 0 && downloaded - lastNotify > 500_000) {
                         val pct = (downloaded * 100 / totalBytes).toInt()
-                        handler.post { whisperCh?.invokeMethod("ytdlpProgress", mapOf("percent" to pct)) }
+                    handler.post { ytdlpProgressSink?.success(pct) }
                         lastNotify = downloaded
                     }
                 }
