@@ -1,4 +1,3 @@
-
 package com.vezoo.player
 
 import android.app.NotificationChannel
@@ -171,14 +170,19 @@ class MainActivity : FlutterActivity() {
                             // auto re-chmod در صورت نیاز
                             try { android.system.Os.chmod(binPath, 493) } catch (_: Exception) {}
                             val proc = ProcessBuilder("/system/bin/sh", "-c",
-                                "$binPath -g --no-playlist --no-warnings -f 'best[ext=mp4]/bestvideo+bestaudio/best' '$url'")
+                                "$binPath --no-playlist --no-warnings -f 'best' -g '$url'")
                                 .redirectErrorStream(false)
                                 .start()
-                            val lines = proc.inputStream.bufferedReader().readLines().filter { it.startsWith("http") }
+                            val stdout = proc.inputStream.bufferedReader().readLines()
+                            val stderr = proc.errorStream.bufferedReader().readText().trim()
                             proc.waitFor()
-                            // اگه دو URL بود (ویدیو+صدا) → اول رو برگردون (MediaKit هر دو رو هندل می‌کنه)
-                            val streamUrl = lines.firstOrNull()?.trim() ?: ""
-                            handler.post { if (streamUrl.isNotEmpty()) result.success(streamUrl) else result.error("NO_STREAM","لینک stream یافت نشد",null) }
+                            val streamUrl = stdout.firstOrNull { it.startsWith("http") }?.trim() ?: ""
+                            handler.post {
+                                if (streamUrl.isNotEmpty()) result.success(streamUrl)
+                                else result.error("NO_STREAM",
+                                    if (stderr.isNotEmpty()) stderr.take(300) else "لینک stream یافت نشد", null)
+                            }
+                            // handled above
                         } catch (e: Exception) {
                             handler.post { result.error("YTDLP_FAILED", e.message, null) }
                         }
@@ -270,8 +274,9 @@ class MainActivity : FlutterActivity() {
 
                             for (modelsDir in possibleDirs) {
                                 if (!modelsDir.exists()) continue
-                                for (f in modelsDir.listFiles() ?: emptyArray()) {
-                                    if (f.extension == "bin" || f.name.contains("ggml") || f.name.contains("whisper")) {
+                                // جستجوی recursive — مدل‌ها در زیرپوشه هستن (مثل whisper_models/base/ggml-base.bin)
+                                modelsDir.walkTopDown().forEach { f ->
+                                    if (f.isFile && (f.extension == "bin" || f.name.contains("ggml"))) {
                                         f.copyTo(java.io.File(dest, f.name), overwrite = true)
                                         if (!copied.contains(f.name)) copied.add(f.name)
                                     }
@@ -882,3 +887,4 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
