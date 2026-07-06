@@ -107,7 +107,33 @@ class _State extends State<OnlinePlayerSheet> {
 
     // اگه URL نیاز به yt-dlp داره، stream URL رو بگیر
     if (YtDlpService.isSupportedUrl(url)) {
-      setState(() => _error = null);
+      // اگه نصب نشده، dialog تأیید نشون بده
+      if (!await YtDlpService.isInstalled()) {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: const Color(0xFF1C1C22),
+            title: const Row(children: [
+              Icon(Icons.download_rounded, color: Color(0xFF7C3AED)),
+              SizedBox(width: 8),
+              Text('نیاز به yt-dlp'),
+            ]),
+            content: const Text(
+              'برای پخش این لینک به yt-dlp نیاز است.\n\nحجم دانلود: ~15MB\nیک‌بار دانلود میشه و ذخیره میمونه.',
+              style: TextStyle(height: 1.5)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('لغو')),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
+                child: const Text('دانلود و پخش')),
+            ],
+          ));
+        if (ok != true || !mounted) {
+          setState(() => _loading = false);
+          return;
+        }
+      }
       try {
         // اول info بگیر برای نشون دادن عنوان
         final info = await YtDlpService.getInfo(url);
