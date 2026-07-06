@@ -23,6 +23,7 @@ import 'opensubtitles_search_sheet.dart';
 import 'live_sub_sheet.dart';
 import 'srt_translate_sheet.dart';
 import 'srt_translation_service.dart' show SrtTranslationService, SrtTranslationServiceStatus, kTranslateLangDisplay;
+import 'lyrics_sheet.dart';
 import 'live_translation_sync.dart';
 import 'subtitle_storage.dart';
 import 'whisper_service.dart';
@@ -1381,6 +1382,11 @@ class _PlayerState extends State<PlayerScreen>{
                       backgroundColor:Color(0xFF7C3AED)));
                   });
                   break;
+                case 'lyrics':
+                  LyricsSheet.show(context, _curPath, (srtPath) {
+                    _loadSub(srtPath, secondary: false);
+                  }, query: p.basenameWithoutExtension(_curPath));
+                  break;
                 case 'translate':
                   if (_translating && SrtTranslationService.isRunning) {
                     // ترجمه در حال اجراست — پنل وضعیت رو نشون بده
@@ -1485,6 +1491,9 @@ class _PlayerState extends State<PlayerScreen>{
               if(_sub1Path!=null)
                 const PopupMenuItem(value:'translate',child:Row(children:[
                   Icon(Icons.translate,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('ترجمه زیرنویس'),
+                ])),
+                const PopupMenuItem(value:'lyrics',child:Row(children:[
+                  Icon(Icons.music_note_rounded,size:18,color:Color(0xFFEC4899)),SizedBox(width:10),Text('زیرنویس موزیک'),
                 ])),
               const PopupMenuItem(value:'settings',child:Row(children:[
                 Icon(Icons.tune,size:18,color:Colors.white70),SizedBox(width:10),Text('تنظیمات نمایش زیرنویس'),
@@ -1817,3 +1826,4 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
+
