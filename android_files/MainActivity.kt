@@ -431,12 +431,18 @@ class MainActivity : FlutterActivity() {
 
     private fun downloadYtDlp(): String {
         val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
-        // yt-dlp_android برای همه ABI ها کار می‌کنه
-        val downloadUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_android"
+        val filename = when {
+            abi.contains("arm64") || abi.contains("aarch64") -> "yt-dlp_linux_aarch64"
+            abi.contains("armeabi") || abi.contains("armv7") -> "yt-dlp_linux_armv7l"
+            abi.contains("x86_64") -> "yt-dlp_linux"
+            else -> "yt-dlp_linux_aarch64"
+        }
+        val downloadUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/$filename"
         val outFile = java.io.File(filesDir, "yt-dlp")
         val url = java.net.URL(downloadUrl)
         val conn = url.openConnection() as java.net.HttpURLConnection
         conn.connectTimeout = 30_000; conn.readTimeout = 120_000
+        conn.instanceFollowRedirects = true
         conn.connect()
         conn.inputStream.use { input ->
             outFile.outputStream().use { output -> input.copyTo(output) }
