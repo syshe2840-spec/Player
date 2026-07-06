@@ -127,7 +127,7 @@ class LyricsService {
     return outPath;
   }
 
-  static String _t(Duration d) =>
+  static String formatSrtTime(Duration d) =>
     '${d.inHours.toString().padLeft(2,'0')}:'
     '${(d.inMinutes%60).toString().padLeft(2,'0')}:'
     '${(d.inSeconds%60).toString().padLeft(2,'0')},'
