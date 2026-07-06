@@ -159,33 +159,51 @@ jobs:
           done || true
 
       - name: Setup keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/VezooTM.jks
-          cat > android/key.properties << EOF
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/VezooTM.jks
+            cat > android/key.properties << EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
           storeFile=VezooTM.jks
           EOF
+            echo "✓ Keystore configured"
+          else
+            echo "⚠ No keystore — using debug signing"
+          fi
 
       - name: Build APK
         run: flutter build apk --release
 
       - name: Sign APK
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/vezoo.keystore
-          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner sign \
-            --ks /tmp/vezoo.keystore \
-            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
-            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
-            --key-pass pass:${{ secrets.KEY_PASSWORD }} \
-            --out build/app/outputs/flutter-apk/app-release-signed.apk \
-            build/app/outputs/flutter-apk/app-release.apk
-          mv build/app/outputs/flutter-apk/app-release-signed.apk \
-             build/app/outputs/flutter-apk/app-release.apk
-          rm -f /tmp/vezoo.keystore
-          echo "✓ APK signed with keystore"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > /tmp/vezoo.keystore
+            $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner sign \
+              --ks /tmp/vezoo.keystore \
+              --ks-pass pass:$KEYSTORE_PASSWORD \
+              --ks-key-alias $KEY_ALIAS \
+              --key-pass pass:$KEY_PASSWORD \
+              --out build/app/outputs/flutter-apk/app-release-signed.apk \
+              build/app/outputs/flutter-apk/app-release.apk
+            mv build/app/outputs/flutter-apk/app-release-signed.apk \
+               build/app/outputs/flutter-apk/app-release.apk
+            rm -f /tmp/vezoo.keystore
+            echo "✓ APK signed with keystore"
+          else
+            echo "⚠ No keystore secret — APK not resigned"
+          fi
 
       - name: Get version from pubspec
         id: version
