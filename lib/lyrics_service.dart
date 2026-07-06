@@ -120,9 +120,11 @@ class LyricsService {
 
   /// ذخیره SRT کنار ویدیو
   static Future<String> saveAsSubtitle(String videoPath, String srtContent, String suffix) async {
-    final dir = p.dirname(videoPath);
+    // موزیک زیرنویس → /storage/emulated/0/Download/Vezoo/Music/
+    const musicDir = '/storage/emulated/0/Download/Vezoo/Music';
+    await Directory(musicDir).create(recursive: true);
     final base = p.basenameWithoutExtension(videoPath);
-    final outPath = p.join(dir, '${base}_$suffix.srt');
+    final outPath = p.join(musicDir, '${base}_$suffix.srt');
     await File(outPath).writeAsString(srtContent, encoding: utf8);
     return outPath;
   }
