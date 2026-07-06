@@ -202,6 +202,11 @@ class MainActivity : FlutterActivity() {
                 "ytdlpIsInstalled" -> {
                     result.success(getYtDlpPath() != null)
                 }
+
+                "ytdlpDelete" -> {
+                    java.io.File(filesDir, "yt-dlp").delete()
+                    result.success(null)
+                }
                 "extractAudioRange" -> {
                     val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
                     val output = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
