@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 /// سرویس yt-dlp — پشتیبانی از ۱۰۰۰+ سایت
 /// binary اولین بار دانلود میشه و cache میشه
 class YtDlpService {
-  static const _ch = MethodChannel('com.vezoo.player/main');
+  static const _ch = MethodChannel('com.vezoo.player/whisper');
 
   // ── وضعیت ──
   static bool? _installed;
