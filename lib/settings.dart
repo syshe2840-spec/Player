@@ -410,14 +410,14 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   );
 
   // ──────── تب ابزارها ────────
-  Widget _toolsTab() => _ToolsTabBody();
+  Widget _toolsTab() => const ToolsTabBody();
 }
 
-class _ToolsTabBody extends StatefulWidget {
+class ToolsTabBody extends StatefulWidget {
   @override State<_ToolsTabBody> createState() => _ToolsTabBodyState();
 }
 
-class _ToolsTabBodyState extends State<_ToolsTabBody> {
+class ToolsTabBodyState extends State<ToolsTabBody> {
   bool? _installed;
   bool _loading = false;
   String _status = '';
@@ -471,7 +471,7 @@ class _ToolsTabBodyState extends State<_ToolsTabBody> {
       ));
     if (ok != true) return;
     try {
-      await const MethodChannel('com.vezoo.player/main').invokeMethod('ytdlpDelete');
+      await const MethodChannel('com.vezoo.player/whisper').invokeMethod('ytdlpDelete');
     } catch (_) {}
     YtDlpService.resetCache();
     if (mounted) setState(() { _installed = false; _status = 'حذف شد'; });
