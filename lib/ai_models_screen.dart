@@ -212,6 +212,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
         Row(children:[
           _tag(m.name, const Color(0xFF7C3AED)),
           if(m.isQuantized)...[const SizedBox(width:6),_tag(m.variant.toUpperCase(), Colors.teal)],
+          if(m.isCustom)...[const SizedBox(width:6),_tag('ایمپورت', Colors.orange)],
           const SizedBox(width:8),
           if(act)_tag('فعال', Colors.green),
           if(recommended)...[const SizedBox(width:6),_tag('⭐ پیشنهادی', Colors.amber)],
