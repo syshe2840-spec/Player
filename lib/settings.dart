@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
+import 'ytdlp_service.dart';
 
 class PlayerSettings extends StatefulWidget {
   final VideoSettings vs;
@@ -69,7 +70,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   @override
   void initState(){
     super.initState();
-    _tab=TabController(length:4,vsync:this);
+    _tab=TabController(length:5,vsync:this);
     _embeddedSub=widget.embeddedSubEnabled;
     _vs=widget.vs;_sd1=widget.subDelayMs;_sd2=widget.subDelay2Ms;_ad=widget.audioDelayMs;
     _c2=widget.color2;_speed=widget.speed;_amp=widget.ampVolume;
@@ -91,9 +92,10 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         Tab(text:'صدا / پخش',icon:Icon(Icons.volume_up,size:16)),
         Tab(text:'زیرنویس ۲',icon:Icon(Icons.subtitles_outlined,size:16)),
         Tab(text:'سایر',icon:Icon(Icons.more_horiz,size:16)),
+        Tab(text:'ابزارها',icon:Icon(Icons.build_rounded,size:16)),
       ]),
       SizedBox(height:MediaQuery.of(context).size.height*0.48,child:TabBarView(controller:_tab,children:[
-        _sub1Tab(),_audioTab(),_sub2Tab(),_otherTab(),
+        _sub1Tab(),_audioTab(),_sub2Tab(),_otherTab(),_toolsTab(),
       ])),
       SizedBox(height:MediaQuery.of(context).viewPadding.bottom+4),
     ]);
@@ -406,5 +408,144 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       Text(val,style:const TextStyle(color:Colors.white54,fontSize:12)),
     ]),
   );
+
+  // ──────── تب ابزارها ────────
+  Widget _toolsTab() => _ToolsTabBody();
 }
+
+class _ToolsTabBody extends StatefulWidget {
+  @override State<_ToolsTabBody> createState() => _ToolsTabBodyState();
+}
+
+class _ToolsTabBodyState extends State<_ToolsTabBody> {
+  bool? _installed;
+  bool _loading = false;
+  String _status = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInstalled();
+  }
+
+  Future<void> _checkInstalled() async {
+    final v = await YtDlpService.isInstalled();
+    if (mounted) setState(() => _installed = v);
+  }
+
+  Future<void> _install() async {
+    setState(() { _loading = true; _status = 'در حال دانلود...'; });
+    try {
+      await YtDlpService.download(onStatus: (s) {
+        if (mounted) setState(() => _status = s);
+      });
+      if (mounted) setState(() { _loading = false; _installed = true; _status = '✓ نصب شد'; });
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
+    }
+  }
+
+  Future<void> _update() async {
+    setState(() { _loading = true; _status = 'در حال آپدیت...'; });
+    try {
+      await YtDlpService.download(onStatus: (s) {
+        if (mounted) setState(() => _status = s);
+      });
+      if (mounted) setState(() { _loading = false; _status = '✓ آپدیت شد'; });
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
+    }
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C22),
+        title: const Text('حذف yt-dlp'),
+        content: const Text('حذف شود؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('خیر')),
+          TextButton(onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف', style: TextStyle(color: Colors.red))),
+        ],
+      ));
+    if (ok != true) return;
+    try {
+      await const MethodChannel('com.vezoo.player/main').invokeMethod('ytdlpDelete');
+    } catch (_) {}
+    YtDlpService.resetCache();
+    if (mounted) setState(() { _installed = false; _status = 'حذف شد'; });
+  }
+
+  @override
+  Widget build(BuildContext ctx) => SingleChildScrollView(
+    padding: const EdgeInsets.all(16),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+      // ── yt-dlp ──
+      Container(padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.download_for_offline_rounded, color: Color(0xFF7C3AED), size: 20),
+            const SizedBox(width: 8),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('yt-dlp', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+              Text('پشتیبانی از YouTube، Twitch، Vimeo و ۱۰۰۰+ سایت',
+                style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ])),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: _installed == true ? const Color(0xFF22c55e20) : const Color(0xFFef444420),
+                borderRadius: BorderRadius.circular(6)),
+              child: Text(_installed == null ? '...' : _installed! ? 'نصب شده' : 'نصب نشده',
+                style: TextStyle(
+                  color: _installed == true ? const Color(0xFF22c55e) : const Color(0xFFef4444),
+                  fontSize: 11))),
+          ]),
+          if (_status.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          ],
+          if (_loading) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(color: Color(0xFF7C3AED), backgroundColor: Colors.white12),
+          ],
+          const SizedBox(height: 12),
+          Row(children: [
+            if (_installed != true)
+              Expanded(child: FilledButton.icon(
+                onPressed: _loading ? null : _install,
+                icon: const Icon(Icons.download_rounded, size: 16),
+                label: const Text('نصب (~15MB)'),
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)))),
+            if (_installed == true) ...[
+              Expanded(child: OutlinedButton.icon(
+                onPressed: _loading ? null : _update,
+                icon: const Icon(Icons.update_rounded, size: 16),
+                label: const Text('آپدیت'))),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _delete,
+                icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+                label: const Text('حذف', style: TextStyle(color: Colors.red)),
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red))),
+            ],
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      const Text('سایت‌های پشتیبانی‌شده:', style: TextStyle(color: Colors.white54, fontSize: 11)),
+      const SizedBox(height: 6),
+      Wrap(spacing: 6, runSpacing: 4, children: [
+        for (final s in ['YouTube','Twitch','Vimeo','Twitter/X','Instagram','TikTok','Dailymotion','Reddit','Facebook','SoundCloud'])
+          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: const Color(0xFF1C1C22), borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.white12)),
+            child: Text(s, style: const TextStyle(color: Colors.white54, fontSize: 11))),
+      ]),
+    ]),
+  );
+}
+
 
