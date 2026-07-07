@@ -304,14 +304,16 @@ class MainActivity : FlutterActivity() {
                 // ایمپورت مدل از فایل
                 "importModel" -> {
                     val srcPath = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
-                    // مسیر رو از Dart بگیر — مطمئن‌ترین روش
                     val modelsDirPath = call.argument<String>("modelsDir")
                     executor.execute {
                         try {
                             val src = java.io.File(srcPath)
-                            val modelsDir = java.io.File(modelsDirPath ?: "${filesDir.absolutePath}/whisper_models").also { it.mkdirs() }
-                            val dst = java.io.File(modelsDir, src.name)
+                            // ذخیره در مسیری که Dart داده (مطمئن‌ترین روش)
+                            val targetDir = java.io.File(modelsDirPath ?: "${filesDir.absolutePath}/whisper_models").also { it.mkdirs() }
+                            val dst = java.io.File(targetDir, src.name)
                             src.copyTo(dst, overwrite = true)
+                            // لاگ مسیر برای debug
+                            android.util.Log.d("Vezoo", "Model imported to: ${dst.absolutePath}")
                             handler.post { result.success(dst.absolutePath) }
                         } catch (e: Exception) {
                             handler.post { result.error("IMPORT_FAILED", e.message, null) }
