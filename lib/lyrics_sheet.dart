@@ -1,3 +1,4 @@
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'lyrics_service.dart';
@@ -88,10 +89,21 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
           suffix = 'lyrics_plain';
         }
       } else if (track.source == 'genius') {
-        // Genius فقط متن داره — نشون بده
-        showSnack(context, 'Genius فقط متن دارد — sync ندارد');
-        setState(() { _applying = false; });
-        return;
+        // Genius — متن ساده، هر ۵ ثانیه یه خط
+        final result = await LyricsService.fetchGeniusLyrics(track.geniusUrl ?? '');
+        if (result == null || result.isEmpty) throw Exception('متن دریافت نشد');
+        final lines = result.split('\n').where((l) => l.trim().isNotEmpty).toList();
+        final b = StringBuffer();
+        for (int i = 0; i < lines.length; i++) {
+          final start = Duration(seconds: i * 5);
+          final end = Duration(seconds: (i + 1) * 5);
+          b.writeln(i + 1);
+          b.writeln('${_lrcT(start)} --> ${_lrcT(end)}');
+          b.writeln(lines[i]);
+          b.writeln();
+        }
+        srtContent = b.toString();
+        suffix = 'genius_lyrics';
       }
 
       if (srtContent.isEmpty) throw Exception('متن یافت نشد');
@@ -218,4 +230,3 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
     );
   }
 }
-
