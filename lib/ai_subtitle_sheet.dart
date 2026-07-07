@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'whisper_service.dart';
@@ -45,7 +47,32 @@ class _State extends State<AiSubtitleSheet> {
   @override void initState(){ super.initState(); _load(); }
 
   Future<void> _load() async {
-    final list = await WhisperService.downloadedModels();
+    final list = await WhisperService.allDownloadedModels();
+    final root = await WhisperService.getModelsRoot();
+
+    // اگه لیست خالیه — دیالوگ debug نشون بده
+    if (list.isEmpty && mounted) {
+      final dir = Directory(root);
+      final files = dir.existsSync()
+        ? dir.listSync(recursive: true).map((f) => f.path.replaceFirst(root, '')).join('\n')
+        : '⚠ پوشه وجود ندارد';
+      showDialog(context: context, builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C22),
+        title: const Text('🔍 Debug مدل‌ها', style: TextStyle(color: Colors.white, fontSize: 14)),
+        content: SingleChildScrollView(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('📁 مسیر اسکن:\n$root', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            const Divider(color: Colors.white12),
+            Text('📄 فایل‌های موجود:\n${files.isEmpty ? "(خالی)" : files}',
+              style: const TextStyle(color: Colors.amber, fontSize: 11)),
+          ],
+        )),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('بستن'))],
+      ));
+    }
+
     final active = await WhisperService.getActiveModel();
     final existing = WhisperService.existingLanguages(widget.videoPath);
     final engine = await WhisperService.getActiveEngine();
@@ -93,12 +120,10 @@ class _State extends State<AiSubtitleSheet> {
     try {
       final improved = await WhisperService.improveSrt(_srtPath!);
       setState((){ _srtPath=improved; _improving=false; });
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:Text('✨ زیرنویس بهبود یافت'), backgroundColor:Color(0xFF7C3AED)));
+      if(mounted) showSnack(context, '✨ زیرنویس بهبود یافت', color: Color(0xFF7C3AED)));
     } catch(e){
       setState(()=>_improving=false);
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content:Text('خطا: $e'), backgroundColor:Colors.red));
+      if(mounted) showSnack(context, 'خطا: $e');
     }
   }
 
@@ -107,11 +132,9 @@ class _State extends State<AiSubtitleSheet> {
     setState(()=>_improvingLang=lang);
     try {
       await WhisperService.improveSrt(WhisperService.bestSrtPath(widget.videoPath, lang));
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:Text('✨ زیرنویس بهبود یافت'), backgroundColor:Color(0xFF7C3AED)));
+      if(mounted) showSnack(context, '✨ زیرنویس بهبود یافت', color: Color(0xFF7C3AED)));
     } catch(e){
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content:Text('خطا: $e'), backgroundColor:Colors.red));
+      if(mounted) showSnack(context, 'خطا: $e');
     } finally {
       if(mounted) setState((){ _existingLangs=WhisperService.existingLanguages(widget.videoPath); _improvingLang=null; });
     }
@@ -547,9 +570,7 @@ class _State extends State<AiSubtitleSheet> {
         Expanded(child:OutlinedButton.icon(
           onPressed:(){
             widget.onPreview!(_srtPath!);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content:Text('روی پلیر بارگذاری شد برای پیش‌نمایش'),
-              backgroundColor:Color(0xFF7C3AED),duration:Duration(seconds:2)));
+            showSnack(context, 'روی پلیر بارگذاری شد برای پیش‌نمایش', color: Color(0xFF7C3AED), seconds: 2));
           },
           icon:const Icon(Icons.visibility,size:15,color:Colors.white70),
           label:const Text('پیش‌نمایش',style:TextStyle(color:Colors.white70,fontSize:12)),
