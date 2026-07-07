@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:direct_link/direct_link.dart';
@@ -41,7 +42,7 @@ class YtDlpService {
   }
 
   /// گرفتن URL مستقیم stream از هر لینک
-  static Future<String> getStreamUrl(String url) async {
+  static Future<String> getStreamUrl(String url, {BuildContext? context}) async {
     if (_isYouTubeUrl(url)) {
       return _getYouTubeStreamUrl(url);
     }
@@ -54,9 +55,8 @@ class YtDlpService {
       final dl = DirectLink();
       final data = await dl.check(url);
       if (data == null || data.links == null || data.links!.isEmpty) {
-        throw Exception('لینک stream یافت نشد');
+        throw Exception('لینک stream یافت نشد\n(شاید ویدیو private یا region-locked باشه)');
       }
-      // بهترین کیفیت رو برگردون
       final best = data.links!.reduce((a, b) {
         final aQ = int.tryParse(a.quality?.replaceAll(RegExp(r'[^0-9]'), '') ?? '0') ?? 0;
         final bQ = int.tryParse(b.quality?.replaceAll(RegExp(r'[^0-9]'), '') ?? '0') ?? 0;
