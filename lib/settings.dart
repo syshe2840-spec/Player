@@ -511,9 +511,9 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
         // مدل AI — مسیر رو از Dart بگیر
         final modelsRoot = await WhisperService.getModelsRoot();
         await Directory(modelsRoot).create(recursive: true);
-        await const MethodChannel('com.vezoo.player/whisper')
-          .invokeMethod('importModel', {'path': path, 'modelsDir': modelsRoot});
-        if (mounted) setState(() { _loading = false; _status = '✓ مدل ایمپورت شد: $fname'; });
+        final savedPath = await const MethodChannel('com.vezoo.player/whisper')
+          .invokeMethod<String>('importModel', {'path': path, 'modelsDir': modelsRoot});
+        if (mounted) setState(() { _loading = false; _status = '✓ ذخیره در:\n$savedPath'; });
       }
     } catch (e) {
       if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
