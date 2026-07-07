@@ -57,17 +57,28 @@ class YtDlpService {
     url.contains('youtube.com') || url.contains('youtu.be');
 
   static Future<String> _getYouTubeStreamUrl(String url) async {
-    final yt = YoutubeExplode();
+    // اول youtube_explode_dart
     try {
-      final videoId = VideoId(url);
-      final manifest = await yt.videos.streamsClient.getManifest(videoId);
-      final stream = manifest.muxed.sortByVideoQuality().first;
-      return stream.url.toString();
-    } catch (e) {
-      throw Exception('پخش YouTube ناموفق: $e\nلطفاً چند لحظه دیگر امتحان کنید.');
-    } finally {
-      yt.close();
+      final yt = YoutubeExplode();
+      try {
+        final videoId = VideoId(url);
+        final manifest = await yt.videos.streamsClient.getManifest(videoId);
+        final stream = manifest.muxed.sortByVideoQuality().first;
+        return stream.url.toString();
+      } finally {
+        yt.close();
+      }
+    } catch (_) {}
+
+    // fallback به yt-dlp اگه نصب باشه
+    if (await isInstalled()) {
+      try {
+        final streamUrl = await _ch.invokeMethod<String>('ytdlpGetUrl', {'url': url});
+        if (streamUrl != null && streamUrl.isNotEmpty) return streamUrl;
+      } catch (_) {}
     }
+
+    throw Exception('ویدیو در دسترس نیست یا محدود شده.\nلطفاً از مرورگر باز کنید.');
   }
 
   /// گرفتن اطلاعات ویدیو (عنوان، مدت، thumbnail)
