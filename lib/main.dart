@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'browser.dart';
 import 'store.dart';
+import 'api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// نمایش snackbar که همیشه بالای navbar میاد
 void showSnack(BuildContext ctx, String msg, {
@@ -28,9 +31,6 @@ void showSnack(BuildContext ctx, String msg, {
     ) : null,
   ));
 }
-import 'api_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
