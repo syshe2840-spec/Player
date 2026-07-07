@@ -28,6 +28,7 @@ import 'live_translation_sync.dart';
 import 'subtitle_storage.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
+import 'main.dart' show showSnack;
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
 enum _Repeat{none,one,all}
@@ -346,7 +347,7 @@ class _PlayerState extends State<PlayerScreen>{
   void _copyToClipboard(String text){
     Clipboard.setData(ClipboardData(text:text));
     if(mounted)showSnack(context, 'کپی شد',
-              duration: const Duration(seconds: 5),duration:Duration(seconds:2));
+              seconds: 2);
   }
 
   Future<void> _translateSubText()async{
