@@ -22,7 +22,7 @@ class WhisperModelDef {
   final String desc;
   final String? customPath; // برای مدل‌های ایمپورتی
 
-  const WhisperModelDef({required this.id, required this.base, required this.name,
+  WhisperModelDef({required this.id, required this.base, required this.name,
     required this.variant, required this.sizeMb,
     required this.speedStars, required this.accStars, required this.desc,
     this.customPath});
