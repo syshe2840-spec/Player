@@ -221,6 +221,11 @@ class MainActivity : FlutterActivity() {
                     result.success(getYtDlpPath() != null)
                 }
 
+                "getModelsDir" -> {
+                    val dir = java.io.File(filesDir, "whisper_models").also { it.mkdirs() }
+                    result.success(dir.absolutePath)
+                }
+
                 "ytdlpGetVersion" -> {
                     executor.execute {
                         try {
