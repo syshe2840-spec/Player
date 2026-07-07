@@ -303,7 +303,8 @@ class _PlayerState extends State<PlayerScreen>{
             if(altEntries.isNotEmpty){
               entries=altEntries;
               if(mounted)ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content:Text('زیرنویس خالی بود — استفاده از: \${p.basename(altPath)}')));
+                SnackBar(content:Text('زیرنویس خالی بود — استفاده از: \${p.basename(altPath,
+              duration: const Duration(seconds: 5))}')));
               break;
             }
           }catch(_){}
@@ -313,7 +314,8 @@ class _PlayerState extends State<PlayerScreen>{
       else{setState((){_sub1=entries;_sub1Path=path;});}
     }catch(e){
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content:Text('خطا در بارگذاری زیرنویس: \${p.basename(path)}')));
+        SnackBar(content:Text('خطا در بارگذاری زیرنویس: \${p.basename(path,
+              duration: const Duration(seconds: 5))}')));
     }
   }
 
@@ -333,21 +335,25 @@ class _PlayerState extends State<PlayerScreen>{
       loader.addFont(Future.value(ByteData.view(bytes.buffer)));
       await loader.load();
       setState(()=>_vs.fontFamily=name);
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('فونت بارگذاری شد')));
-    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در فونت')));}
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('فونت بارگذاری شد',
+              duration: const Duration(seconds: 5))));
+    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در فونت',
+              duration: const Duration(seconds: 5))));}
   }
 
   void _copySubText(){
     final text=_subText??_sub2Text;
     if(text!=null){
       Clipboard.setData(ClipboardData(text:text));
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد')));
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد',
+              duration: const Duration(seconds: 5))));
     }
   }
 
   void _copyToClipboard(String text){
     Clipboard.setData(ClipboardData(text:text));
-    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد'),duration:Duration(seconds:2)));
+    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد',
+              duration: const Duration(seconds: 5)),duration:Duration(seconds:2)));
   }
 
   Future<void> _translateSubText()async{
@@ -356,7 +362,8 @@ class _PlayerState extends State<PlayerScreen>{
     final url=Uri.parse('https://translate.google.com/?text=${Uri.encodeComponent(text)}&hl=fa');
     try{await launchUrl(url,mode:LaunchMode.externalApplication);}catch(_){
       Clipboard.setData(ClipboardData(text:text));
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('متن کپی شد — در اپ ترجمه paste کنید')));
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('متن کپی شد — در اپ ترجمه paste کنید',
+              duration: const Duration(seconds: 5))));
     }
   }
 
@@ -381,13 +388,16 @@ class _PlayerState extends State<PlayerScreen>{
       final ts=DateTime.now().millisecondsSinceEpoch;
       final path='/storage/emulated/0/Pictures/screenshot_$ts.png';
       await File(path).writeAsBytes(byteData.buffer.asUint8List());
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('ذخیره شد: Pictures/screenshot_$ts.png')));
-    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در اسکرین‌شات')));}
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('ذخیره شد: Pictures/screenshot_$ts.png',
+              duration: const Duration(seconds: 5))));
+    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در اسکرین‌شات',
+              duration: const Duration(seconds: 5))));}
   }
 
   Future<void> _saveVsForVideo()async{
     await Store.saveVideoSettings(_curPath,_vs);
-    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تنظیمات برای این ویدیو ذخیره شد')));
+    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تنظیمات برای این ویدیو ذخیره شد',
+              duration: const Duration(seconds: 5))));
   }
 
   // ── Thumbnail preview — فقط timestamp نمایش داده می‌شه ──
@@ -455,7 +465,8 @@ class _PlayerState extends State<PlayerScreen>{
                 player.setSubtitleTrack(t);
                 setState(()=>_embeddedSubEnabled=true);ss((){});
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content:Text('تراک: ${t.title??t.language??t.id}')));
+                  SnackBar(content:Text('تراک: ${t.title??t.language??t.id}',
+              duration: const Duration(seconds: 5))));
               },
               child:const Text('انتخاب',style:TextStyle(fontSize:12)),
             ),
@@ -471,7 +482,8 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   void _showAudioPicker(){
-    if(_audioTracks.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تراک صوتی یافت نشد')));return;}
+    if(_audioTracks.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تراک صوتی یافت نشد',
+              duration: const Duration(seconds: 5))));return;}
     showDialog(context:context,builder:(ctx)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),title:const Text('انتخاب تراک صوتی'),
       content:Column(mainAxisSize:MainAxisSize.min,
@@ -607,10 +619,12 @@ class _PlayerState extends State<PlayerScreen>{
     try{
       final ok=await _pipCh.invokeMethod<bool>('enterPip',{'playing':_playing,'title':p.basename(_curPath)});
       if(ok!=true&&mounted){
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PiP پشتیبانی نمیشه')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PiP پشتیبانی نمیشه',
+              duration: const Duration(seconds: 5))));
       }
     }catch(e){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PiP: \$e')));
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PiP: \$e',
+              duration: const Duration(seconds: 5))));
     }
   }
 
@@ -791,7 +805,8 @@ class _PlayerState extends State<PlayerScreen>{
     // در حال حاضر با cancel/restart پیاده میشه
     // TODO: پیاده‌سازی skip واقعی در آینده
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('رد این تکه — chunk بعدی شروع میشه'), backgroundColor: Color(0xFF7C3AED)));
+      const SnackBar(content: Text('رد این تکه — chunk بعدی شروع میشه',
+              duration: const Duration(seconds: 5)), backgroundColor: Color(0xFF7C3AED)));
   }
 
   void _stopLiveSub() {
