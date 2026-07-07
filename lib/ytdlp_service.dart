@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
@@ -39,18 +40,34 @@ class YtDlpService {
   }
 
   /// گرفتن URL مستقیم stream از هر لینک
-  /// YouTube → youtube_explode_dart (پایدار، بدون binary)
-  /// بقیه → yt-dlp binary
+  /// YouTube → youtube_explode_dart
+  /// بقیه → Cobalt API (رایگان، بدون binary)
   static Future<String> getStreamUrl(String url) async {
     if (_isYouTubeUrl(url)) {
       return _getYouTubeStreamUrl(url);
     }
-    if (!await isInstalled()) {
-      await download();
+    return _getCobaltStreamUrl(url);
+  }
+
+  /// Cobalt API — پشتیبانی از Instagram, Twitter, TikTok, Vimeo و ...
+  static Future<String> _getCobaltStreamUrl(String url) async {
+    try {
+      final client = HttpClient();
+      try {
+        final req = await client.postUrl(Uri.parse('https://api.cobalt.tools/'));
+        req.headers.set('Content-Type', 'application/json');
+        req.headers.set('Accept', 'application/json');
+        req.write('{"url":"${url.replaceAll('"', '')}","videoQuality":"1080","audioFormat":"mp3"}');
+        final res = await req.close();
+        final body = await res.transform(const Utf8Decoder()).join();
+        final data = jsonDecode(body) as Map<String,dynamic>;
+        final streamUrl = data['url'] as String? ?? data['audio'] as String?;
+        if (streamUrl != null && streamUrl.isNotEmpty) return streamUrl;
+        throw Exception(data['error']?['code'] ?? 'لینک یافت نشد');
+      } finally { client.close(); }
+    } catch (e) {
+      throw Exception('پخش ناموفق: $e');
     }
-    final streamUrl = await _ch.invokeMethod<String>('ytdlpGetUrl', {'url': url});
-    if (streamUrl == null || streamUrl.isEmpty) throw Exception('لینک stream یافت نشد');
-    return streamUrl;
   }
 
   static bool _isYouTubeUrl(String url) =>
@@ -98,21 +115,17 @@ class YtDlpService {
     } catch (_) { return null; }
   }
 
-  /// چک کردن اینکه URL توسط این سرویس پشتیبانی میشه
   static bool isSupportedUrl(String url) {
     if (!url.startsWith('http')) return false;
     final directPlay = ['.mp4','.mkv','.avi','.m3u8','.mpd','.ts'];
     if (directPlay.any((e) => url.contains(e))) return false;
-    // YouTube از youtube_explode_dart
-    if (_isYouTubeUrl(url)) return true;
-    // بقیه از yt-dlp
-    final ytdlpSites = [
-      'twitch.tv','vimeo.com','twitter.com','x.com',
-      'instagram.com','tiktok.com','dailymotion.com',
-      'reddit.com','facebook.com','bilibili.com',
-      'nicovideo.jp','soundcloud.com',
+    final supported = [
+      'youtube.com','youtu.be', // youtube_explode_dart
+      'instagram.com','twitter.com','x.com','tiktok.com',
+      'vimeo.com','twitch.tv','reddit.com','facebook.com',
+      'soundcloud.com','bilibili.com','dailymotion.com',
     ];
-    return ytdlpSites.any((s) => url.contains(s));
+    return supported.any((s) => url.contains(s));
   }
 }
 
