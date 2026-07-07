@@ -444,6 +444,8 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     if (v) {
       try {
         version = await YtDlpService.getVersion() ?? '';
+        // اگه permission error بود، فقط نشون بده نصبه
+        if (version.contains('Permission denied') || version.contains('error=13')) version = '';
       } catch (_) {}
     }
     if (mounted) setState(() { _installed = v; if (version.isNotEmpty) _status = 'نسخه: $version'; });
