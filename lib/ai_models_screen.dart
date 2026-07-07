@@ -97,9 +97,9 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   }
 
   List<WhisperModelDef> get _filtered {
-    if(_filter=='quantized') return kWhisperModels.where((m)=>m.isQuantized).toList();
-    if(_filter=='full') return kWhisperModels.where((m)=>!m.isQuantized).toList();
-    return kWhisperModels;
+    if(_filter=='quantized') return kWhisperModels.where((m)=>m.isQuantized).toList().cast<WhisperModelDef>();
+    if(_filter=='full') return kWhisperModels.where((m)=>!m.isQuantized).toList().cast<WhisperModelDef>();
+    return List<WhisperModelDef>.from(kWhisperModels);
   }
 
   @override
