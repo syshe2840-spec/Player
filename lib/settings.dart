@@ -1,11 +1,13 @@
 // lib/settings.dart — تنظیمات پلیر
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'ytdlp_service.dart';
+import 'whisper_service.dart' show WhisperService;
 import 'package:file_picker/file_picker.dart';
 
 class PlayerSettings extends StatefulWidget {
@@ -506,9 +508,11 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
         YtDlpService.resetCache();
         if (mounted) setState(() { _loading = false; _installed = true; _status = '✓ yt-dlp نصب شد'; });
       } else {
-        // مدل AI
+        // مدل AI — مسیر رو از Dart بگیر
+        final modelsRoot = await WhisperService.getModelsRoot();
+        await Directory(modelsRoot).create(recursive: true);
         await const MethodChannel('com.vezoo.player/whisper')
-          .invokeMethod('importModel', {'path': path});
+          .invokeMethod('importModel', {'path': path, 'modelsDir': modelsRoot});
         if (mounted) setState(() { _loading = false; _status = '✓ مدل ایمپورت شد: $fname'; });
       }
     } catch (e) {
