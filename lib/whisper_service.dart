@@ -39,7 +39,7 @@ class WhisperModelDef {
   bool get isCustom => customPath != null;
 }
 
-const kWhisperModels = [
+final List<WhisperModelDef> kWhisperModels = [
   // ── Tiny ──
   WhisperModelDef(id:'tiny',      base:WhisperModel.tiny,  name:'Tiny',     variant:'',     sizeMb:75,   speedStars:5, accStars:3, desc:'گوشی‌های ضعیف — سریع‌ترین'),
   WhisperModelDef(id:'tiny-q5_1', base:WhisperModel.tiny,  name:'Tiny Q5',  variant:'q5_1', sizeMb:31,   speedStars:5, accStars:3, desc:'فشرده‌شده — حجم کم'),
