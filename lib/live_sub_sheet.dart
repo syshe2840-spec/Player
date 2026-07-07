@@ -39,13 +39,13 @@ class _State extends State<LiveSubSheet> {
   }
 
   Future<void> _load() async {
-    final list = await WhisperService.downloadedModels();
+    final list = await WhisperService.allDownloadedModels();
     final active = await WhisperService.getActiveModel();
     final engine = await WhisperService.getActiveEngine();
     if (mounted) setState(() {
       _models = list;
-      // زیرنویس زنده فقط V2 — مدل فعال رو پیش‌فرض می‌گیریم
-      _selected = active ?? (list.isNotEmpty ? list.first : null);
+      // مدل فعال یا اولین مدل موجود (شامل ایمپورتی‌ها)
+      _selected = list.contains(active) ? active : (list.isNotEmpty ? list.first : null);
       _loading = false;
       if (engine != WhisperEngine.v2) {
         // اگه کاربر V1 داشت، هنوز نشون میدیم ولی توضیح میدیم
@@ -271,4 +271,3 @@ class _State extends State<LiveSubSheet> {
     ),
   );
 }
-
