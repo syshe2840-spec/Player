@@ -3,6 +3,31 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'browser.dart';
 import 'store.dart';
+
+/// نمایش snackbar که همیشه بالای navbar میاد
+void showSnack(BuildContext ctx, String msg, {
+  Color color = const Color(0xFF7C3AED),
+  int seconds = 5,
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
+  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+    content: Text(msg),
+    backgroundColor: color,
+    duration: Duration(seconds: seconds),
+    behavior: SnackBarBehavior.floating,
+    margin: EdgeInsets.only(
+      bottom: MediaQuery.of(ctx).padding.bottom + 72,
+      left: 16, right: 16,
+    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    action: actionLabel != null ? SnackBarAction(
+      label: actionLabel,
+      textColor: Colors.white,
+      onPressed: onAction ?? () {},
+    ) : null,
+  ));
+}
 import 'api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -121,7 +146,7 @@ class MyApp extends StatelessWidget {
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
         ),
       ),
       builder: (ctx, child) =>
