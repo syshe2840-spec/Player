@@ -57,24 +57,16 @@ class YtDlpService {
     url.contains('youtube.com') || url.contains('youtu.be');
 
   static Future<String> _getYouTubeStreamUrl(String url) async {
-    // اول youtube_explode_dart امتحان کن (سریع‌تر، بدون binary)
+    final yt = YoutubeExplode();
     try {
-      final yt = YoutubeExplode();
-      try {
-        final videoId = VideoId(url);
-        final manifest = await yt.videos.streamsClient.getManifest(videoId);
-        final stream = manifest.muxed.sortByVideoQuality().first;
-        return stream.url.toString();
-      } finally {
-        yt.close();
-      }
-    } catch (_) {
-      // اگه youtube_explode fail کرد، به yt-dlp fallback بشه
-      if (await isInstalled()) {
-        final streamUrl = await _ch.invokeMethod<String>('ytdlpGetUrl', {'url': url});
-        if (streamUrl != null && streamUrl.isNotEmpty) return streamUrl;
-      }
-      throw Exception('پخش YouTube ناموفق — لطفاً yt-dlp رو نصب کنید یا بعداً امتحان کنید');
+      final videoId = VideoId(url);
+      final manifest = await yt.videos.streamsClient.getManifest(videoId);
+      final stream = manifest.muxed.sortByVideoQuality().first;
+      return stream.url.toString();
+    } catch (e) {
+      throw Exception('پخش YouTube ناموفق: $e\nلطفاً چند لحظه دیگر امتحان کنید.');
+    } finally {
+      yt.close();
     }
   }
 
