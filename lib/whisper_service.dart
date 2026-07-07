@@ -113,8 +113,16 @@ class WhisperService {
   static bool _trCancelled = false;
 
   // ── پوشه‌ها ──
-  static Future<String> _modelsRoot() async =>
-      p.join((await getApplicationSupportDirectory()).path, 'whisper_models');
+  static Future<String> _modelsRoot() async {
+    // مسیر رو مستقیم از Kotlin بگیر — مطمئن‌ترین روش
+    try {
+      final path = await const MethodChannel('com.vezoo.player/whisper')
+        .invokeMethod<String>('getModelsDir');
+      if (path != null && path.isNotEmpty) return path;
+    } catch (_) {}
+    // fallback به path_provider
+    return p.join((await getApplicationSupportDirectory()).path, 'whisper_models');
+  }
 
   /// مسیر عمومی برای استفاده خارج از class
   static Future<String> getModelsRoot() => _modelsRoot();
