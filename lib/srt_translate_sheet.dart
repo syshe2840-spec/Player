@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'srt_translation_service.dart';
 import 'whisper_service.dart' show WhisperService;
+import 'main.dart' show showSnack;
 
 /// شیت ترجمه زیرنویس با Cloudflare AI
 class SrtTranslateSheet extends StatefulWidget {
@@ -71,11 +72,7 @@ class _State extends State<SrtTranslateSheet> {
       },
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('ترجمه به ${kTranslateLangDisplay[_targetLang] ?? _targetLang} در پس‌زمینه شروع شد'),
-      backgroundColor: const Color(0xFF7C3AED),
-      duration: const Duration(seconds: 3),
-    ));
+    showSnack(context, 'ترجمه به ${kTranslateLangDisplay[_targetLang] ?? _targetLang} در پس‌زمینه شروع شد', color: const Color(0xFF7C3AED), seconds: 3);
   }
 
   @override
