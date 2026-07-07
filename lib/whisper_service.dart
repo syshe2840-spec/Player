@@ -140,26 +140,33 @@ class WhisperService {
   /// همه مدل‌های دانلودشده + ایمپورتی (با نام خوانا)
   static Future<List<WhisperModelDef>> allDownloadedModels() async {
     final known = await downloadedModels();
-    final knownIds = known.map((m) => m.id).toSet();
     final root = await _modelsRoot();
 
-    // اسکن همه فایل‌های .bin مستقیم در root (مدل‌های ایمپورتی)
-    final dir = Directory(root);
-    if (dir.existsSync()) {
+    // همه مسیرهای احتمالی برای مدل‌های ایمپورتی
+    final searchDirs = <String>{root};
+    try {
+      final docDir = (await getApplicationDocumentsDirectory()).path;
+      searchDirs.add(p.join(docDir, 'whisper_models'));
+    } catch (_) {}
+
+    for (final rootPath in searchDirs) {
+      final dir = Directory(rootPath);
+      if (!dir.existsSync()) continue;
+      // اسکن همه .bin در root (نه زیرپوشه‌ها که مدل‌های standard هستن)
       for (final file in dir.listSync().whereType<File>()) {
         final fname = p.basename(file.path);
         if (!fname.endsWith('.bin')) continue;
-        // مدل ایمپورتی — همیشه نشون بده (حتی اگه اسمش با known match کنه)
         final id = 'custom_${p.basenameWithoutExtension(fname)}';
-        final readableName = _fileToReadableName(fname);
+        // اگه قبلاً اضافه شده skip کن
+        if (known.any((m) => m.id == id || m.customPath == file.path)) continue;
         known.add(WhisperModelDef(
           id: id,
-          base: WhisperModel.base, // فقط برای ساختار
-          name: readableName,
+          base: WhisperModel.base,
+          name: _fileToReadableName(fname),
           variant: 'custom',
           sizeMb: (file.lengthSync() / (1024 * 1024)).round(),
           speedStars: 3, accStars: 4,
-          desc: 'ایمپورت‌شده • ${fname}',
+          desc: 'ایمپورت‌شده • $fname',
           customPath: file.path,
         ));
       }
