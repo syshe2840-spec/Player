@@ -302,9 +302,7 @@ class _PlayerState extends State<PlayerScreen>{
             final altEntries=parseSubtitle(altContent,p.extension(altPath).toLowerCase());
             if(altEntries.isNotEmpty){
               entries=altEntries;
-              if(mounted)ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content:Text('زیرنویس خالی بود — استفاده از: \${p.basename(altPath,
-              duration: const Duration(seconds: 5))}')));
+              if(mounted)showSnack(context, 'زیرنویس خالی بود');
               break;
             }
           }catch(_){}
@@ -313,9 +311,7 @@ class _PlayerState extends State<PlayerScreen>{
       if(secondary){setState((){_sub2=entries;_sub2Path=path;_sub2Visible=entries.isNotEmpty;});}
       else{setState((){_sub1=entries;_sub1Path=path;});}
     }catch(e){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content:Text('خطا در بارگذاری زیرنویس: \${p.basename(path,
-              duration: const Duration(seconds: 5))}')));
+      if(mounted)showSnack(context, 'خطا: ${e.toString().substring(0,50)}', color: Colors.red);
     }
   }
 
@@ -335,25 +331,22 @@ class _PlayerState extends State<PlayerScreen>{
       loader.addFont(Future.value(ByteData.view(bytes.buffer)));
       await loader.load();
       setState(()=>_vs.fontFamily=name);
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('فونت بارگذاری شد',
-              duration: const Duration(seconds: 5))));
-    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در فونت',
-              duration: const Duration(seconds: 5))));}
+      if(mounted)showSnack(context, 'فونت بارگذاری شد');
+    }catch(_){if(mounted)showSnack(context, 'خطا در فونت');}
   }
 
   void _copySubText(){
     final text=_subText??_sub2Text;
     if(text!=null){
       Clipboard.setData(ClipboardData(text:text));
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد',
-              duration: const Duration(seconds: 5))));
+      if(mounted)showSnack(context, 'کپی شد');
     }
   }
 
   void _copyToClipboard(String text){
     Clipboard.setData(ClipboardData(text:text));
-    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('کپی شد',
-              duration: const Duration(seconds: 5)),duration:Duration(seconds:2)));
+    if(mounted)showSnack(context, 'کپی شد',
+              duration: const Duration(seconds: 5),duration:Duration(seconds:2));
   }
 
   Future<void> _translateSubText()async{
@@ -362,8 +355,7 @@ class _PlayerState extends State<PlayerScreen>{
     final url=Uri.parse('https://translate.google.com/?text=${Uri.encodeComponent(text)}&hl=fa');
     try{await launchUrl(url,mode:LaunchMode.externalApplication);}catch(_){
       Clipboard.setData(ClipboardData(text:text));
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('متن کپی شد — در اپ ترجمه paste کنید',
-              duration: const Duration(seconds: 5))));
+      if(mounted)showSnack(context, 'متن کپی شد — در اپ ترجمه paste کنید');
     }
   }
 
@@ -388,16 +380,13 @@ class _PlayerState extends State<PlayerScreen>{
       final ts=DateTime.now().millisecondsSinceEpoch;
       final path='/storage/emulated/0/Pictures/screenshot_$ts.png';
       await File(path).writeAsBytes(byteData.buffer.asUint8List());
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('ذخیره شد: Pictures/screenshot_$ts.png',
-              duration: const Duration(seconds: 5))));
-    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا در اسکرین‌شات',
-              duration: const Duration(seconds: 5))));}
+      if(mounted)showSnack(context, 'ذخیره شد: Pictures/screenshot_$ts.png');
+    }catch(_){if(mounted)showSnack(context, 'خطا در اسکرین‌شات');}
   }
 
   Future<void> _saveVsForVideo()async{
     await Store.saveVideoSettings(_curPath,_vs);
-    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تنظیمات برای این ویدیو ذخیره شد',
-              duration: const Duration(seconds: 5))));
+    if(mounted)showSnack(context, 'تنظیمات برای این ویدیو ذخیره شد');
   }
 
   // ── Thumbnail preview — فقط timestamp نمایش داده می‌شه ──
@@ -463,10 +452,8 @@ class _PlayerState extends State<PlayerScreen>{
               style:FilledButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:12),minimumSize:const Size(60,30)),
               onPressed:(){
                 player.setSubtitleTrack(t);
-                setState(()=>_embeddedSubEnabled=true);ss((){});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content:Text('تراک: ${t.title??t.language??t.id}',
-              duration: const Duration(seconds: 5))));
+                setState(()=>_embeddedSubEnabled=true);
+                showSnack(context, 'تراک: \${t.title??t.language??t.id}');
               },
               child:const Text('انتخاب',style:TextStyle(fontSize:12)),
             ),
@@ -482,8 +469,7 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   void _showAudioPicker(){
-    if(_audioTracks.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تراک صوتی یافت نشد',
-              duration: const Duration(seconds: 5))));return;}
+    if(_audioTracks.isEmpty){showSnack(context, 'تراک صوتی یافت نشد');return;}
     showDialog(context:context,builder:(ctx)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),title:const Text('انتخاب تراک صوتی'),
       content:Column(mainAxisSize:MainAxisSize.min,
@@ -568,12 +554,7 @@ class _PlayerState extends State<PlayerScreen>{
 
   Future<void> _playVez(String path)async{
     if(!mounted)return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content:Row(children:[
-        const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)),
-        const SizedBox(width:12),Text('رمزگشایی: \${path.split("/").last}'),
-      ]),
-      duration:const Duration(seconds:120),backgroundColor:const Color(0xFF7C3AED)));
+    showSnack(context, 'رمزگشایی: \${path.split("/").last}', seconds: 120);
     try{
       final temp=await VezService.decryptToTemp(path);
       _vezTempPath=temp;
@@ -619,12 +600,10 @@ class _PlayerState extends State<PlayerScreen>{
     try{
       final ok=await _pipCh.invokeMethod<bool>('enterPip',{'playing':_playing,'title':p.basename(_curPath)});
       if(ok!=true&&mounted){
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PiP پشتیبانی نمیشه',
-              duration: const Duration(seconds: 5))));
+        showSnack(context, 'PiP پشتیبانی نمیشه');
       }
     }catch(e){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PiP: \$e',
-              duration: const Duration(seconds: 5))));
+      if(mounted)showSnack(context, 'PiP: \$e');
     }
   }
 
@@ -747,9 +726,7 @@ class _PlayerState extends State<PlayerScreen>{
         _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
         _liveStopwatch.stop();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('✓ زیرنویس زنده کامل شد'),
-          backgroundColor: Color(0xFF7C3AED)));
+        showSnack(context, '✓ زیرنویس زنده کامل شد', color: Color(0xFF7C3AED));
       }
     }).catchError((e) {
       if (mounted) {
@@ -758,8 +735,7 @@ class _PlayerState extends State<PlayerScreen>{
         _liveStopwatch.stop();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
         if (!e.toString().contains('لغو')) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('خطا: $e'), backgroundColor: Colors.red));
+          showSnack(context, 'خطا: $e', color: Colors.red);
         }
       }
     });
@@ -775,8 +751,7 @@ class _PlayerState extends State<PlayerScreen>{
           Navigator.pop(context);
           SrtTranslationService.cancel();
           setState((){_translating=false; _translatingStatus='';});
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('ترجمه لغو شد'), backgroundColor: Colors.orange));
+          showSnack(context, 'ترجمه لغو شد', color: Colors.orange);
         },
       ),
     );
@@ -804,9 +779,7 @@ class _PlayerState extends State<PlayerScreen>{
     // لغو chunk جاری با reset flag — loop بعدی خودش می‌ره chunk بعدی
     // در حال حاضر با cancel/restart پیاده میشه
     // TODO: پیاده‌سازی skip واقعی در آینده
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('رد این تکه — chunk بعدی شروع میشه',
-              duration: const Duration(seconds: 5)), backgroundColor: Color(0xFF7C3AED)));
+    showSnack(context, 'رد این تکه — chunk بعدی شروع میشه');
   }
 
   void _stopLiveSub() {
@@ -1253,8 +1226,7 @@ class _PlayerState extends State<PlayerScreen>{
                       onTap: () {
                         SrtTranslationService.cancel();
                         setState((){_translating=false; _translatingStatus='';});
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('ترجمه لغو شد'), backgroundColor: Colors.orange));
+                        showSnack(context, 'ترجمه لغو شد', color: Colors.orange);
                       },
                       child: const Padding(padding: EdgeInsets.fromLTRB(2,6,10,6),
                         child: Icon(Icons.close, color: Colors.white54, size: 13)),
@@ -1382,9 +1354,7 @@ class _PlayerState extends State<PlayerScreen>{
                 case 'ai':
                   AiSubtitleSheet.show(context,_curPath,(srt){
                     _loadSub(srt,secondary:false);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content:Text('زیرنویس AI بارگذاری شد'),
-                      backgroundColor:Color(0xFF7C3AED)));
+                    showSnack(context, 'زیرنویس AI بارگذاری شد', color: Color(0xFF7C3AED));
                   },onPreview:(srt){
                     _loadSub(srt,secondary:false);
                   });
@@ -1392,9 +1362,7 @@ class _PlayerState extends State<PlayerScreen>{
                 case 'online':
                   OpenSubtitlesSheet.show(context,_curPath,(srt){
                     _loadSub(srt,secondary:false);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content:Text('زیرنویس آنلاین بارگذاری شد'),
-                      backgroundColor:Color(0xFF7C3AED)));
+                    showSnack(context, 'زیرنویس آنلاین بارگذاری شد', color: Color(0xFF7C3AED));
                   });
                   break;
                 case 'lyrics':
@@ -1413,20 +1381,13 @@ class _PlayerState extends State<PlayerScreen>{
                         if(!mounted) return;
                         setState((){_translating=false; _translatingStatus='';});
                         _loadSub(translated, secondary: false);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('✓ ترجمه کامل شد و اعمال شد'),
-                          backgroundColor: Color(0xFF7C3AED),
-                          duration: Duration(seconds: 10),
-                          ));
+                        showSnack(context, '✓ ترجمه کامل شد و اعمال شد', color: Color(0xFF7C3AED), seconds: 10);
                       },
                       onDoneSecondary: (translated) {
                         if(!mounted) return;
                         setState((){_translating=false; _translatingStatus='';});
                         _loadSub(translated, secondary: true);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('✓ ترجمه روی Sub2 اعمال شد'),
-                          backgroundColor: Color(0xFF7C3AED),
-                          duration: Duration(seconds: 10)));
+                        showSnack(context, '✓ ترجمه روی Sub2 اعمال شد', color: Color(0xFF7C3AED), seconds: 10);
                       },
                       onSrtUpdated: (partial) {
                         setState((){
@@ -1439,9 +1400,7 @@ class _PlayerState extends State<PlayerScreen>{
                     );
                     setState((){_translating=true;});
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('ابتدا یک زیرنویس بارگذاری کنید'),
-                      backgroundColor: Colors.orange));
+                    showSnack(context, 'ابتدا یک زیرنویس بارگذاری کنید', color: Colors.orange);
                   }
                   break;
                 case 'settings':
