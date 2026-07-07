@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:direct_link/direct_link.dart';
 
-/// سرویس yt-dlp — پشتیبانی از ۱۰۰۰+ سایت
-/// برای YouTube از youtube_explode_dart استفاده میشه (پایدارتر)
-/// برای بقیه سایت‌ها از yt-dlp binary
+/// سرویس پخش آنلاین
+/// YouTube → youtube_explode_dart
+/// بقیه (Instagram, TikTok, Twitter, Facebook...) → direct_link package
 class YtDlpService {
   static const _ch = MethodChannel('com.vezoo.player/whisper');
 
@@ -40,31 +41,29 @@ class YtDlpService {
   }
 
   /// گرفتن URL مستقیم stream از هر لینک
-  /// YouTube → youtube_explode_dart
-  /// بقیه → Cobalt API (رایگان، بدون binary)
   static Future<String> getStreamUrl(String url) async {
     if (_isYouTubeUrl(url)) {
       return _getYouTubeStreamUrl(url);
     }
-    return _getCobaltStreamUrl(url);
+    return _getDirectLink(url);
   }
 
-  /// Cobalt API — پشتیبانی از Instagram, Twitter, TikTok, Vimeo و ...
-  static Future<String> _getCobaltStreamUrl(String url) async {
+  /// direct_link — Instagram, TikTok, Twitter, Facebook, Vimeo, Reddit...
+  static Future<String> _getDirectLink(String url) async {
     try {
-      final client = HttpClient();
-      try {
-        final req = await client.postUrl(Uri.parse('https://api.cobalt.tools/'));
-        req.headers.set('Content-Type', 'application/json');
-        req.headers.set('Accept', 'application/json');
-        req.write('{"url":"${url.replaceAll('"', '')}","videoQuality":"1080","audioFormat":"mp3"}');
-        final res = await req.close();
-        final body = await res.transform(const Utf8Decoder()).join();
-        final data = jsonDecode(body) as Map<String,dynamic>;
-        final streamUrl = data['url'] as String? ?? data['audio'] as String?;
-        if (streamUrl != null && streamUrl.isNotEmpty) return streamUrl;
-        throw Exception(data['error']?['code'] ?? 'لینک یافت نشد');
-      } finally { client.close(); }
+      final dl = DirectLink();
+      final data = await dl.check(url);
+      if (data == null || data.links == null || data.links!.isEmpty) {
+        throw Exception('لینک stream یافت نشد');
+      }
+      // بهترین کیفیت رو برگردون
+      final best = data.links!.reduce((a, b) {
+        final aQ = int.tryParse(a.quality?.replaceAll(RegExp(r'[^0-9]'), '') ?? '0') ?? 0;
+        final bQ = int.tryParse(b.quality?.replaceAll(RegExp(r'[^0-9]'), '') ?? '0') ?? 0;
+        return aQ >= bQ ? a : b;
+      });
+      if (best.link == null || best.link!.isEmpty) throw Exception('لینک خالی');
+      return best.link!;
     } catch (e) {
       throw Exception('پخش ناموفق: $e');
     }
