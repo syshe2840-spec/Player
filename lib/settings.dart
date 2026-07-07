@@ -201,15 +201,13 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.translate,size:16),label:const Text('ترجمه'),
           onPressed:(){
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('متن زیرنویس را کپی کرده و در اپ ترجمه paste کنید',
-              duration: const Duration(seconds: 5))));
+            showSnack(context, 'متن زیرنویس را کپی کرده و در اپ ترجمه paste کنید');
           })),
       const SizedBox(width:8),
       Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.book,size:16),label:const Text('دیکشنری'),
           onPressed:(){
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('متن را کپی کرده و در دیکشنری جستجو کنید',
-              duration: const Duration(seconds: 5))));
+            showSnack(context, 'متن را کپی کرده و در دیکشنری جستجو کنید');
           })),
     ]),
 
