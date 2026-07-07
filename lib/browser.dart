@@ -110,8 +110,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         _selected.clear();_searching=false;_searchQuery='';_searchCtrl.clear();
         _searchResults=[];_globalSearch=false;});
     }catch(_){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('دسترسی ندارید',
-              duration: const Duration(seconds: 5))));
+      if(mounted)showSnack(context, 'دسترسی ندارید');
     }
   }
   void _goUp(){final par=p.dirname(_path);if(par!=_path&&par.startsWith('/storage'))_loadDir(par);}
@@ -186,8 +185,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
 
   Future<void> _openVideoByPath(String path)async{
     final f=File(path);
-    if(!f.existsSync()){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('فایل یافت نشد',
-              duration: const Duration(seconds: 5))));return;}
+    if(!f.existsSync()){showSnack(context, 'فایل یافت نشد');return;}
     await _openVideo(f,[f],0);
   }
 
@@ -219,30 +217,25 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   }
 
   Future<void> _copyFile(File f)async{
-    if(Store.savedFolders.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('ابتدا یک پوشه را ذخیره کنید',
-              duration: const Duration(seconds: 5))));return;}
+    if(Store.savedFolders.isEmpty){showSnack(context, 'ابتدا یک پوشه را ذخیره کنید');return;}
     final dest=await _pickFolder('کپی به');
     if(dest==null)return;
     try{await f.copy(p.join(dest,p.basename(f.path)));
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('کپی شد به ${p.basename(dest,
-              duration: const Duration(seconds: 5))}')));}
-    catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا',
-              duration: const Duration(seconds: 5))));}
+      if(mounted)showSnack(context, 'کپی شد');}
+    catch(_){if(mounted)showSnack(context, 'خطا');}
   }
 
   Future<void> _moveFile(File f)async{
     final dest=await _pickFolder('انتقال به');if(dest==null)return;
     final newPath=p.join(dest,p.basename(f.path));
     try{await f.rename(newPath);}
-    catch(_){try{await f.copy(newPath);await f.delete();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا',
-              duration: const Duration(seconds: 5))));return;}}
+    catch(_){try{await f.copy(newPath);await f.delete();}catch(e){if(mounted)showSnack(context, 'خطا');return;}}
     _loadDir(_path);
   }
 
   Future<String?> _pickFolder(String title)async{
     final all=[...Store.savedFolders];
-    if(all.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('ابتدا یک پوشه را ذخیره کنید',
-              duration: const Duration(seconds: 5))));return null;}
+    if(all.isEmpty){showSnack(context, 'ابتدا یک پوشه را ذخیره کنید');return null;}
     return showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
       title:Text(title),
       content:Column(mainAxisSize:MainAxisSize.min,children:all.map((folder)=>ListTile(
@@ -279,8 +272,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     ));
     if(name==null||name.isEmpty)return;
     try{await f.rename(p.join(p.dirname(f.path),'$name${p.extension(f.path)}'));_loadDir(_path);}
-    catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('خطا',
-              duration: const Duration(seconds: 5))));}
+    catch(_){if(mounted)showSnack(context, 'خطا');}
   }
 
   Future<void> _showRating(File f)async{
@@ -772,8 +764,7 @@ class _VideoMenuState extends State<VideoMenu>{
     _mi(Icons.queue_music_rounded,kCyan,'افزودن به پلی‌لیست',()async{
       final playlists=Store.playlists.keys.toList();
       if(playlists.isEmpty){
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('ابتدا یک پلی‌لیست بسازید',
-              duration: const Duration(seconds: 5))));
+        showSnack(context, 'ابتدا یک پلی‌لیست بسازید');
         return;
       }
       final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
@@ -786,8 +777,7 @@ class _VideoMenuState extends State<VideoMenu>{
       ));
       if(name!=null){
         await Store.addToPlaylist(name,widget.file.path);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('اضافه شد به «$name»',
-              duration: const Duration(seconds: 5))));
+        showSnack(context, 'اضافه شد به «$name»');
       }
     }),
     _mi(Icons.copy_rounded,kTextSec,'کپی به پوشه',widget.onCopy),
@@ -884,8 +874,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         onLongPress:(){
           if(isUrl){
             Clipboard.setData(ClipboardData(text:path));
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content:Text('لینک کپی شد'),duration:Duration(seconds:2),backgroundColor:Color(0xFF7C3AED)));
+            showSnack(context, 'لینک کپی شد', color: Color(0xFF7C3AED), seconds: 2);
           } else if(onLongPress!=null) onLongPress(path);
         });
     });
