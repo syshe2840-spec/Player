@@ -85,6 +85,22 @@ class LyricsService {
   }
 
   /// تبدیل LRC به SRT برای نمایش روی ویدیو
+  /// دریافت متن ساده از Genius (از طریق worker)
+  static Future<String?> fetchGeniusLyrics(String geniusUrl) async {
+    if (geniusUrl.isEmpty) return null;
+    final uri = Uri.parse('$_workerBase/lyrics/genius?url=${Uri.encodeComponent(geniusUrl)}');
+    final client = HttpClient();
+    try {
+      final req = await client.getUrl(uri);
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      if (res.statusCode != 200) return null;
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      return data['lyrics'] as String?;
+    } catch (_) { return null; }
+    finally { client.close(); }
+  }
+
   static String lrcToSrt(String lrc) {
     final lines = lrc.split('\n');
     final entries = <_LrcLine>[];
