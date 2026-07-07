@@ -116,6 +116,9 @@ class WhisperService {
   static Future<String> _modelsRoot() async =>
       p.join((await getApplicationSupportDirectory()).path, 'whisper_models');
 
+  /// مسیر عمومی برای استفاده خارج از class
+  static Future<String> getModelsRoot() => _modelsRoot();
+
   static Future<String> modelFilePath(WhisperModelDef m) async =>
       m.filePath(await _modelsRoot());
 
@@ -1082,3 +1085,4 @@ String _liveSegsToSrt(List<_Seg> segs) {
   }
   return b.toString();
 }
+
