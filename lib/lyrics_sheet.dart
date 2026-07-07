@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'lyrics_service.dart';
@@ -9,7 +8,6 @@ String _lrcT(Duration d) =>
   '${(d.inMinutes%60).toString().padLeft(2,'0')}:'
   '${(d.inSeconds%60).toString().padLeft(2,'0')},'
   '${(d.inMilliseconds%1000).toString().padLeft(3,'0')}';
-
 
 class LyricsSheet extends StatefulWidget {
   final String videoPath;
@@ -29,84 +27,63 @@ class LyricsSheet extends StatefulWidget {
   @override State<LyricsSheet> createState() => _State();
 }
 
-class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
-  late TabController _tab;
+class _State extends State<LyricsSheet> {
   final _ctrl = TextEditingController();
   bool _loading = false;
   String? _error;
-  Map<String, List<LyricsTrack>> _results = {'lrclib': [], 'genius': []};
-  LyricsTrack? _selected;
+  List<LyricsTrack> _results = [];
   bool _applying = false;
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
     if (widget.initialQuery != null) {
       _ctrl.text = widget.initialQuery!;
       WidgetsBinding.instance.addPostFrameCallback((_) => _search());
     }
   }
 
-  @override void dispose() { _tab.dispose(); _ctrl.dispose(); super.dispose(); }
+  @override void dispose() { _ctrl.dispose(); super.dispose(); }
 
   Future<void> _search() async {
     if (_ctrl.text.trim().isEmpty) return;
-    setState(() { _loading = true; _error = null; _results = {'lrclib':[],'genius':[]}; });
+    setState(() { _loading = true; _error = null; _results = []; });
     try {
       final r = await LyricsService.search(_ctrl.text.trim());
-      if (mounted) setState(() { _results = r; _loading = false; });
+      if (mounted) setState(() { _results = r['lrclib'] ?? []; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _loading = false; });
     }
   }
 
   Future<void> _apply(LyricsTrack track) async {
-    setState(() { _selected = track; _applying = true; });
+    setState(() { _applying = true; });
     try {
-      String srtContent = '';
-      String suffix = 'lyrics';
+      final result = await LyricsService.fetchLrcLib(track.id);
+      if (result == null) throw Exception('دریافت ناموفق');
 
-      if (track.source == 'lrclib') {
-        final result = await LyricsService.fetchLrcLib(track.id);
-        if (result == null) throw Exception('دریافت ناموفق');
-        if (result.hasSynced) {
-          srtContent = LyricsService.lrcToSrt(result.syncedLrc!);
-          suffix = 'lrc_synced';
-        } else if (result.plainLyrics != null) {
-          // متن ساده بدون sync — یه SRT ساده با فاصله ۴ ثانیه
-          final lines = result.plainLyrics!.split('\n').where((l) => l.trim().isNotEmpty).toList();
-          final b = StringBuffer();
-          for (int i = 0; i < lines.length; i++) {
-            final start = Duration(seconds: i * 4);
-            final end = Duration(seconds: (i + 1) * 4);
-            b.writeln(i + 1);
-            b.writeln('${_lrcT(start)} --> ${_lrcT(end)}');
-            b.writeln(lines[i]);
-            b.writeln();
-          }
-          srtContent = b.toString();
-          suffix = 'lyrics_plain';
-        }
-      } else if (track.source == 'genius') {
-        // Genius — متن ساده، هر ۵ ثانیه یه خط
-        final result = await LyricsService.fetchGeniusLyrics(track.geniusUrl ?? '');
-        if (result == null || result.isEmpty) throw Exception('متن دریافت نشد');
-        final lines = result.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      String srtContent;
+      String suffix;
+
+      if (result.hasSynced) {
+        srtContent = LyricsService.lrcToSrt(result.syncedLrc!);
+        suffix = 'lrc_synced';
+      } else if (result.plainLyrics != null) {
+        final lines = result.plainLyrics!.split('\n').where((l) => l.trim().isNotEmpty).toList();
         final b = StringBuffer();
         for (int i = 0; i < lines.length; i++) {
-          final start = Duration(seconds: i * 5);
-          final end = Duration(seconds: (i + 1) * 5);
+          final start = Duration(seconds: i * 4);
+          final end = Duration(seconds: (i + 1) * 4);
           b.writeln(i + 1);
           b.writeln('${_lrcT(start)} --> ${_lrcT(end)}');
           b.writeln(lines[i]);
           b.writeln();
         }
         srtContent = b.toString();
-        suffix = 'genius_lyrics';
+        suffix = 'lyrics_plain';
+      } else {
+        throw Exception('متن یافت نشد');
       }
-
-      if (srtContent.isEmpty) throw Exception('متن یافت نشد');
 
       final path = await LyricsService.saveAsSubtitle(widget.videoPath, srtContent, suffix);
       if (mounted) {
@@ -124,22 +101,17 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
     child: ConstrainedBox(
       constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.9),
       child: Column(children: [
-        // ── Handle ──
         Container(width:40,height:4,margin:const EdgeInsets.symmetric(vertical:12),
           decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2))),
-
-        // ── Header ──
         Padding(padding: const EdgeInsets.symmetric(horizontal:16),
           child: Row(children: [
             const Icon(Icons.music_note, color: Color(0xFF7C3AED), size: 20),
             const SizedBox(width: 8),
-            const Text('زیرنویس موزیک', style: TextStyle(color:Colors.white, fontSize:16, fontWeight:FontWeight.bold)),
+            const Text('زیرنویس موزیک (LRCLib)', style: TextStyle(color:Colors.white, fontSize:16, fontWeight:FontWeight.bold)),
             const Spacer(),
             IconButton(icon:const Icon(Icons.close,color:Colors.white38), onPressed:()=>Navigator.pop(ctx)),
           ]),
         ),
-
-        // ── Search ──
         Padding(padding: const EdgeInsets.fromLTRB(16,8,16,8),
           child: Row(children: [
             Expanded(child: TextField(
@@ -167,66 +139,44 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
             ),
           ]),
         ),
-
-        // ── Tabs ──
-        TabBar(controller:_tab, tabs:[
-          Tab(text:'LRCLib (sync) ${_results['lrclib']!.isNotEmpty ? "(${_results['lrclib']!.length})" : ""}'),
-          Tab(text:'Genius ${_results['genius']!.isNotEmpty ? "(${_results['genius']!.length})" : ""}'),
-        ], indicatorColor:const Color(0xFF7C3AED), labelColor:const Color(0xFF7C3AED), unselectedLabelColor:Colors.white54,
-          labelStyle:const TextStyle(fontSize:12)),
-
-        // ── Error ──
         if (_error != null) Padding(
           padding: const EdgeInsets.all(8),
           child: Text(_error!, style:const TextStyle(color:Colors.red,fontSize:12))),
-
-        // ── Results ──
-        Expanded(child: TabBarView(controller:_tab, children:[
-          _buildList(_results['lrclib']!),
-          _buildList(_results['genius']!),
-        ])),
-
+        Expanded(child: _results.isEmpty
+          ? Center(child: Text(_loading ? 'در حال جستجو...' : 'جستجو کنید',
+              style:const TextStyle(color:Colors.white38,fontSize:13)))
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+              itemCount: _results.length,
+              itemBuilder: (_,i) {
+                final t = _results[i];
+                return Container(
+                  margin: const EdgeInsets.only(bottom:6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A35),
+                    borderRadius: BorderRadius.circular(10)),
+                  child: ListTile(
+                    dense: true,
+                    leading: Container(width:36,height:36,
+                      decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.15),borderRadius:BorderRadius.circular(8)),
+                      child: Icon(t.hasSynced ? Icons.lyrics_rounded : Icons.text_fields_rounded,
+                        color:t.hasSynced ? const Color(0xFF7C3AED) : Colors.white38, size:18)),
+                    title: Text(t.title, style:const TextStyle(fontSize:13,color:Colors.white), maxLines:1, overflow:TextOverflow.ellipsis),
+                    subtitle: Text('${t.artist}${t.album.isNotEmpty?" • ${t.album}":""}',
+                      style:const TextStyle(fontSize:10,color:Colors.white54), maxLines:1, overflow:TextOverflow.ellipsis),
+                    trailing: t.hasSynced
+                      ? Container(padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
+                          decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.2),borderRadius:BorderRadius.circular(4)),
+                          child:const Text('SYNC',style:TextStyle(color:Color(0xFF7C3AED),fontSize:9,fontWeight:FontWeight.bold)))
+                      : const Icon(Icons.download_rounded,size:16,color:Colors.white38),
+                    onTap: _applying ? null : () => _apply(t),
+                  ),
+                );
+              },
+            )),
         if (_applying) const LinearProgressIndicator(color:Color(0xFF7C3AED), backgroundColor:Colors.white12),
       ]),
     ),
   );
-
-  Widget _buildList(List<LyricsTrack> tracks) {
-    if (tracks.isEmpty) return Center(
-      child: Text(_loading ? 'در حال جستجو...' : 'نتیجه‌ای نیست',
-        style:const TextStyle(color:Colors.white38,fontSize:13)));
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
-      itemCount: tracks.length,
-      itemBuilder: (_,i) {
-        final t = tracks[i];
-        final isSelected = _selected?.id == t.id && _selected?.source == t.source;
-        return Container(
-          margin: const EdgeInsets.only(bottom:6),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF7C3AED).withOpacity(0.2) : const Color(0xFF2A2A35),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? const Color(0xFF7C3AED) : Colors.transparent)),
-          child: ListTile(
-            dense: true,
-            leading: Container(width:36,height:36,
-              decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.15),borderRadius:BorderRadius.circular(8)),
-              child: Icon(t.hasSynced ? Icons.lyrics_rounded : Icons.text_fields_rounded,
-                color:t.hasSynced ? const Color(0xFF7C3AED) : Colors.white38, size:18)),
-            title: Text('${t.title}', style:const TextStyle(fontSize:13,color:Colors.white), maxLines:1, overflow:TextOverflow.ellipsis),
-            subtitle: Text('${t.artist}${t.album.isNotEmpty?" • ${t.album}":""}',
-              style:const TextStyle(fontSize:10,color:Colors.white54), maxLines:1, overflow:TextOverflow.ellipsis),
-            trailing: Column(mainAxisAlignment:MainAxisAlignment.center, children:[
-              if (t.hasSynced) Container(padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
-                decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.2),borderRadius:BorderRadius.circular(4)),
-                child:const Text('SYNC',style:TextStyle(color:Color(0xFF7C3AED),fontSize:9,fontWeight:FontWeight.bold))),
-              const SizedBox(height:2),
-              const Icon(Icons.download_rounded,size:16,color:Colors.white38),
-            ]),
-            onTap: _applying ? null : () => _apply(t),
-          ),
-        );
-      },
-    );
-  }
 }
+
