@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
+import 'main.dart' show showSnack;
 
 /// ویرایشگر دستی زیرنویس — اصلاح متن و زمان‌بندی هر خط
 class SrtEditorScreen extends StatefulWidget {
@@ -66,8 +67,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
     if (result == null) return;
     final parsed = _parseShort(result);
     if (parsed == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('فرمت اشتباه — باید mm:ss باشد'), backgroundColor: Colors.red));
+      if (mounted) showSnack(context, 'فرمت اشتباه — باید mm:ss باشد');
       return;
     }
     setState(() {
@@ -91,8 +91,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
     }
     writeSrtEntries(widget.srtPath, _entries);
     setState((){ _saving = false; _dirty = false; });
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✓ ذخیره شد'), backgroundColor: Colors.green));
+    if (mounted) showSnack(context, '✓ ذخیره شد');
   }
 
   @override
