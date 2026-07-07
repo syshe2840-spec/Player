@@ -114,6 +114,10 @@ jobs:
           else
             printf '\nsubprojects {\n    def forceSdk = {\n        if (project.hasProperty("android")) { project.android.compileSdkVersion 36 }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle
           fi
+          # fix proguard deprecation در flutter_inappwebview
+          find /root/.pub-cache /home/runner/.pub-cache -name "build.gradle" 2>/dev/null | xargs grep -l "proguard-android.txt" 2>/dev/null | while read f; do
+            sed -i "s/proguard-android\.txt/proguard-android-optimize.txt/g" "$f" && echo "fixed: $f"
+          done || true
 
       - name: Get packages
         run: flutter pub get
