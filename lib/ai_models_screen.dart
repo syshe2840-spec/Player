@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'whisper_service.dart';
 import 'ai_batch_queue_screen.dart';
 import 'ai_history_screen.dart';
+import 'main.dart' show showSnack;
 
 class AiModelsScreen extends StatefulWidget {
   const AiModelsScreen({super.key});
