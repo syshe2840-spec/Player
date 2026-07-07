@@ -47,8 +47,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
     await _loadCacheInfo();
     if(mounted){
       setState(()=>_clearingCache=false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:Text('✓ کش صدا پاک شد'),backgroundColor:Colors.green));
+      showSnack(context, '✓ کش صدا پاک شد', color: Colors.green);
     }
   }
 
@@ -70,22 +69,16 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   Future<void> _download(WhisperModelDef m) async {
     final key = m.id;
     setState((){ _busy[key]=true; _prog[key]=0; });
-    if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content:Text('دانلود ${m.name} شروع شد (${m.sizeMb}MB)...'),
-        duration:const Duration(seconds:3), backgroundColor:const Color(0xFF7C3AED)));
+    if(mounted) showSnack(context, 'دانلود \${m.name} شروع شد (\${m.sizeMb}MB)...', seconds: 3);
     try {
       await for(final p in WhisperService.downloadModel(m)){
         if(!mounted) break;
         setState(()=> _prog[key]=p);
       }
       await _refresh();
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content:Text('✓ مدل ${m.name} دانلود شد'),
-          backgroundColor:Colors.green, duration:const Duration(seconds:3)));
+      if(mounted) showSnack(context, '✓ مدل \${m.name} دانلود شد');
     } catch(e){
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content:Text('دانلود متوقف شد — دوباره بزنید تا ادامه دهد\n$e'),
-          backgroundColor:Colors.orange, duration:const Duration(seconds:5)));
+      if(mounted) showSnack(context, 'دانلود متوقف شد — دوباره بزنید تا ادامه دهد\n$e');
     } finally {
       if(mounted) setState(()=>_busy[key]=false);
     }
