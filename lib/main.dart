@@ -8,21 +8,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// نمایش snackbar که همیشه بالای navbar میاد
+/// کلید جهانی برای نمایش snackbar بالای همه چیز (حتی bottom sheet ها)
+final GlobalKey<ScaffoldMessengerState> rootScaffoldKey = GlobalKey<ScaffoldMessengerState>();
+
+/// نمایش snackbar که همیشه بالای navbar میاد — حتی از داخل sheet
 void showSnack(BuildContext ctx, String msg, {
   Color color = const Color(0xFF7C3AED),
   int seconds = 5,
   String? actionLabel,
   VoidCallback? onAction,
 }) {
-  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+  final messenger = rootScaffoldKey.currentState ?? ScaffoldMessenger.of(ctx);
+  messenger
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(
     content: Text(msg),
     backgroundColor: color,
     duration: Duration(seconds: seconds),
     behavior: SnackBarBehavior.floating,
-    margin: EdgeInsets.only(
-      bottom: MediaQuery.of(ctx).padding.bottom + 72,
-      left: 16, right: 16,
-    ),
+    margin: const EdgeInsets.fromLTRB(12, 0, 12, 70),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     action: actionLabel != null ? SnackBarAction(
       label: actionLabel,
@@ -50,6 +54,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: rootScaffoldKey,
       title: 'Vezoo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
