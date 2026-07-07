@@ -140,19 +140,14 @@ class WhisperService {
     final knownIds = known.map((m) => m.id).toSet();
     final root = await _modelsRoot();
 
-    // اسکن همه فایل‌های .bin در پوشه root (مستقیم — مدل‌های ایمپورتی)
+    // اسکن همه فایل‌های .bin مستقیم در root (مدل‌های ایمپورتی)
     final dir = Directory(root);
     if (dir.existsSync()) {
       for (final file in dir.listSync().whereType<File>()) {
         final fname = p.basename(file.path);
         if (!fname.endsWith('.bin')) continue;
-        // اگه با یه مدل شناخته‌شده match میشه، skip کن
-        final matched = kWhisperModels.any((m) => m.filename == fname);
-        if (matched) continue;
-        // مدل ناشناس — اسم خوانا از نام فایل
+        // مدل ایمپورتی — همیشه نشون بده (حتی اگه اسمش با known match کنه)
         final id = 'custom_${p.basenameWithoutExtension(fname)}';
-        if (knownIds.contains(id)) continue;
-        // ساخت نام خوانا از نام فایل
         final readableName = _fileToReadableName(fname);
         known.add(WhisperModelDef(
           id: id,
@@ -1087,4 +1082,3 @@ String _liveSegsToSrt(List<_Seg> segs) {
   }
   return b.toString();
 }
-
