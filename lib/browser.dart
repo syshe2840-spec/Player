@@ -15,6 +15,7 @@ import 'ytdlp_service.dart';
 import 'settings.dart' show ToolsTabBody;
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
+import 'main.dart' show showSnack;
 
 const kBg      = Color(0xFF08080F);
 const kSurface = Color(0xFF0D0D1E);
