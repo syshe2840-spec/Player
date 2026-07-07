@@ -304,10 +304,12 @@ class MainActivity : FlutterActivity() {
                 // ایمپورت مدل از فایل
                 "importModel" -> {
                     val srcPath = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
+                    // مسیر رو از Dart بگیر — مطمئن‌ترین روش
+                    val modelsDirPath = call.argument<String>("modelsDir")
                     executor.execute {
                         try {
                             val src = java.io.File(srcPath)
-                            val modelsDir = java.io.File(filesDir, "whisper_models").also { it.mkdirs() }
+                            val modelsDir = java.io.File(modelsDirPath ?: "${filesDir.absolutePath}/whisper_models").also { it.mkdirs() }
                             val dst = java.io.File(modelsDir, src.name)
                             src.copyTo(dst, overwrite = true)
                             handler.post { result.success(dst.absolutePath) }
