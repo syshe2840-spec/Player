@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'player.dart';
 import 'ytdlp_service.dart';
+import 'main.dart' show showSnack;
 
 class OnlinePlayerSheet extends StatefulWidget {
   const OnlinePlayerSheet({super.key});
@@ -138,10 +139,7 @@ class _State extends State<OnlinePlayerSheet> {
         // اول info بگیر برای نشون دادن عنوان
         final info = await YtDlpService.getInfo(url);
         if (info != null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('📺 ${info.title}'),
-            duration: const Duration(seconds: 2),
-            backgroundColor: const Color(0xFF2A2A35)));
+          showSnack(context, '📺 ${info.title}', color: const Color(0xFF7C3AED), seconds: 2));
         }
         playUrl = await YtDlpService.getStreamUrl(url);
       } catch (e) {
@@ -299,10 +297,7 @@ class _State extends State<OnlinePlayerSheet> {
                     onTap: () { _ctrl.text = url; _play(url); },
                     onLongPress: () {
                       Clipboard.setData(ClipboardData(text: url));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('لینک کپی شد'),
-                        duration: Duration(seconds: 2),
-                        backgroundColor: Color(0xFF7C3AED)));
+                      showSnack(context, 'لینک کپی شد', color: Color(0xFF7C3AED), seconds: 2));
                     },
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                     leading: Container(width: 32, height: 32,
