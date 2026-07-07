@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'lyrics_service.dart';
+import 'main.dart' show showSnack;
 
 String _lrcT(Duration d) =>
   '${d.inHours.toString().padLeft(2,'0')}:'
@@ -88,12 +89,7 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
         }
       } else if (track.source == 'genius') {
         // Genius فقط متن داره — نشون بده
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Genius فقط متن دارد (sync ندارد) — در مرورگر باز شود؟'),
-          action: SnackBarAction(label: 'باز کن', textColor: Colors.white, onPressed: () {
-            // open genius URL
-          }),
-          backgroundColor: const Color(0xFF7C3AED)));
+        showSnack(context, 'Genius فقط متن دارد — sync ندارد');
         setState(() { _applying = false; });
         return;
       }
@@ -104,9 +100,7 @@ class _State extends State<LyricsSheet> with SingleTickerProviderStateMixin {
       if (mounted) {
         Navigator.pop(context);
         widget.onDone(path);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(track.hasSynced ? '✓ LRC sync شده اعمال شد' : '✓ متن اعمال شد (بدون sync)'),
-          backgroundColor: const Color(0xFF7C3AED)));
+        showSnack(context, track.hasSynced ? '✓ LRC sync شده اعمال شد' : '✓ متن اعمال شد (بدون sync)');
       }
     } catch (e) {
       if (mounted) setState(() { _applying = false; _error = '$e'; });
