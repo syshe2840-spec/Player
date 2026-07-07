@@ -141,9 +141,9 @@ class _State extends State<OnlinePlayerSheet> {
         if (info != null && mounted) {
           showSnack(context, '📺 \${info.title}', color: const Color(0xFF7C3AED), seconds: 2);
         }
-        playUrl = await YtDlpService.getStreamUrl(url);
+        playUrl = await YtDlpService.getStreamUrl(url, context: context);
       } catch (e) {
-        if (mounted) setState(() { _loading = false; _error = 'خطا: $e\n(شاید yt-dlp نیاز به نصب داشته باشد)'; });
+        if (mounted) setState(() { _loading = false; _error = 'خطا: $e'; });
         return;
       }
     }
