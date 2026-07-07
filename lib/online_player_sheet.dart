@@ -139,7 +139,7 @@ class _State extends State<OnlinePlayerSheet> {
         // اول info بگیر برای نشون دادن عنوان
         final info = await YtDlpService.getInfo(url);
         if (info != null && mounted) {
-          showSnack(context, '📺 ${info.title}', color: const Color(0xFF7C3AED), seconds: 2));
+          showSnack(context, '📺 \${info.title}', color: const Color(0xFF7C3AED), seconds: 2);
         }
         playUrl = await YtDlpService.getStreamUrl(url);
       } catch (e) {
@@ -297,9 +297,9 @@ class _State extends State<OnlinePlayerSheet> {
                     onTap: () { _ctrl.text = url; _play(url); },
                     onLongPress: () {
                       Clipboard.setData(ClipboardData(text: url));
-                      showSnack(context, 'لینک کپی شد', color: Color(0xFF7C3AED), seconds: 2));
+                      showSnack(context, 'لینک کپی شد', color: const Color(0xFF7C3AED), seconds: 2);
                     },
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    
                     leading: Container(width: 32, height: 32,
                       decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.15), shape: BoxShape.circle),
                       child: Icon(isHls ? Icons.stream : Icons.movie_outlined, color: const Color(0xFF7C3AED), size: 16)),
