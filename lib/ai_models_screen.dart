@@ -13,6 +13,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   final Map<String,bool>   _dl   = {};
   final Map<String,double> _prog = {};
   final Map<String,bool>   _busy = {};
+  List<WhisperModelDef> _importedModels = [];
   String? _active;
   bool _loading = true;
   String _filter = 'all'; // all | quantized | full
@@ -63,8 +64,18 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   Future<void> _refresh() async {
     final a = await WhisperService.getActiveModel();
     final Map<String,bool> dl={};
+    // همه مدل‌های شناخته‌شده
     for(final m in kWhisperModels) dl[m.id]=await WhisperService.isDownloaded(m);
-    if(mounted) setState((){ _dl..clear()..addAll(dl); _active=a?.id; _loading=false; });
+    // مدل‌های ایمپورتی
+    final imported = await WhisperService.allDownloadedModels();
+    for(final m in imported) { if(m.isCustom) dl[m.id]=true; }
+    if(mounted) setState((){
+      _dl..clear()..addAll(dl);
+      _active=a?.id;
+      _loading=false;
+      // مدل‌های ایمپورتی رو هم ذخیره کن
+      _importedModels = imported.where((m)=>m.isCustom).toList();
+    });
   }
 
   Future<void> _download(WhisperModelDef m) async {
@@ -91,9 +102,11 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   }
 
   List<WhisperModelDef> get _filtered {
-    if(_filter=='quantized') return kWhisperModels.where((m)=>m.isQuantized).toList().cast<WhisperModelDef>();
-    if(_filter=='full') return kWhisperModels.where((m)=>!m.isQuantized).toList().cast<WhisperModelDef>();
-    return List<WhisperModelDef>.from(kWhisperModels);
+    final base = _filter=='quantized' ? kWhisperModels.where((m)=>m.isQuantized).toList()
+      : _filter=='full' ? kWhisperModels.where((m)=>!m.isQuantized).toList()
+      : List<WhisperModelDef>.from(kWhisperModels);
+    // مدل‌های ایمپورتی همیشه نشون داده میشن
+    return [...base, ..._importedModels];
   }
 
   @override
