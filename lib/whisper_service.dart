@@ -283,8 +283,17 @@ class WhisperService {
 
   static Future<void> deleteModel(WhisperModelDef m) async {
     final root = await _modelsRoot();
-    final dir = Directory(m.dirPath(root));
-    try { if (dir.existsSync()) dir.deleteSync(recursive: true); } catch (_) {}
+    if (m.isCustom) {
+      // مدل ایمپورتی — فقط فایل .bin حذف شه
+      try {
+        final file = File(m.customPath!);
+        if (file.existsSync()) file.deleteSync();
+      } catch (_) {}
+    } else {
+      // مدل standard — پوشه حذف شه
+      final dir = Directory(m.dirPath(root));
+      try { if (dir.existsSync()) dir.deleteSync(recursive: true); } catch (_) {}
+    }
     if ((await getActiveModel())?.id == m.id) {
       (await SharedPreferences.getInstance()).remove('whisper_active');
     }
