@@ -51,29 +51,6 @@ class _State extends State<AiSubtitleSheet> {
     final list = await WhisperService.allDownloadedModels();
     final root = await WhisperService.getModelsRoot();
 
-    // اگه لیست خالیه — دیالوگ debug نشون بده
-    if (list.isEmpty && mounted) {
-      final dir = Directory(root);
-      final files = dir.existsSync()
-        ? dir.listSync(recursive: true).map((f) => f.path.replaceFirst(root, '')).join('\n')
-        : '⚠ پوشه وجود ندارد';
-      showDialog(context: context, builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C22),
-        title: const Text('🔍 Debug مدل‌ها', style: TextStyle(color: Colors.white, fontSize: 14)),
-        content: SingleChildScrollView(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('📁 مسیر اسکن:\n$root', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-            const Divider(color: Colors.white12),
-            Text('📄 فایل‌های موجود:\n${files.isEmpty ? "(خالی)" : files}',
-              style: const TextStyle(color: Colors.amber, fontSize: 11)),
-          ],
-        )),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('بستن'))],
-      ));
-    }
-
     final active = await WhisperService.getActiveModel();
     final existing = WhisperService.existingLanguages(widget.videoPath);
     final engine = await WhisperService.getActiveEngine();
