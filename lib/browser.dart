@@ -11,7 +11,6 @@ import 'store.dart';
 import 'ai_models_screen.dart';
 import 'api_service.dart';
 import 'online_player_sheet.dart';
-import 'ytdlp_service.dart';
 import 'settings.dart' show ToolsTabBody;
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
@@ -826,7 +825,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         onRemove:(path)async{await Store.toggleBookmark(path);setState((){}); }),
       _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink,
         onRemove:(path)async{await Store.toggleFavorite(path);setState((){}); }),
-      _folderList(),_playlistTab(),_sponsorTab(),ToolsTabBody(),_settingsTab(),
+      _folderList(),_playlistTab(),_sponsorTab(),const ToolsTabBody(),_settingsTab(),
     ])),
     SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
   ]);
