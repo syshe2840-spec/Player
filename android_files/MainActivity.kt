@@ -56,7 +56,6 @@ class MainActivity : FlutterActivity() {
     private val A_AI_CANCEL = "com.vezoo.AI_CANCEL"
     private var whisperCh: MethodChannel? = null
     private var aiCancelSink: io.flutter.plugin.common.EventChannel.EventSink? = null
-    private var ytdlpProgressSink: io.flutter.plugin.common.EventChannel.EventSink? = null
 
     // ── ثابت‌های کریپتو ──
     private val APP_HALF = byteArrayOf(
@@ -139,12 +138,6 @@ class MainActivity : FlutterActivity() {
                 override fun onCancel(args: Any?) { aiCancelSink = null }
             })
 
-        // ── EventChannel برای progress دانلود yt-dlp ──
-        io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp_progress")
-            .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
-                override fun onListen(args: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) { ytdlpProgressSink = sink }
-                override fun onCancel(args: Any?) { ytdlpProgressSink = null }
-            })
             when (call.method) {
                 "extractAudio" -> {
                     val input = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
@@ -160,107 +153,9 @@ class MainActivity : FlutterActivity() {
                     }
                 }
 
-                // ── yt-dlp: دانلود binary و گرفتن stream URL ──
-                "ytdlpGetUrl" -> {
-                    val url = call.argument<String>("url") ?: run { result.error("NO_URL","",null); return@setMethodCallHandler }
-                    executor.execute {
-                        try {
-                            val binPath = getYtDlpPath()
-                            if (binPath == null) { handler.post { result.error("NO_YTDLP","yt-dlp نصب نشده",null) }; return@execute }
-                            // auto re-chmod در صورت نیاز
-                            try { android.system.Os.chmod(binPath, 493) } catch (_: Exception) {}
-                            val proc = ProcessBuilder("/system/bin/sh", "-c",
-                                "$binPath --no-playlist --no-warnings -f 'best' -g '$url'")
-                                .redirectErrorStream(false)
-                                .start()
-                            val stdout = proc.inputStream.bufferedReader().readLines()
-                            val stderr = proc.errorStream.bufferedReader().readText().trim()
-                            proc.waitFor()
-                            val streamUrl = stdout.firstOrNull { it.startsWith("http") }?.trim() ?: ""
-                            handler.post {
-                                if (streamUrl.isNotEmpty()) result.success(streamUrl)
-                                else result.error("NO_STREAM",
-                                    if (stderr.isNotEmpty()) stderr.take(300) else "لینک stream یافت نشد", null)
-                            }
-                            // handled above
-                        } catch (e: Exception) {
-                            handler.post { result.error("YTDLP_FAILED", e.message, null) }
-                        }
-                    }
-                }
-
-                "ytdlpGetInfo" -> {
-                    val url = call.argument<String>("url") ?: run { result.error("NO_URL","",null); return@setMethodCallHandler }
-                    executor.execute {
-                        try {
-                            val binPath = getYtDlpPath() ?: run { handler.post { result.error("NO_YTDLP","",null) }; return@execute }
-                            val proc = ProcessBuilder("/system/bin/sh", "-c", "$binPath --dump-json --no-playlist --no-warnings '$url'")
-                                .redirectErrorStream(false).start()
-                            val json = proc.inputStream.bufferedReader().readText().trim()
-                            proc.waitFor()
-                            handler.post { result.success(json) }
-                        } catch (e: Exception) {
-                            handler.post { result.error("YTDLP_FAILED", e.message, null) }
-                        }
-                    }
-                }
-
-                "ytdlpDownload" -> {
-                    // دانلود binary از GitHub releases
-                    executor.execute {
-                        try {
-                            val path = downloadYtDlp()
-                            handler.post { result.success(path) }
-                        } catch (e: Exception) {
-                            handler.post { result.error("DOWNLOAD_FAILED", e.message, null) }
-                        }
-                    }
-                }
-
-                "ytdlpIsInstalled" -> {
-                    result.success(getYtDlpPath() != null)
-                }
-
                 "getModelsDir" -> {
                     val dir = java.io.File(filesDir, "whisper_models").also { it.mkdirs() }
                     result.success(dir.absolutePath)
-                }
-
-                "ytdlpGetVersion" -> {
-                    executor.execute {
-                        try {
-                            val bin = getYtDlpPath() ?: run { handler.post { result.success(null) }; return@execute }
-                            val proc = ProcessBuilder("/system/bin/sh", "-c", "$bin --version").redirectErrorStream(true).start()
-                            val ver = proc.inputStream.bufferedReader().readLine()?.trim()
-                            proc.waitFor()
-                            handler.post { result.success(ver) }
-                        } catch (e: Exception) { handler.post { result.success(null) } }
-                    }
-                }
-
-                "ytdlpDelete" -> {
-                    java.io.File(filesDir, "yt-dlp").delete()
-                    result.success(null)
-                }
-
-                // نصب دستی yt-dlp از فایل انتخاب‌شده
-                "ytdlpInstallFromFile" -> {
-                    val srcPath = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
-                    executor.execute {
-                        try {
-                            val src = java.io.File(srcPath)
-                            val dst = java.io.File(filesDir, "yt-dlp")
-                            src.copyTo(dst, overwrite = true)
-                            try {
-                                android.system.Os.chmod(dst.absolutePath, 493) // 0755
-                            } catch (_: Exception) {
-                                dst.setExecutable(true, true)
-                            }
-                            handler.post { result.success(dst.absolutePath) }
-                        } catch (e: Exception) {
-                            handler.post { result.error("INSTALL_FAILED", e.message, null) }
-                        }
-                    }
                 }
 
                 // بکاپ مدل‌های AI به Downloads/Vezoo/
@@ -288,12 +183,6 @@ class MainActivity : FlutterActivity() {
                                 }
                             }
 
-                            // backup yt-dlp هم
-                            val ytdlp = java.io.File(filesDir, "yt-dlp")
-                            if (ytdlp.exists()) {
-                                ytdlp.copyTo(java.io.File(dest, "yt-dlp"), overwrite = true)
-                                copied.add("yt-dlp")
-                            }
 
                             if (copied.isEmpty()) {
                                 handler.post { result.error("NO_FILES","هیچ فایلی برای بکاپ یافت نشد",null) }
@@ -541,73 +430,11 @@ class MainActivity : FlutterActivity() {
     }
 
     // ── Audio Extraction for Whisper ──
-    // ── yt-dlp helpers ──
-    private fun getApplicationSupportDirectory(): String {
-        // در Flutter، getApplicationSupportDirectory() روی Android همان filesDir است
-        return filesDir.absolutePath
-    }
+    
 
-    private fun getYtDlpPath(): String? {
-        val f = java.io.File(filesDir, "yt-dlp")
-        return if (f.exists() && f.canExecute()) f.absolutePath else null
-    }
+    
 
-    private fun downloadYtDlp(): String {
-        val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
-        val filename = when {
-            abi.contains("arm64") || abi.contains("aarch64") -> "yt-dlp_linux_aarch64"
-            abi.contains("armeabi") || abi.contains("armv7") -> "yt-dlp_linux_armv7l"
-            abi.contains("x86_64") -> "yt-dlp_linux"
-            else -> "yt-dlp_linux_aarch64"
-        }
-        val downloadUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/$filename"
-        val outFile = java.io.File(filesDir, "yt-dlp")
-        val existingSize = if (outFile.exists()) outFile.length() else 0L
-        val url = java.net.URL(downloadUrl)
-        val conn = url.openConnection() as java.net.HttpURLConnection
-        conn.connectTimeout = 30_000; conn.readTimeout = 300_000
-        conn.instanceFollowRedirects = true
-        if (existingSize > 0) conn.setRequestProperty("Range", "bytes=$existingSize-")
-        conn.connect()
-        val resuming = conn.responseCode == 206
-        val totalBytes = if (resuming) existingSize + conn.contentLengthLong else conn.contentLengthLong
-        val fos = if (resuming) java.io.FileOutputStream(outFile, true) else outFile.outputStream()
-
-        conn.inputStream.use { input ->
-            fos.use { output ->
-                val buf = ByteArray(8192)
-                var downloaded = if (resuming) existingSize else 0L
-                var lastNotify = downloaded
-                while (true) {
-                    val n = input.read(buf)
-                    if (n < 0) break
-                    output.write(buf, 0, n)
-                    downloaded += n
-                    if (totalBytes > 0 && downloaded - lastNotify > 500_000) {
-                        val pct = (downloaded * 100 / totalBytes).toInt()
-                        handler.post { ytdlpProgressSink?.success(pct) }
-                        lastNotify = downloaded
-                    }
-                }
-            }
-        }
-        conn.disconnect()
-
-        // chmod با Os.chmod — مستقیم system call، مطمئن‌ترین روش روی Android
-        try {
-            android.system.Os.chmod(outFile.absolutePath, 493) // 0755
-        } catch (_: Exception) {
-            outFile.setExecutable(true, true)
-        }
-        // تست اجرا
-        try {
-            val test = ProcessBuilder("/system/bin/sh", "-c", "${outFile.absolutePath} --version").start()
-            test.waitFor()
-        } catch (e: Exception) {
-            throw Exception("اجرای yt-dlp ناموفق: ${e.message}")
-        }
-        return outFile.absolutePath
-    }
+    
 
     private fun extractAudioWav(videoPath: String, outputPath: String, cancel: AtomicBoolean) {
         val extractor = MediaExtractor()
