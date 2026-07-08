@@ -39,9 +39,6 @@ dependencies:
   whisper_ggml_plus: ^1.1.0
   path_provider: ^2.1.2
   share_plus: ^11.0.0
-  youtube_explode_dart: ^2.2.5
-  direct_link: ^0.3.3
-  flutter_inappwebview: ^6.1.5
 
 dev_dependencies:
   flutter_test:
