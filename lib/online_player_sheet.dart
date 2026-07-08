@@ -107,7 +107,7 @@ class _State extends State<OnlinePlayerSheet> {
     Navigator.pop(context);
     await Navigator.push(context, MaterialPageRoute(
       builder: (_) => PlayerScreen(
-        playlist: [File(playUrl)],
+        playlist: [File(url)],
         playlistIndex: 0,
         isOnlineUrl: true,
       ),
