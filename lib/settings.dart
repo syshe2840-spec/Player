@@ -1,12 +1,10 @@
 // lib/settings.dart — تنظیمات پلیر
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
-import 'ytdlp_service.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'package:file_picker/file_picker.dart';
 import 'main.dart' show showSnack;
@@ -75,7 +73,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   @override
   void initState(){
     super.initState();
-    _tab=TabController(length:5,vsync:this);
+    _tab=TabController(length:4,vsync:this);
     _embeddedSub=widget.embeddedSubEnabled;
     _vs=widget.vs;_sd1=widget.subDelayMs;_sd2=widget.subDelay2Ms;_ad=widget.audioDelayMs;
     _c2=widget.color2;_speed=widget.speed;_amp=widget.ampVolume;
@@ -97,10 +95,9 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         Tab(text:'صدا / پخش',icon:Icon(Icons.volume_up,size:16)),
         Tab(text:'زیرنویس ۲',icon:Icon(Icons.subtitles_outlined,size:16)),
         Tab(text:'سایر',icon:Icon(Icons.more_horiz,size:16)),
-        Tab(text:'ابزارها',icon:Icon(Icons.build_rounded,size:16)),
       ]),
       SizedBox(height:MediaQuery.of(context).size.height*0.48,child:TabBarView(controller:_tab,children:[
-        _sub1Tab(),_audioTab(),_sub2Tab(),_otherTab(),_toolsTab(),
+        _sub1Tab(),_audioTab(),_sub2Tab(),_otherTab(),
       ])),
       SizedBox(height:MediaQuery.of(context).viewPadding.bottom+4),
     ]);
@@ -413,72 +410,17 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       Text(val,style:const TextStyle(color:Colors.white54,fontSize:12)),
     ]),
   );
-
-  // ──────── تب ابزارها ────────
-  Widget _toolsTab() => ToolsTabBody();
 }
 
+// ──────── تب ابزارها — بکاپ و ایمپورت مدل‌های AI ────────
 class ToolsTabBody extends StatefulWidget {
+  const ToolsTabBody({super.key});
   @override State<ToolsTabBody> createState() => ToolsTabBodyState();
 }
 
 class ToolsTabBodyState extends State<ToolsTabBody> {
-  bool? _installed;
   bool _loading = false;
   String _status = '';
-  int _progress = 0;
-  StreamSubscription? _progressSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkInstalled();
-    _progressSub = YtDlpService.progressStream.listen((pct) {
-      if (mounted) setState(() => _progress = pct);
-    }, onError: (_) {});
-  }
-
-  @override
-  void dispose() { _progressSub?.cancel(); super.dispose(); }
-
-  Future<void> _checkInstalled() async {
-    final v = await YtDlpService.isInstalled();
-    String version = '';
-    if (v) {
-      try {
-        version = await YtDlpService.getVersion() ?? '';
-        // اگه permission error بود، فقط نشون بده نصبه
-        if (version.contains('Permission denied') || version.contains('error=13')) version = '';
-      } catch (_) {}
-    }
-    if (mounted) setState(() { _installed = v; if (version.isNotEmpty) _status = 'نسخه: $version'; });
-  }
-
-  Future<void> _install() async {
-    setState(() { _loading = true; _status = 'در حال دانلود...'; });
-    try {
-      await YtDlpService.download(onStatus: (s) {
-        if (mounted) setState(() => _status = s);
-      });
-      if (mounted) setState(() { _loading = false; _installed = true; _status = '✓ نصب شد'; });
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
-    }
-  }
-
-  Future<void> _installFromFile() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.any);
-    if (res == null || res.files.single.path == null) return;
-    setState(() { _loading = true; _status = 'در حال کپی...'; });
-    try {
-      await const MethodChannel('com.vezoo.player/whisper')
-        .invokeMethod('ytdlpInstallFromFile', {'path': res.files.single.path!});
-      YtDlpService.resetCache();
-      if (mounted) setState(() { _loading = false; _installed = true; _status = '✓ نصب از فایل موفق'; });
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
-    }
-  }
 
   Future<void> _backupAll() async {
     const destDir = '/storage/emulated/0/Download/Vezoo/Backup';
@@ -498,145 +440,42 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   Future<void> _importModel() async {
     final res = await FilePicker.platform.pickFiles(type: FileType.any);
     if (res == null || res.files.single.path == null) return;
-    setState(() { _loading = true; _status = 'در حال ایمپورت مدل...'; });
+    setState(() { _loading = true; _status = 'در حال ایمپورت...'; });
     try {
       final path = res.files.single.path!;
       final fname = path.split('/').last;
-      // اگه yt-dlp هست → نصب به عنوان binary
-      if (fname == 'yt-dlp' || fname.startsWith('yt-dlp_')) {
-        await const MethodChannel('com.vezoo.player/whisper')
-          .invokeMethod('ytdlpInstallFromFile', {'path': path});
-        YtDlpService.resetCache();
-        if (mounted) setState(() { _loading = false; _installed = true; _status = '✓ yt-dlp نصب شد'; });
-      } else {
-        // مدل AI — مسیر رو از Dart بگیر
-        final modelsRoot = await WhisperService.getModelsRoot();
-        await Directory(modelsRoot).create(recursive: true);
-        final savedPath = await const MethodChannel('com.vezoo.player/whisper')
-          .invokeMethod<String>('importModel', {'path': path, 'modelsDir': modelsRoot});
-        if (mounted) setState(() { _loading = false; _status = '✓ ذخیره در:\n$savedPath'; });
-      }
+      final modelsRoot = await WhisperService.getModelsRoot();
+      await Directory(modelsRoot).create(recursive: true);
+      final savedPath = await const MethodChannel('com.vezoo.player/whisper')
+        .invokeMethod<String>('importModel', {'path': path, 'modelsDir': modelsRoot});
+      if (mounted) setState(() { _loading = false; _status = '✓ ذخیره در:\n$savedPath'; });
     } catch (e) {
       if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
     }
-  }
-
-  Future<void> _update() async {
-    setState(() { _loading = true; _status = 'در حال آپدیت...'; });
-    try {
-      await YtDlpService.download(onStatus: (s) {
-        if (mounted) setState(() => _status = s);
-      });
-      if (mounted) setState(() { _loading = false; _status = '✓ آپدیت شد'; });
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
-    }
-  }
-
-  Future<void> _delete() async {
-    final ok = await showDialog<bool>(context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C22),
-        title: const Text('حذف yt-dlp'),
-        content: const Text('حذف شود؟'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('خیر')),
-          TextButton(onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف', style: TextStyle(color: Colors.red))),
-        ],
-      ));
-    if (ok != true) return;
-    try {
-      await const MethodChannel('com.vezoo.player/whisper').invokeMethod('ytdlpDelete');
-    } catch (_) {}
-    YtDlpService.resetCache();
-    if (mounted) setState(() { _installed = false; _status = 'حذف شد'; });
   }
 
   @override
   Widget build(BuildContext ctx) => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-      // ── yt-dlp ──
-      Container(padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Icon(Icons.download_for_offline_rounded, color: Color(0xFF7C3AED), size: 20),
-            const SizedBox(width: 8),
-            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('yt-dlp', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-              Text('پشتیبانی از YouTube، Twitch، Vimeo و ۱۰۰۰+ سایت',
-                style: TextStyle(color: Colors.white54, fontSize: 11)),
-            ])),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: _installed == true ? const Color(0xFF22c55e20) : const Color(0xFFef444420),
-                borderRadius: BorderRadius.circular(6)),
-              child: Text(_installed == null ? '...' : _installed! ? 'نصب شده' : 'نصب نشده',
-                style: TextStyle(
-                  color: _installed == true ? const Color(0xFF22c55e) : const Color(0xFFef4444),
-                  fontSize: 11))),
-          ]),
-          if (_status.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-          ],
-          if (_loading) ...[
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: LinearProgressIndicator(
-                value: _progress > 0 ? _progress / 100 : null,
-                color: const Color(0xFF7C3AED), backgroundColor: Colors.white12)),
-              if (_progress > 0) ...[
-                const SizedBox(width: 8),
-                Text('$_progress%', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-              ],
-            ]),
-          ],
-          const SizedBox(height: 12),
-          Row(children: [
-            if (_installed != true)
-              Expanded(child: FilledButton.icon(
-                onPressed: _loading ? null : _install,
-                icon: const Icon(Icons.download_rounded, size: 16),
-                label: const Text('نصب (~15MB)'),
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)))),
-            if (_installed == true) ...[
-              Expanded(child: OutlinedButton.icon(
-                onPressed: _loading ? null : _update,
-                icon: const Icon(Icons.update_rounded, size: 16),
-                label: const Text('آپدیت'))),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: _loading ? null : _delete,
-                icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
-                label: const Text('حذف', style: TextStyle(color: Colors.red)),
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red))),
-            ],
-          ]),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _loading ? null : _installFromFile,
-            icon: const Icon(Icons.folder_open_rounded, size: 16),
-            label: const Text('نصب دستی از فایل'),
-            style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 38))),
-        ]),
-      ),
-      const SizedBox(height: 12),
-
-      // ── بکاپ و ایمپورت ──
       Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Row(children: [
             Icon(Icons.backup_rounded, color: Color(0xFF22c55e), size: 18),
             SizedBox(width: 8),
-            Text('بکاپ و ایمپورت', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            Text('بکاپ و ایمپورت مدل‌های AI', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
           ]),
           const SizedBox(height: 4),
-          const Text('مدل‌های AI + yt-dlp', style: TextStyle(color: Colors.white54, fontSize: 11)),
+          const Text('ذخیره در: Download/Vezoo/Backup/', style: TextStyle(color: Colors.white54, fontSize: 11)),
+          if (_status.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+          ],
+          if (_loading) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(color: Color(0xFF7C3AED), backgroundColor: Colors.white12),
+          ],
           const SizedBox(height: 12),
           Row(children: [
             Expanded(child: FilledButton.icon(
@@ -650,22 +489,9 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
               icon: const Icon(Icons.upload_file_rounded, size: 16),
               label: const Text('ایمپورت'))),
           ]),
-          const SizedBox(height: 6),
-          const Text('بکاپ در: Download/Vezoo/Backup/', style: TextStyle(color: Colors.white38, fontSize: 10)),
         ]),
       ),
-      const SizedBox(height: 12),
-      const Text('سایت‌های پشتیبانی‌شده:', style: TextStyle(color: Colors.white54, fontSize: 11)),
-      const SizedBox(height: 6),
-      Wrap(spacing: 6, runSpacing: 4, children: [
-        for (final s in ['YouTube','Twitch','Vimeo','Twitter/X','Instagram','TikTok','Dailymotion','Reddit','Facebook','SoundCloud'])
-          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: const Color(0xFF1C1C22), borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white12)),
-            child: Text(s, style: const TextStyle(color: Colors.white54, fontSize: 11))),
-      ]),
     ]),
   );
 }
-
 
