@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'player.dart';
-import 'ytdlp_service.dart';
 import 'main.dart' show showSnack;
 
 class OnlinePlayerSheet extends StatefulWidget {
@@ -103,51 +102,6 @@ class _State extends State<OnlinePlayerSheet> {
       return;
     }
     setState(() { _loading = true; _error = null; });
-
-    String playUrl = url;
-
-    // اگه URL نیاز به yt-dlp داره، stream URL رو بگیر
-    if (YtDlpService.isSupportedUrl(url)) {
-      // اگه نصب نشده، dialog تأیید نشون بده
-      if (!await YtDlpService.isInstalled()) {
-        final ok = await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            backgroundColor: const Color(0xFF1C1C22),
-            title: const Row(children: [
-              Icon(Icons.download_rounded, color: Color(0xFF7C3AED)),
-              SizedBox(width: 8),
-              Text('نیاز به yt-dlp'),
-            ]),
-            content: const Text(
-              'برای پخش این لینک به yt-dlp نیاز است.\n\nحجم دانلود: ~15MB\nیک‌بار دانلود میشه و ذخیره میمونه.',
-              style: TextStyle(height: 1.5)),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('لغو')),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
-                child: const Text('دانلود و پخش')),
-            ],
-          ));
-        if (ok != true || !mounted) {
-          setState(() => _loading = false);
-          return;
-        }
-      }
-      try {
-        // اول info بگیر برای نشون دادن عنوان
-        final info = await YtDlpService.getInfo(url);
-        if (info != null && mounted) {
-          showSnack(context, '📺 \${info.title}', color: const Color(0xFF7C3AED), seconds: 2);
-        }
-        playUrl = await YtDlpService.getStreamUrl(url, context: context);
-      } catch (e) {
-        if (mounted) setState(() { _loading = false; _error = 'خطا: $e'; });
-        return;
-      }
-    }
-
     await _saveRecent(url);
     if (!mounted) return;
     Navigator.pop(context);
