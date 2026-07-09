@@ -42,25 +42,25 @@ class WhisperModelDef {
 
 final List<WhisperModelDef> kWhisperModels = [
   // ── Tiny ──
-  WhisperModelDef(id:'tiny',      base:WhisperModel.tiny,  name:'Tiny',     variant:'',     sizeMb:75,   speedStars:5, accStars:3, desc:'گوشی‌های ضعیف — سریع‌ترین'),
-  WhisperModelDef(id:'tiny-q5_1', base:WhisperModel.tiny,  name:'Tiny Q5',  variant:'q5_1', sizeMb:31,   speedStars:5, accStars:3, desc:'فشرده‌شده — حجم کم'),
+  WhisperModelDef(id:'tiny',      base:WhisperModel.tiny,  name:'Tiny',     variant:'',     sizeMb:75,   speedStars:5, accStars:3, desc:L.engineV1+' — fastest'),
+  WhisperModelDef(id:'tiny-q5_1', base:WhisperModel.tiny,  name:'Tiny Q5',  variant:'q5_1', sizeMb:31,   speedStars:5, accStars:3, desc:'quantized — small size'),
 
   // ── Base ──
-  WhisperModelDef(id:'base',      base:WhisperModel.base,  name:'Base',     variant:'',     sizeMb:142,  speedStars:4, accStars:4, desc:'پیشنهاد برای اکثر کاربران'),
-  WhisperModelDef(id:'base-q5_1', base:WhisperModel.base,  name:'Base Q5',  variant:'q5_1', sizeMb:57,   speedStars:4, accStars:4, desc:'فشرده — پیشنهاد ویژه'),
+  WhisperModelDef(id:'base',      base:WhisperModel.base,  name:'Base',     variant:'',     sizeMb:142,  speedStars:4, accStars:4, desc:'recommended for most'),
+  WhisperModelDef(id:'base-q5_1', base:WhisperModel.base,  name:'Base Q5',  variant:'q5_1', sizeMb:57,   speedStars:4, accStars:4, desc:'quantized — special pick'),
 
   // ── Small ──
-  WhisperModelDef(id:'small',      base:WhisperModel.small, name:'Small',    variant:'',     sizeMb:466,  speedStars:3, accStars:4, desc:'دقت خوب'),
-  WhisperModelDef(id:'small-q5_1', base:WhisperModel.small, name:'Small Q5', variant:'q5_1', sizeMb:181,  speedStars:3, accStars:4, desc:'فشرده'),
+  WhisperModelDef(id:'small',      base:WhisperModel.small, name:'Small',    variant:'',     sizeMb:466,  speedStars:3, accStars:4, desc:'good accuracy'),
+  WhisperModelDef(id:'small-q5_1', base:WhisperModel.small, name:'Small Q5', variant:'q5_1', sizeMb:181,  speedStars:3, accStars:4, desc:'quantized'),
 
   // ── Medium ──
-  WhisperModelDef(id:'medium',      base:WhisperModel.medium, name:'Medium',    variant:'',     sizeMb:1500, speedStars:2, accStars:5, desc:'دقت بالا — مخصوصاً فارسی'),
-  WhisperModelDef(id:'medium-q5_0', base:WhisperModel.medium, name:'Medium Q5', variant:'q5_0', sizeMb:514,  speedStars:2, accStars:5, desc:'فشرده — کیفیت high'),
+  WhisperModelDef(id:'medium',      base:WhisperModel.medium, name:'Medium',    variant:'',     sizeMb:1500, speedStars:2, accStars:5, desc:'high accuracy — Persian'),
+  WhisperModelDef(id:'medium-q5_0', base:WhisperModel.medium, name:'Medium Q5', variant:'q5_0', sizeMb:514,  speedStars:2, accStars:5, desc:'quantized — high quality'),
 
   // ── Large ──
-  WhisperModelDef(id:'large-v3',              base:WhisperModel.large,        name:'Large V3',       variant:'',     sizeMb:3000, speedStars:1, accStars:5, desc:'بهترین دقت'),
-  WhisperModelDef(id:'large-v3-turbo',        base:WhisperModel.largeV3Turbo, name:'Large Turbo',    variant:'',     sizeMb:798,  speedStars:2, accStars:5, desc:'سریع‌تر از Large'),
-  WhisperModelDef(id:'large-v3-turbo-q5_0',   base:WhisperModel.largeV3Turbo, name:'Turbo Q5',       variant:'q5_0', sizeMb:531,  speedStars:2, accStars:5, desc:'فشرده — بهترین تعادل'),
+  WhisperModelDef(id:'large-v3',              base:WhisperModel.large,        name:'Large V3',       variant:'',     sizeMb:3000, speedStars:1, accStars:5, desc:'best accuracy'),
+  WhisperModelDef(id:'large-v3-turbo',        base:WhisperModel.largeV3Turbo, name:'Large Turbo',    variant:'',     sizeMb:798,  speedStars:2, accStars:5, desc:'faster than large'),
+  WhisperModelDef(id:'large-v3-turbo-q5_0',   base:WhisperModel.largeV3Turbo, name:'Turbo Q5',       variant:'q5_0', sizeMb:531,  speedStars:2, accStars:5, desc:'quantized — best balance'),
 ];
 
 // ── موتور تشخیص گفتار — کاربر انتخاب می‌کند، هر دو همیشه در دسترس‌اند ──
@@ -84,8 +84,8 @@ WhisperModelDef _recommendModelByRam(int ramMb) {
 
 const kLanguages = {
   'auto':'auto',
-  'fa':'فارسی','en':'English','ar':'عربی','tr':'ترکی','fr':'فرانسه',
-  'de':'آلمانی','es':'اسپانیایی','zh':'چینی','ja':'ژاپنی','ru':'روسی','ko':'کره‌ای',
+  'fa':'فارسی','en':'English','ar':'Arabic','tr':'Turkish','fr':'French',
+  'de':'German','es':'Spanish','zh':'Chinese','ja':'Japanese','ru':'Russian','ko':'Korean',
 };
 
 /// سطح پشتیبانی هر زبان در whisper (بر اساس داده‌های منتشرشده OpenAI)
@@ -454,9 +454,9 @@ class WhisperService {
     };
     final engineFactor = engine == WhisperEngine.v2 ? 0.85 : 1.0; // V2 معمولاً کمی سریع‌تر
     final estSec = (videoSec * modelFactor * engineFactor).round();
-    if (estSec < 60) return 'حدود $estSec ثانیه';
+    if (estSec < 60) return '\${estSec}s';
     final mins = (estSec / 60).round();
-    return 'حدود $mins دقیقه';
+    return '\${mins} min';
   }
 
   // ══════════════════════════════════════════════════════════

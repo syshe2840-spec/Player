@@ -36,29 +36,29 @@ const kTranslateLangs = {
 
 // ── نمایش فارسی نام زبان‌ها برای منو ──
 const kTranslateLangDisplay = {
-  'fa': 'فارسی',
+  'fa': 'Persian',
   'en': 'English',
-  'ar': 'عربی',
-  'tr': 'ترکی',
-  'fr': 'فرانسه',
-  'de': 'آلمانی',
-  'es': 'اسپانیایی',
-  'zh': 'چینی',
-  'ja': 'ژاپنی',
-  'ru': 'روسی',
-  'ko': 'کره‌ای',
-  'it': 'ایتالیایی',
-  'pt': 'پرتغالی',
-  'nl': 'هلندی',
-  'pl': 'لهستانی',
-  'uk': 'اوکراینی',
-  'hi': 'هندی',
-  'ur': 'اردو',
-  'he': 'عبری',
-  'sv': 'سوئدی',
-  'da': 'دانمارکی',
-  'fi': 'فنلاندی',
-  'no': 'نروژی',
+  'ar': 'Arabic',
+  'tr': 'Turkish',
+  'fr': 'French',
+  'de': 'German',
+  'es': 'Spanish',
+  'zh': 'Chinese',
+  'ja': 'Japanese',
+  'ru': 'Russian',
+  'ko': 'Korean',
+  'it': 'Italian',
+  'pt': 'Portuguese',
+  'nl': 'Dutch',
+  'pl': 'Polish',
+  'uk': 'Ukrainian',
+  'hi': 'Hindi',
+  'ur': 'Urdu',
+  'he': 'Hebrew',
+  'sv': 'Swedish',
+  'da': 'Danish',
+  'fi': 'Finnish',
+  'no': 'Norwegian',
 };
 
 class SrtEntry2 {
@@ -109,7 +109,7 @@ class SrtTranslationService {
     WhisperService.onExternalCancel = () => cancel();
 
     // شروع notification (EventChannel cancel رو هم راه‌اندازی می‌کنه)
-    WhisperService.showProgressNotification('ترجمه زیرنویس در پس\u200cزمینه');
+    WhisperService.showProgressNotification(L.translateSubtitle);
 
     translateSrtFile(
       srtPath: srtPath,
@@ -129,7 +129,7 @@ class SrtTranslationService {
       WhisperService.onExternalCancel = null;
       if (!_cancelled) {
         // نشون دادن خطا در notification و بعد ۳ ثانیه بستن
-        WhisperService.updateProgressNotification('خطا: $e', 0);
+        WhisperService.updateProgressNotification(L.errorMsg(e), 0);
         Future.delayed(const Duration(seconds: 3), () {
           WhisperService.hideProgressNotification();
         });
@@ -200,11 +200,7 @@ class SrtTranslationService {
     final totalTextLines = entries.fold(0, (s, e) => s + e.textLines.length);
     if (totalTextLines > 3000) {
       throw Exception(
-        'متأسفم، این فایل زیرنویس خیلی بزرگ است ($totalTextLines خط).\n\n'
-        'سرویس ترجمه ما از پلن رایگان Cloudflare استفاده می‌کند که محدودیت روزانه دارد '
-        'و از فایل‌های بیشتر از ۳۰۰۰ خط پشتیبانی نمی‌کند.\n\n'
-        'پیشنهاد: از ابزارهای ترجمه دیگری مانند Google Translate، DeepL یا '
-        'اپلیکیشن‌های ترجمه SRT آنلاین استفاده کنید.'
+        'File too large (\$totalTextLines lines). Max 3000 lines.'
       );
     }
 
@@ -235,7 +231,7 @@ class SrtTranslationService {
       final batchLines = allTextLines.sublist(start, end);
 
       final progress = 0.2 + (b / totalBatches) * 0.65;
-      onStatus?.call('ترجمه تکه ${b + 1} از $totalBatches...', progress);
+      onStatus?.call('Translating \${b+1}/\$totalBatches...', progress);
       SrtTranslationServiceStatus.setBatch(b + 1, totalBatches);
 
       final body = jsonEncode({
@@ -259,13 +255,10 @@ class SrtTranslationService {
           if (res.statusCode == 429 || responseBody.contains('Too Many Requests') ||
               responseBody.contains('rate limit') || responseBody.contains('quota')) {
             throw Exception(
-              'سرویس ترجمه امروز به محدودیت رسیده است.\n\n'
-              'سرویس ما از پلن رایگان Cloudflare AI استفاده می‌کند که سهمیه روزانه دارد. '
-              'فردا دوباره امتحان کنید.\n\n'
-              'یا از ابزارهای جایگزین مانند Google Translate یا DeepL استفاده کنید.'
+              'Daily translation limit reached. Try again tomorrow.'
             );
           }
-          throw Exception('خطای سرور (${res.statusCode}): $responseBody');
+          throw Exception('Server error (\${res.statusCode}): \$responseBody');
         }
       } finally {
         client.close();

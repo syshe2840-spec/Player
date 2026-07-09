@@ -33,7 +33,7 @@ class VezService {
       if (ok != true) throw Exception('initMasterKey failed');
       return true;
     } catch (e) {
-      throw Exception('خطا در راه‌اندازی کریپتو: $e');
+      throw Exception('Crypto init error: \$e');
     }
   }
 
@@ -57,7 +57,7 @@ class VezService {
     // بررسی فایل output
     final outFile = File(tempPath);
     if (!outFile.existsSync() || outFile.lengthSync() == 0) {
-      throw Exception('فایل رمزگشایی‌شده خالی یا وجود ندارد: $tempPath');
+      throw Exception('Decrypted file empty or missing: \$tempPath');
     }
 
     return tempPath;

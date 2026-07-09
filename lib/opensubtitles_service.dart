@@ -112,7 +112,7 @@ class OpenSubtitlesService {
       return 'Daily download limit reached — try again later';
     }
     if (status == 400) return 'Invalid search — change query';
-    return 'خطا (${status}): $msg';
+    return 'Error (\$status): \$msg';
   }
 
   static Future<dynamic> _get(String path, Map<String, String> params) async {
@@ -199,7 +199,7 @@ class OpenSubtitlesService {
     try {
       final req2 = await client2.getUrl(Uri.parse(link));
       final res2 = await req2.close();
-      if (res2.statusCode != 200) throw Exception('دانلود فایل ناموفق (${res2.statusCode})');
+      if (res2.statusCode != 200) throw Exception('Download failed (\${res2.statusCode})');
       content = await res2.transform(utf8.decoder).join();
     } finally {
       client2.close();
