@@ -40,7 +40,7 @@ class ApiService {
   // ── GET helper ──
   static Future<dynamic> _get(String path) async {
     if (kWorkerUrl.contains('YOUR_WORKER')) {
-      throw Exception('آدرس Worker تنظیم نشده — kWorkerUrl را در api_service.dart عوض کن');
+      throw Exception('Worker URL not set — edit kWorkerUrl in api_service.dart');
     }
     final uri = Uri.parse('$kWorkerUrl$path');
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);

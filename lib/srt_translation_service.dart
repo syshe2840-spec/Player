@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'api_service.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'subtitle_storage.dart';
+import 'l10n.dart';
 
 // ── زبان‌های پشتیبانی‌شده برای ترجمه (نام کامل برای Llama) ──
 const kTranslateLangs = {
@@ -187,13 +188,13 @@ class SrtTranslationService {
     void Function(String partialPath)? onSrtUpdated, // بعد از هر batch فراخوانی میشه
   }) async {
     _cancelled = false;
-    onStatus?.call('خواندن فایل...', 0.05);
+    onStatus?.call(L.loading, 0.05);
 
     // ── محدودیت حجم — بیشتر از ۳۰۰۰ خط قابل پردازش نیست ──
     // دلیل: سهمیه رایگان Cloudflare Workers AI روزانه محدوده
     final content = await File(srtPath).readAsString(encoding: utf8);
     final entries = parseSrt(content);
-    if (entries.isEmpty) throw Exception('فایل SRT خالی یا نامعتبر است');
+    if (entries.isEmpty) throw Exception('Empty SRT file');
 
     // چک حجم — حداکثر ۳۰۰۰ خط (معادل ~۳ ساعت فیلم)
     final totalTextLines = entries.fold(0, (s, e) => s + e.textLines.length);
@@ -217,7 +218,7 @@ class SrtTranslationService {
       }
     }
 
-    onStatus?.call('ارسال به سرور...', 0.15);
+    onStatus?.call(L.processing, 0.15);
     debugPrint('[SrtTranslate] ${allTextLines.length} lines → ${kTranslateLangs[targetLangCode]}');
 
     // ── Client-side batching: هر request فقط ۳۰ خط ──
@@ -227,7 +228,7 @@ class SrtTranslationService {
     final totalBatches = (allTextLines.length / batchSize).ceil();
 
     for (int b = 0; b < totalBatches; b++) {
-      if (_cancelled) throw Exception('لغو شد');
+      if (_cancelled) throw Exception(L.cancelled);
 
       final start = b * batchSize;
       final end = (start + batchSize).clamp(0, allTextLines.length);
@@ -296,7 +297,7 @@ class SrtTranslationService {
     }
 
     if (translatedLines.length != allTextLines.length) {
-      throw Exception('تعداد خطوط ترجمه‌شده با اصل مطابقت ندارد');
+      throw Exception('Translation line count mismatch');
     }
 
     // ── ذخیره نهایی کامل ──
@@ -308,7 +309,7 @@ class SrtTranslationService {
     }).toList();
     await File(outPath).writeAsString(buildSrt(newEntries), encoding: utf8);
 
-    onStatus?.call('✓ ذخیره شد', 1.0);
+    onStatus?.call(L.saved, 1.0);
     return outPath;
   }
 
@@ -330,4 +331,3 @@ class SrtTranslationService {
     );
   }
 }
-

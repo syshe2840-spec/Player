@@ -193,4 +193,3 @@ class LiveTranslationSync {
   static Future<String> outputPath(String videoPath, String targetLangCode) =>
     SubtitleStorage.liveTranslatedPath(videoPath, targetLangCode);
 }
-

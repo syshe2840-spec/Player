@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
+import 'l10n.dart';
 
 enum _ItemStatus { pending, running, done, error, skipped }
 
@@ -31,7 +32,7 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
   void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
-    final list = await WhisperService.downloadedModels();
+    final list = await WhisperService.allDownloadedModels();
     final active = await WhisperService.getActiveModel();
     final engine = await WhisperService.getActiveEngine();
     if (mounted) setState((){
@@ -67,7 +68,7 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
         setState(() => _queue[i].status = _ItemStatus.skipped);
         continue;
       }
-      setState((){ _currentIndex = i; _queue[i].status = _ItemStatus.running; _queue[i].message = 'شروع...'; });
+      setState((){ _currentIndex = i; _queue[i].status = _ItemStatus.running; _queue[i].message = L.startingLabel; });
       try {
         await WhisperService.transcribe(
           videoPath: _queue[i].path,
@@ -79,9 +80,9 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
             if (mounted) setState(() => _queue[i].message = '$s (${(p*100).toInt()}%)');
           },
         );
-        if (mounted) setState((){ _queue[i].status = _ItemStatus.done; _queue[i].message = '✓ تمام شد'; });
+        if (mounted) setState((){ _queue[i].status = _ItemStatus.done; _queue[i].message = L.done; });
       } catch (e) {
-        if (mounted) setState((){ _queue[i].status = _ItemStatus.error; _queue[i].message = 'خطا: $e'; });
+        if (mounted) setState((){ _queue[i].status = _ItemStatus.error; _queue[i].message = L.errorMsg(e); });
       }
     }
 
@@ -117,7 +118,7 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
       backgroundColor: const Color(0xFF0F0F14),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1C22),
-        title: Text('صف دسته‌ای (${_queue.length} ویدیو)', style: const TextStyle(color: Colors.white, fontSize: 14)),
+        title: Text('${L.batchQueue} (\${_queue.length})', style: const TextStyle(color: Colors.white, fontSize: 14)),
         leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: _running ? null : () => Navigator.pop(context)),
       ),
@@ -145,27 +146,27 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
               Expanded(child: OutlinedButton.icon(
                 onPressed: _running ? null : _addVideos,
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('افزودن ویدیو', style: TextStyle(fontSize: 12)),
+                label: const Text(L.addVideo, style: TextStyle(fontSize: 12)),
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF7C3AED))),
               )),
               const SizedBox(width: 8),
               Expanded(child: FilledButton.icon(
                 onPressed: (_running || _queue.isEmpty || _selected == null) ? (_running ? _cancelQueue : null) : _startQueue,
                 icon: Icon(_running ? Icons.stop : Icons.play_arrow, size: 16),
-                label: Text(_running ? 'لغو صف' : 'شروع پردازش', style: const TextStyle(fontSize: 12)),
+                label: Text(_running ? L.cancelQueue : L.startProcessing, style: const TextStyle(fontSize: 12)),
                 style: FilledButton.styleFrom(backgroundColor: _running ? Colors.red : const Color(0xFF7C3AED)),
               )),
             ]),
             if (_running) Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text('پیشرفت کلی: $doneCount از ${_queue.length}', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              child: Text('\${doneCount}/\${_queue.length}', style: const TextStyle(color: Colors.white54, fontSize: 11)),
             ),
           ]),
         ),
         const Divider(color: Colors.white12, height: 1),
         Expanded(
           child: _queue.isEmpty
-            ? const Center(child: Text('ویدیویی اضافه نشده — از دکمه بالا اضافه کنید', style: TextStyle(color: Colors.white38, fontSize: 13)))
+            ? const Center(child: Text(L.noVideoAdded, style: TextStyle(color: Colors.white38, fontSize: 13)))
             : ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: _queue.length,
@@ -198,4 +199,3 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
     );
   }
 }
-

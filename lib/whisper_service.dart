@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:whisper_ggml_plus/whisper_ggml_plus.dart';
 import 'subtitle_storage.dart';
+import 'l10n.dart';
 
 // ══════════════════════════════════════════════════════════
 //  تعریف مدل‌ها
@@ -82,7 +83,7 @@ WhisperModelDef _recommendModelByRam(int ramMb) {
 }
 
 const kLanguages = {
-  'auto':'تشخیص خودکار',
+  'auto':'auto',
   'fa':'فارسی','en':'English','ar':'عربی','tr':'ترکی','fr':'فرانسه',
   'de':'آلمانی','es':'اسپانیایی','zh':'چینی','ja':'ژاپنی','ru':'روسی','ko':'کره‌ای',
 };
@@ -98,10 +99,10 @@ const _kLangSupport = {
 String estimateAccuracy(WhisperModelDef model, String lang) {
   final langScore = _kLangSupport[lang] ?? 0;
   final score = model.accStars + langScore - 1; // ترکیب امتیاز مدل و زبان
-  if (score >= 6) return 'عالی';
-  if (score >= 5) return 'خوب';
-  if (score >= 3) return 'متوسط';
-  return 'ضعیف — مدل بزرگ‌تری پیشنهاد می‌شود';
+  if (score >= 6) return 'excellent';
+  if (score >= 5) return 'good';
+  if (score >= 3) return 'medium';
+  return 'weak — use bigger model';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -174,7 +175,7 @@ class WhisperService {
           variant: 'custom',
           sizeMb: (file.lengthSync() / (1024 * 1024)).round(),
           speedStars: 3, accStars: 4,
-          desc: 'ایمپورت‌شده • $fname',
+          desc: 'import • \$fname',
           customPath: file.path,
         ));
       }
@@ -267,7 +268,7 @@ class WhisperService {
       await sink.close();
       client.close();
 
-      if (_dlCancelled) throw Exception('دانلود لغو شد');
+      if (_dlCancelled) throw Exception(L.cancelled);
 
       tmpFile.renameSync(dest);
       await setActive(model);
@@ -445,7 +446,7 @@ class WhisperService {
   /// تخمین زمان پردازش بر اساس مدت ویدیو + مدل + موتور
   /// ضرایب تجربی‌اند، فقط یک راهنمای کلی‌اند نه عدد دقیق
   static String estimateProcessingTime(int videoDurationMs, WhisperModelDef model, WhisperEngine engine) {
-    if (videoDurationMs <= 0) return 'نامشخص';
+    if (videoDurationMs <= 0) return 'unknown';
     final videoSec = videoDurationMs / 1000;
     // ضریب کندی نسبت به مدت واقعی صدا — هرچه مدل بزرگ‌تر، ضریب بالاتر
     final modelFactor = switch (model.speedStars) {
@@ -543,7 +544,7 @@ class WhisperService {
     final mPath = model.filePath(root);
 
     if (!File(mPath).existsSync()) {
-      throw Exception('مدل ${model.name} پیدا نشد\nدوباره دانلود کنید');
+      throw Exception('\${model.name}: \${L.fileNotFound}');
     }
 
     final sw = Stopwatch()..start();
@@ -553,16 +554,16 @@ class WhisperService {
     }
 
     // ۱. استخراج صدا (با کش)
-    onStatus('استخراج صدا...', 0.05);
+    onStatus(L.processing, 0.05);
     final wav = await extractAudio(videoPath);
     logStage('Extract Audio');
-    if (_trCancelled) throw Exception('لغو شد');
+    if (_trCancelled) throw Exception(L.cancelled);
     if (!File(wav).existsSync() || File(wav).lengthSync() == 0) {
-      throw Exception('استخراج صدا ناموفق');
+      throw Exception('Audio extraction failed');
     }
 
     // ۲. Transcribe
-    onStatus('تبدیل گفتار به متن (V1 — ${model.name})...', 0.3);
+    onStatus('V1: \${model.name}', 0.3);
     final whisper = Whisper(model: model.base);
     final result = await whisper.transcribe(
       transcribeRequest: TranscribeRequest(
@@ -576,10 +577,10 @@ class WhisperService {
       modelPath: mPath,
     );
     logStage('Transcribe (load+infer)');
-    if (_trCancelled) throw Exception('لغو شد');
+    if (_trCancelled) throw Exception(L.cancelled);
 
     // ۳. SRT
-    onStatus('ساخت فایل SRT...', 0.9);
+    onStatus('Building SRT...', 0.9);
     final segs = result.segments;
     String srt;
     if (segs != null && segs.isNotEmpty) {
@@ -592,7 +593,7 @@ class WhisperService {
     File(out).writeAsStringSync(srt, encoding: utf8);
     await _addToHistory(videoPath);
 
-    onStatus('✓ ذخیره شد', 1.0);
+    onStatus(L.saved, 1.0);
     return out;
   }
 
@@ -609,7 +610,7 @@ class WhisperService {
     final root = await _modelsRoot();
     final mPath = model.filePath(root);
     if (!File(mPath).existsSync()) {
-      throw Exception('مدل ${model.name} پیدا نشد\nدوباره دانلود کنید');
+      throw Exception('\${model.name}: \${L.fileNotFound}');
     }
 
     final sw = Stopwatch()..start();
@@ -619,44 +620,44 @@ class WhisperService {
     }
 
     // ۱. استخراج صدا (همون مسیر/کش مشترک با V1)
-    onStatus('استخراج صدا...', 0.05);
+    onStatus(L.processing, 0.05);
     final wav = await extractAudio(videoPath);
     logStage('Extract Audio');
-    if (_trCancelled) throw Exception('لغو شد');
+    if (_trCancelled) throw Exception(L.cancelled);
     if (!File(wav).existsSync() || File(wav).lengthSync() == 0) {
-      throw Exception('استخراج صدا ناموفق');
+      throw Exception('Audio extraction failed');
     }
 
     int? ctx;
     try {
       // ۲. بارگذاری مدل در whisper.cpp بومی
-      onStatus('بارگذاری مدل (V2 — ${model.name})...', 0.25);
+      onStatus('V2 load: \${model.name}', 0.25);
       final ctxResult = await _ch.invokeMethod<dynamic>('v2InitContext', {'modelPath': mPath});
       logStage('Load Model');
-      if (ctxResult == null) throw Exception('بارگذاری مدل ناموفق');
+      if (ctxResult == null) throw Exception('Model loading failed');
       ctx = (ctxResult as num).toInt();
-      if (ctx == 0) throw Exception('بارگذاری مدل ناموفق (ctx=0)');
-      if (_trCancelled) throw Exception('لغو شد');
+      if (ctx == 0) throw Exception('Model loading failed (ctx=0)');
+      if (_trCancelled) throw Exception(L.cancelled);
 
       // ۳. Transcribe بومی
-      onStatus('تبدیل گفتار به متن (V2 — native)...', 0.4);
+      onStatus('V2: transcribing...', 0.4);
       final threads = Platform.numberOfProcessors.clamp(2, 8);
       final raw = await _ch.invokeMethod<String>('v2Transcribe', {
         'ctx': ctx, 'wavPath': wav, 'lang': language, 'threads': threads, 'translate': isTranslate,
       });
       logStage('Transcribe (infer)');
-      if (_trCancelled) throw Exception('لغو شد');
-      if (raw == null || raw.trim().isEmpty) throw Exception('خروجی خالی از موتور V2');
+      if (_trCancelled) throw Exception(L.cancelled);
+      if (raw == null || raw.trim().isEmpty) throw Exception('Empty V2 output');
 
       // ۴. تبدیل خروجی خام (start_ms|end_ms|text) به SRT
-      onStatus('ساخت فایل SRT...', 0.9);
+      onStatus('Building SRT...', 0.9);
       final srt = _v2RawToSrt(raw);
 
       final out = await srtPathAsync(videoPath, language);
       File(out).writeAsStringSync(srt, encoding: utf8);
       await _addToHistory(videoPath);
 
-      onStatus('✓ ذخیره شد', 1.0);
+      onStatus(L.saved, 1.0);
       return out;
     } finally {
       if (ctx != null && ctx != 0) {
@@ -963,7 +964,7 @@ Future<void> _startLiveSubService(String videoName) async {
   const ch = MethodChannel('com.vezoo.player/whisper');
   try {
     await ch.invokeMethod('startLiveSubService', {
-      'title': 'زیرنویس زنده',
+      'title': L.liveSubtitle,
       'text': videoName,
     });
     // توجه: از setMethodCallHandler استفاده نمی‌کنیم چون channel رو کور می‌کنه
@@ -998,7 +999,7 @@ Future<String> transcribeLive({
     if (durationMs <= 0) durationMs = 3600000; // فرض ۱ ساعت برای URL
   } else {
     durationMs = await WhisperService.getVideoDurationMs(videoPath);
-    if (durationMs <= 0) throw Exception('مدت ویدیو قابل تشخیص نیست');
+    if (durationMs <= 0) throw Exception('Cannot detect video duration');
   }
   LiveSubState.totalMs = durationMs;
   LiveSubState.chunkMs = config.chunkMs;
@@ -1009,12 +1010,12 @@ Future<String> transcribeLive({
   File(srtFile).writeAsStringSync('', encoding: utf8);
 
   final mPath = await WhisperService.modelFilePath(config.model);
-  if (!File(mPath).existsSync()) throw Exception('مدل ${config.model.name} پیدا نشد');
+  if (!File(mPath).existsSync()) throw Exception('\${L.error}: model not found');
 
   final ctxResult = await ch.invokeMethod<dynamic>('v2InitContext', {'modelPath': mPath});
-  if (ctxResult == null) throw Exception('بارگذاری مدل ناموفق');
+  if (ctxResult == null) throw Exception('Model loading failed');
   final ctx = (ctxResult as num).toInt();
-  if (ctx == 0) throw Exception('بارگذاری مدل ناموفق (ctx=0)');
+  if (ctx == 0) throw Exception('Model loading failed (ctx=0)');
 
   // پوشه موقت chunk ها
   final cacheDir = Directory(p.join((await getApplicationSupportDirectory()).path, '_live_chunks'));
@@ -1109,4 +1110,3 @@ String _liveSegsToSrt(List<_Seg> segs) {
   }
   return b.toString();
 }
-

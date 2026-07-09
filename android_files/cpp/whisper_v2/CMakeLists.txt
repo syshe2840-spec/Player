@@ -46,4 +46,3 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(whisper_core PRIVATE -O3)
     target_compile_options(vezoo_whisper PRIVATE -O3)
 endif()
-

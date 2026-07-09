@@ -149,4 +149,3 @@ Java_com_vezoo_player_WhisperV2Bridge_nativeGetSystemInfo(JNIEnv *env, jobject t
     const char* info = whisper_print_system_info();
     return (*env)->NewStringUTF(env, info);
 }
-

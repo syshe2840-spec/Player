@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'whisper_service.dart';
 import 'player.dart';
+import 'l10n.dart';
 
 /// تاریخچه‌ی ویدیوهایی که برایشان زیرنویس AI ساخته شده
 class AiHistoryScreen extends StatefulWidget {
@@ -24,13 +25,13 @@ class _AiHistoryScreenState extends State<AiHistoryScreen> {
   Future<void> _remove(String path) async {
     final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text('حذف از تاریخچه',style:TextStyle(color:Colors.white,fontSize:15)),
-      content:const Text('فقط از این لیست حذف می‌شود؛ خود فایل‌های زیرنویس پاک نمی‌شوند.',
+      title:const Text(L.deleteFromHistory,style:TextStyle(color:Colors.white,fontSize:15)),
+      content:const Text(L.deleteFromHistoryDesc,
         style:TextStyle(color:Colors.white70,fontSize:12)),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('لغو')),
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text(L.cancel)),
         FilledButton(onPressed:()=>Navigator.pop(context,true),
-          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('حذف')),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text(L.delete)),
       ],
     ));
     if(ok==true){ await WhisperService.removeFromHistory(path); await _load(); }
@@ -47,7 +48,7 @@ class _AiHistoryScreenState extends State<AiHistoryScreen> {
     backgroundColor:const Color(0xFF0F0F14),
     appBar:AppBar(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text('تاریخچه زیرنویس AI',style:TextStyle(color:Colors.white,fontSize:15)),
+      title:const Text(L.aiHistory,style:TextStyle(color:Colors.white,fontSize:15)),
       leading:IconButton(icon:const Icon(Icons.arrow_back,color:Colors.white),onPressed:()=>Navigator.pop(context)),
     ),
     body: _loading
@@ -55,7 +56,7 @@ class _AiHistoryScreenState extends State<AiHistoryScreen> {
       : _videos.isEmpty
         ? const Center(child:Padding(
             padding:EdgeInsets.all(24),
-            child:Text('هنوز برای هیچ ویدیویی زیرنویس AI نساخته‌اید',
+            child:Text(L.noAiHistoryYet,
               style:TextStyle(color:Colors.white38,fontSize:13),textAlign:TextAlign.center)))
         : ListView.builder(
             padding:const EdgeInsets.all(12),
@@ -86,4 +87,3 @@ class _AiHistoryScreenState extends State<AiHistoryScreen> {
           ),
   );
 }
-

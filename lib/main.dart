@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'browser.dart';
 import 'store.dart';
+import 'l10n.dart';
 import 'api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -39,6 +40,7 @@ void showSnack(BuildContext ctx, String msg, {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  await L.load(); // بارگذاری زبان ذخیره‌شده
   await Store.load();
   await ApiService.init();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -192,15 +194,15 @@ class _HomeWrapperState extends State<_HomeWrapper>{
 
   Future<void> _showUpdate(Map cfg,bool force)async{
     await showDialog(context:context,barrierDismissible:!force,builder:(ctx)=>AlertDialog(
-      title:Text(cfg['update_title']??'بروزرسانی'),
-      content:Text(cfg['update_message']??'نسخه جدید منتشر شد'),
+      title:Text(cfg['update_title']??L.update),
+      content:Text(cfg['update_message']??L.newVersionAvailable),
       actions:[
-        if(!force)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بعداً')),
+        if(!force)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.later)),
         FilledButton(onPressed:()async{
           final url=cfg['download_url']??'';
           if(url.isNotEmpty)await launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication);
           if(mounted&&!force)Navigator.pop(ctx);
-        },child:const Text('دانلود')),
+        },child:const Text(L.download)),
       ],
     ));
   }
@@ -227,16 +229,15 @@ class _HomeWrapperState extends State<_HomeWrapper>{
           padding:const EdgeInsets.only(top:12),child:Text(ann['message'])),
       ]),
       actions:[
-        if(cancel)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
+        if(cancel)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close)),
         if((ann['link']??'').isNotEmpty)FilledButton(
           onPressed:()async{
             await launchUrl(Uri.parse(ann['link']),mode:LaunchMode.externalApplication);
             if(mounted)Navigator.pop(ctx);
-          },child:Text(ann['link_text']??'مشاهده')),
+          },child:Text(ann['link_text']??L.view)),
       ],
     ));
   }
 
   @override Widget build(BuildContext ctx)=>const BrowserScreen();
 }
-

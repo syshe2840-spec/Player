@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'package:file_picker/file_picker.dart';
+import 'l10n.dart';
 import 'main.dart' show showSnack;
 
 class PlayerSettings extends StatefulWidget {
@@ -91,10 +92,10 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       const SizedBox(height:10),
       Center(child:Container(width:40,height:4,decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2)))),
       TabBar(controller:_tab,isScrollable:true,tabs:const[
-        Tab(text:'زیرنویس',icon:Icon(Icons.subtitles,size:16)),
-        Tab(text:'صدا / پخش',icon:Icon(Icons.volume_up,size:16)),
-        Tab(text:'زیرنویس ۲',icon:Icon(Icons.subtitles_outlined,size:16)),
-        Tab(text:'سایر',icon:Icon(Icons.more_horiz,size:16)),
+        Tab(text:L.subtitle,icon:Icon(Icons.subtitles,size:16)),
+        Tab(text:L.playback,icon:Icon(Icons.volume_up,size:16)),
+        Tab(text:L.subtitle2,icon:Icon(Icons.subtitles_outlined,size:16)),
+        Tab(text:L.other,icon:Icon(Icons.more_horiz,size:16)),
       ]),
       SizedBox(height:MediaQuery.of(context).size.height*0.48,child:TabBarView(controller:_tab,children:[
         _sub1Tab(),_audioTab(),_sub2Tab(),_otherTab(),
@@ -105,23 +106,23 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
   // ──────── تب زیرنویس ۱ ────────
   Widget _sub1Tab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('نمایش زیرنویس'),value:_s1v,
+    SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text(L.subtitleDisplay),value:_s1v,
         onChanged:(v){setState(()=>_s1v=v);widget.onSub1Visible(v);}),
     SwitchListTile(contentPadding:EdgeInsets.zero,
-        title:const Text('نمایش دکمه‌های زیرنویس'),
-        subtitle:const Text('دکمه کپی و آیکون جابجایی روی صفحه'),
+        title:const Text(L.showSubToolbar),
+        subtitle:const Text(L.subToolbarDesc),
         value:_vs.showSubToolbar,
         onChanged:(v)=>_ch(()=>_vs.showSubToolbar=v)),
 
     // اندازه فونت
-    Text('اندازه فونت: ${_vs.fontSize.round()}'),
+    Text('${L.fontSize}: \${_vs.fontSize.round()}'),
     Slider(min:6,max:100,value:_vs.fontSize,onChanged:(v)=>_ch(()=>_vs.fontSize=v)),
 
-    SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('Bold (پررنگ)'),value:_vs.bold,
+    SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text(L.boldLabel),value:_vs.bold,
         onChanged:(v)=>_ch(()=>_vs.bold=v)),
 
     // دیلی زیرنویس با عدد
-    const Text('دیلی زیرنویس (ms):'),const SizedBox(height:6),
+    const Text(L.subDelay),const SizedBox(height:6),
     Row(children:[
       IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd1-=100);widget.onSubDelayMs(_sd1);_d1Ctrl.text='$_sd1';}),
       Expanded(child:TextField(controller:_d1Ctrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
@@ -134,25 +135,25 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         onChanged:(v){setState(()=>_sd1=v.round());widget.onSubDelayMs(_sd1);_d1Ctrl.text='$_sd1';}),
 
     // موقعیت
-    Text('موقعیت از پایین: ${_vs.bottomPadding.round()}px'),
+    Text('${L.position}: \${_vs.bottomPadding.round()}px'),
     Slider(min:0,max:900,value:_vs.bottomPadding.clamp(0,900),onChanged:(v)=>_ch(()=>_vs.bottomPadding=v)),
 
-    const SizedBox(height:8),const Text('چینش'),const SizedBox(height:8),
+    const SizedBox(height:8),const Text(L.alignment),const SizedBox(height:8),
     SegmentedButton<int>(
       segments:const[
-        ButtonSegment(value:1,label:Text('راست'),icon:Icon(Icons.format_align_right,size:16)),
-        ButtonSegment(value:2,label:Text('وسط'),icon:Icon(Icons.format_align_center,size:16)),
-        ButtonSegment(value:0,label:Text('چپ'),icon:Icon(Icons.format_align_left,size:16)),
+        ButtonSegment(value:1,label:Text(L.right),icon:Icon(Icons.format_align_right,size:16)),
+        ButtonSegment(value:2,label:Text(L.center),icon:Icon(Icons.format_align_center,size:16)),
+        ButtonSegment(value:0,label:Text(L.left),icon:Icon(Icons.format_align_left,size:16)),
       ],
       selected:{_vs.textAlign},onSelectionChanged:(s)=>_ch(()=>_vs.textAlign=s.first),
     ),
 
-    const SizedBox(height:12),const Text('رنگ متن'),const SizedBox(height:8),
+    const SizedBox(height:12),const Text(L.textColor),const SizedBox(height:8),
     Wrap(spacing:10,children:_textColors.map((c)=>GestureDetector(onTap:()=>_ch(()=>_vs.textColor=c.value),
       child:Container(width:34,height:34,decoration:BoxDecoration(color:c,shape:BoxShape.circle,
           border:Border.all(color:c.value==_vs.textColor?Colors.white:Colors.transparent,width:3))))).toList()),
 
-    const SizedBox(height:12),const Text('رنگ پس‌زمینه'),const SizedBox(height:8),
+    const SizedBox(height:12),const Text(L.bgColor),const SizedBox(height:8),
     Wrap(spacing:10,children:_bgColors.map((c){
       final sel=c.value==_vs.bgColor;
       return GestureDetector(onTap:()=>_ch(()=>_vs.bgColor=c.value),child:Container(width:34,height:34,
@@ -160,10 +161,10 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
             border:Border.all(color:sel?Colors.white:Colors.white24,width:sel?3:1)),
         child:c==Colors.transparent?const Center(child:Icon(Icons.block,size:18,color:Colors.white38)):null));
     }).toList()),
-    Text('شفافیت پس‌زمینه: ${(_vs.bgOpacity*100).round()}%'),
+    Text('${L.transparency}: \${(_vs.bgOpacity*100).round()}%'),
     Slider(min:0,max:1,value:_vs.bgOpacity,onChanged:(v)=>_ch(()=>_vs.bgOpacity=v)),
 
-    const Divider(height:20),const Text('فونت'),const SizedBox(height:8),
+    const Divider(height:20),const Text(L.font),const SizedBox(height:8),
     // فونت‌های پیش‌فرض
     Wrap(spacing:8,runSpacing:6,children:kDefaultFonts.map(((String label,String family) f)=>ChoiceChip(
       label:Text(f.$1,style:TextStyle(fontFamily:f.$2.isEmpty?null:f.$2)),
@@ -172,7 +173,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     )).toList()),
     const SizedBox(height:8),
     OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickFont();},
-        icon:const Icon(Icons.font_download),label:const Text('فونت دلخواه از فایل (TTF/OTF)')),
+        icon:const Icon(Icons.font_download),label:const Text(L.customFont)),
 
     const Divider(height:20),
     // border و سایه
@@ -184,66 +185,66 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       ])),
       const SizedBox(width:8),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('سایه: ${_vs.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
+        Text('${L.shadow}: \${_vs.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
         Slider(min:0,max:5,divisions:10,value:_vs.shadowSize,
           onChanged:(v)=>_ch(()=>_vs.shadowSize=v)),
       ])),
     ]),
     const Divider(height:20),
     // ابزارهای زیرنویس زنده
-    const Text('ابزارهای زیرنویس زنده'),const SizedBox(height:8),
+    const Text(L.liveSubtitleTools),const SizedBox(height:8),
     Row(children:[
-      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.copy,size:16),label:const Text('کپی'),
+      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.copy,size:16),label:const Text(L.copy),
           onPressed:(){Navigator.pop(context);})),
       const SizedBox(width:8),
-      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.translate,size:16),label:const Text('ترجمه'),
+      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.translate,size:16),label:const Text(L.translationLabel),
           onPressed:(){
             Navigator.pop(context);
-            showSnack(context, 'متن زیرنویس را کپی کرده و در اپ ترجمه paste کنید');
+            showSnack(context, L.translatePaste);
           })),
       const SizedBox(width:8),
-      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.book,size:16),label:const Text('دیکشنری'),
+      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.book,size:16),label:const Text(L.dictionary),
           onPressed:(){
             Navigator.pop(context);
-            showSnack(context, 'متن را کپی کرده و در دیکشنری جستجو کنید');
+            showSnack(context, L.dictionarySearch);
           })),
     ]),
 
     const Divider(height:20),
     OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickSub1();},
-        icon:const Icon(Icons.file_open),label:const Text('انتخاب زیرنویس ۱')),
+        icon:const Icon(Icons.file_open),label:const Text(L.chooseSub1)),
   ]));
 
   // ──────── تب صدا / پخش ────────
   Widget _audioTab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     // دیلی صدا
-    const Text('دیلی صدا (ms):'),const SizedBox(height:6),
+    const Text(L.audioDelay),const SizedBox(height:6),
     Row(children:[
       IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_ad-=100);widget.onAudioDelayMs(_ad);_adCtrl.text='$_ad';}),
       Expanded(child:TextField(controller:_adCtrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
         textAlign:TextAlign.center,
         onChanged:(v){final n=int.tryParse(v);if(n!=null){setState(()=>_ad=n);widget.onAudioDelayMs(n);}},
         decoration:const InputDecoration(suffixText:'ms',border:OutlineInputBorder(),isDense:true,
-            helperText:'فقط برای نمایش — نیاز به آپگرید media_kit دارد'))),
+            helperText:L.hwDecode))),
       IconButton(icon:const Icon(Icons.add),onPressed:(){setState(()=>_ad+=100);widget.onAudioDelayMs(_ad);_adCtrl.text='$_ad';}),
     ]),
 
     const Divider(height:24),
     // تقویت صدا
-    const Text('تقویت صدا:'),
+    const Text(L.volumeBoost),
     Text('${_amp.round()}%',style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
     Slider(min:100,max:300,value:_amp,onChanged:(v){setState(()=>_amp=v);widget.onAmpVolume(v);}),
 
     const Divider(height:24),
     // سرعت
     SwitchListTile(contentPadding:EdgeInsets.zero,
-      title:const Text('پیش‌نمایش اسکراب'),
-      subtitle:const Text('نمایش تصویر کوچک هنگام کشیدن نوار زمان'),
+      title:const Text(L.seekPreview),
+      subtitle:const Text(L.seekPreviewDesc),
       value:_vs.showSeekPreview,
       onChanged:(v)=>_ch(()=>_vs.showSeekPreview=v),
     ),
     const Divider(height:12),
-    Text('سرعت: ${_speed%1==0?_speed.toInt():_speed}x'),
+    Text('${L.speed}: \${_speed%1==0?_speed.toInt():_speed}x'),
     Slider(min:0.25,max:10,divisions:39,value:_speed,
         onChanged:(v){final s=(v*4).round()/4;setState(()=>_speed=s);widget.onSpeed(s);_ch(()=>_vs.speed=s);}),
     Wrap(spacing:6,children:[0.5,1.0,1.5,2.0,3.0,5.0,10.0].map((s)=>ChoiceChip(
@@ -252,7 +253,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
     const Divider(height:24),
     // حالت شب
-    Text('حالت شب: ${(_vs.nightOpacity*100).round()}%'),
+    Text('${L.nightMode}: \${(_vs.nightOpacity*100).round()}%'),
     Slider(min:0,max:1,value:_vs.nightOpacity,activeColor:Colors.orange,onChanged:(v)=>_ch(()=>_vs.nightOpacity=v)),
   ]));
 
@@ -264,19 +265,19 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       widget.onChanged2?.call(vs2);
     }
     return SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('زیرنویس ۲ (همزمان)'),value:_s2v,
+      SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text(L.subtitle2),value:_s2v,
           onChanged:(v){setState(()=>_s2v=v);widget.onSub2Visible(v);}),
       OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickSub2();},
-          icon:const Icon(Icons.file_open),label:const Text('بارگذاری زیرنویس ۲')),
-      if(widget.sub2Path!=null)Text('فایل: '+p.basename(widget.sub2Path!),style:const TextStyle(fontSize:11,color:Colors.white54)),
+          icon:const Icon(Icons.file_open),label:const Text(L.loadSubSub2)),
+      if(widget.sub2Path!=null)Text('${L.files}: '+p.basename(widget.sub2Path!),style:const TextStyle(fontSize:11,color:Colors.white54)),
       const SizedBox(height:8),
       SwitchListTile(contentPadding:EdgeInsets.zero,
-        title:const Text('نمایش دکمه drag و کپی'),
-        subtitle:const Text('مثل زیرنویس ۱',style:TextStyle(fontSize:11)),
+        title:const Text(L.subDragCopy),
+        subtitle:const Text(L.subDragCopy,style:TextStyle(fontSize:11)),
         value:vs2.showSubToolbar,
         onChanged:(v)=>ch2(()=>vs2.showSubToolbar=v)),
       const SizedBox(height:8),
-      const Text('اندازه فونت:'),const SizedBox(height:4),
+      const Text(L.fontSize),const SizedBox(height:4),
       Row(children:[
         IconButton(icon:const Icon(Icons.remove),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize-1).clamp(8,80));}),
         Expanded(child:Slider(min:8,max:80,value:vs2.fontSize,onChanged:(v)=>ch2(()=>vs2.fontSize=v))),
@@ -284,18 +285,18 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         IconButton(icon:const Icon(Icons.add),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize+1).clamp(8,80));}),
       ]),
       SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('Bold'),value:vs2.bold,onChanged:(v)=>ch2(()=>vs2.bold=v)),
-      const Text('رنگ متن:'),const SizedBox(height:8),
+      const Text(L.textColor),const SizedBox(height:8),
       Wrap(spacing:10,children:[Colors.white,const Color(0xFFFFFF99),const Color(0xFFFFEB3B),const Color(0xFF69F0AE),const Color(0xFF40C4FF),const Color(0xFFFF8A65)].map((c)=>
         GestureDetector(onTap:()=>ch2(()=>vs2.textColor=c.value),
           child:Container(width:34,height:34,decoration:BoxDecoration(color:c,shape:BoxShape.circle,
             border:Border.all(color:c.value==vs2.textColor?Colors.white:Colors.transparent,width:3))))).toList()),
       const SizedBox(height:12),
-      const Text('شفافیت پس\u200cزمینه:'),
+      const Text(L.transparency),
       Slider(min:0,max:1,value:vs2.bgOpacity,onChanged:(v)=>ch2(()=>vs2.bgOpacity=v)),
       const SizedBox(height:8),
 
       // ── رنگ پس‌زمینه ──
-      const Text('رنگ پس\u200cزمینه:'),const SizedBox(height:8),
+      const Text(L.bgColor),const SizedBox(height:8),
       Wrap(spacing:10,children:[Colors.black,const Color(0xFF1A1A2E),const Color(0xFF16213E),Colors.transparent].map((c)=>
         GestureDetector(onTap:()=>ch2(()=>vs2.bgColor=c.value),
           child:Container(width:34,height:34,decoration:BoxDecoration(color:c==Colors.transparent?Colors.white12:c,shape:BoxShape.circle,
@@ -304,9 +305,9 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       const SizedBox(height:12),
 
       // ── چینش ──
-      const Text('چینش متن:'),const SizedBox(height:8),
+      const Text(L.alignment),const SizedBox(height:8),
       Row(mainAxisAlignment:MainAxisAlignment.start,children:[
-        for(final e in [('چپ',0),('وسط',2),('راست',1)])...[
+        for(final e in [(L.left,0),(L.center,2),(L.right,1)])...[
           GestureDetector(onTap:()=>ch2(()=>vs2.textAlign=e.$2),
             child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
               decoration:BoxDecoration(color:vs2.textAlign==e.$2?const Color(0xFF7C3AED):const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(8)),
@@ -318,7 +319,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
       // ── سایه ──
       Row(children:[
-        const Text('سایه:',style:TextStyle(fontSize:13)),
+        const Text(L.shadow,style:TextStyle(fontSize:13)),
         const SizedBox(width:8),
         Expanded(child:Slider(min:0,max:3,value:vs2.shadowSize,onChanged:(v)=>ch2(()=>vs2.shadowSize=v))),
         Text('${vs2.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
@@ -327,65 +328,80 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
       // ── انتخاب فونت ──
       const Divider(color:Colors.white12),
-      const Text('فونت:',style:TextStyle(fontSize:13)),const SizedBox(height:8),
+      const Text(L.font,style:TextStyle(fontSize:13)),const SizedBox(height:8),
       Wrap(spacing:8,runSpacing:6,children:['','Vazirmatn','IRANSansMobile','Roboto','Tahoma'].map((f)=>
         GestureDetector(onTap:()=>ch2(()=>vs2.fontFamily=f),
           child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
             decoration:BoxDecoration(color:vs2.fontFamily==f?const Color(0xFF7C3AED):const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(8)),
-            child:Text(f.isEmpty?'پیش‌فرض':f,style:TextStyle(color:vs2.fontFamily==f?Colors.white:Colors.white60,fontSize:12,fontFamily:f.isEmpty?null:f))))).toList()),
+            child:Text(f.isEmpty?L.defaultFont:f,style:TextStyle(color:vs2.fontFamily==f?Colors.white:Colors.white60,fontSize:12,fontFamily:f.isEmpty?null:f))))).toList()),
       const SizedBox(height:12),
 
       // ── دیلی ──
-      const Text('دیلی زیرنویس ۲ (ms):'),const SizedBox(height:6),
+      const Text(L.subDelay2),const SizedBox(height:6),
       Row(children:[
-        IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd2-=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='\$_sd2';}),
+        IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd2-=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='$_sd2';}),
         Expanded(child:TextField(controller:_d2Ctrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
           textAlign:TextAlign.center,
           onChanged:(v){final n=int.tryParse(v);if(n!=null){setState(()=>_sd2=n);widget.onSubDelay2Ms(n);}},
           decoration:const InputDecoration(suffixText:'ms',border:OutlineInputBorder(),isDense:true))),
-        IconButton(icon:const Icon(Icons.add),onPressed:(){setState(()=>_sd2+=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='\$_sd2';}),
+        IconButton(icon:const Icon(Icons.add),onPressed:(){setState(()=>_sd2+=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='$_sd2';}),
       ]),
       Slider(min:-10000,max:10000,value:_sd2.toDouble().clamp(-10000,10000),
-        onChanged:(v){setState(()=>_sd2=v.round());widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='\$_sd2';}),
+        onChanged:(v){setState(()=>_sd2=v.round());widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='$_sd2';}),
     ]));
   }
   // ──────── تب سایر ────────
   Widget _otherTab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    // ── انتخاب زبان ──
+    Text(L.language, style:const TextStyle(color:Colors.white70,fontSize:13)),
+    const SizedBox(height:8),
+    Wrap(spacing:8,runSpacing:6,children:[
+      for(final lang in kSupportedLangs)
+        ChoiceChip(
+          label:Text(kLangNames[lang]!),
+          selected: L.current==lang,
+          onSelected:(_)async{
+            await L.set(lang);
+            if(mounted)setState((){});
+          },
+        ),
+    ]),
+    const Divider(height:24,color:Colors.white12),
     // پیش‌نمایش اسکراب (دسترسی سریع)
     SwitchListTile(contentPadding:EdgeInsets.zero,
-      title:const Text('پیش‌نمایش اسکراب (Seek Thumbnail)'),
-      subtitle:const Text('تصویر کوچک هنگام کشیدن نوار زمان'),
+      title:const Text(L.seekPreview),
+      subtitle:const Text(L.seekPreviewDesc),
       secondary:const Icon(Icons.video_stable_rounded),
       value:_vs.showSeekPreview,
       onChanged:(v)=>_ch(()=>_vs.showSeekPreview=v),
     ),
     const Divider(height:16),
     FilledButton.icon(onPressed:widget.onSaveForVideo,icon:const Icon(Icons.save),
-        label:const Text('ذخیره تنظیمات برای این ویدیو')),
+        label:const Text(L.saveVideoSettings)),
     const SizedBox(height:6),
-    const Text('با زدن این دکمه، همه تنظیمات زیرنویس و پخش فعلی برای این ویدیو ذخیره می‌شود.',
+    const Text(L.saveVideoSettingsDesc,
         style:TextStyle(fontSize:12,color:Colors.white54)),
     const Divider(height:28),
-    const Text('راهنما',style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
-    _helpRow('↔ کشیدن افقی','جلو/عقب بردن ویدیو'),
-    _helpRow('↕ کشیدن چپ','تنظیم نور صفحه'),
-    _helpRow('↕ کشیدن راست','تنظیم صدای گوشی'),
-    _helpRow('↕ کشیدن پایین صفحه','جابجایی زیرنویس'),
-    _helpRow('🤏 دو انگشت','زوم و جابجایی'),
-    _helpRow('دو ضربه چپ','۱۰ ثانیه عقب'),
-    _helpRow('دو ضربه راست','۱۰ ثانیه جلو'),
-    _helpRow('دو ضربه وسط','پخش / توقف'),
-    _helpRow('نگه داشتن','پخش / توقف'),
+    const Text(L.guide,style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
+    _helpRow(L.swipeHorizontal,L.seekVideo),
+    _helpRow(L.swipeLeft,L.adjustBrightness),
+    _helpRow(L.swipeRight,L.adjustVolume),
+    _helpRow(L.swipeBottomSub,L.moveSubtitle),
+    _helpRow(L.twoFingers,L.zoomMove),
+    _helpRow(L.doubleTapLeft,L.tenSecBack),
+    _helpRow(L.doubleTapRight,L.tenSecForward),
+    _helpRow(L.doubleTapCenter,L.playPause),
+    _helpRow(L.holdDown,L.playPause),
     const Divider(height:24),
     // کنترل زیرنویس داخلی
     SwitchListTile(contentPadding:EdgeInsets.zero,
-      title:const Text('زیرنویس داخلی (Embedded)'),
-      subtitle:const Text('libmpv تراک‌های داخلی را نمایش دهد'),
+      title:const Text(L.embeddedSubtitle),
+      subtitle:const Text(L.enableEmbeddedSub),
       value:_embeddedSub,
       onChanged:(v){setState(()=>_embeddedSub=v);widget.onEmbeddedSubEnabled(v);},
     ),
     const Divider(height:16),
-    const Text('دیکودر',style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
+    const Text(L.decoder,style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
     SegmentedButton<bool>(
       segments:const[
         ButtonSegment(value:true,label:Text('HW'),icon:Icon(Icons.memory,size:16)),
@@ -395,10 +411,10 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       onSelectionChanged:(s){setState(()=>_hwDecode=s.first);widget.onHwDecode(s.first);},
     ),
     const SizedBox(height:4),
-    const Text('HW: سریع‌تر. SW: سازگاری بیشتر.',style:TextStyle(fontSize:11,color:Colors.white54)),
+    const Text('HW: ${L.hwDecode} | SW: ${L.swDecode}',style:TextStyle(fontSize:11,color:Colors.white54)),
     if(widget.videoWidth!=null&&widget.videoHeight!=null)...[
       const Divider(height:18),
-      const Text('رزولوشن:',style:TextStyle(fontSize:12,color:Colors.white54)),const SizedBox(height:4),
+      const Text(L.resolution,style:TextStyle(fontSize:12,color:Colors.white54)),const SizedBox(height:4),
       Text('${widget.videoWidth}×${widget.videoHeight}',style:const TextStyle(fontSize:14,color:Colors.greenAccent,fontWeight:FontWeight.bold)),
     ],
   ]));
@@ -424,23 +440,23 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
 
   Future<void> _backupAll() async {
     const destDir = '/storage/emulated/0/Download/Vezoo/Backup';
-    setState(() { _loading = true; _status = 'در حال بکاپ...'; });
+    setState(() { _loading = true; _status = L.backing_up; });
     try {
       final copied = await const MethodChannel('com.vezoo.player/whisper')
         .invokeMethod<List>('backupModels', {'destDir': destDir});
       if (mounted) setState(() {
         _loading = false;
-        _status = '✓ بکاپ در Download/Vezoo/Backup\n${(copied ?? []).join(', ')}';
+        _status = '✓ ${L.backup}: Download/Vezoo/Backup/';
       });
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
+      if (mounted) setState(() { _loading = false; _status = L.errorMsg(e); });
     }
   }
 
   Future<void> _importModel() async {
     final res = await FilePicker.platform.pickFiles(type: FileType.any);
     if (res == null || res.files.single.path == null) return;
-    setState(() { _loading = true; _status = 'در حال ایمپورت...'; });
+    setState(() { _loading = true; _status = L.importing; });
     try {
       final path = res.files.single.path!;
       final fname = path.split('/').last;
@@ -448,9 +464,9 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
       await Directory(modelsRoot).create(recursive: true);
       final savedPath = await const MethodChannel('com.vezoo.player/whisper')
         .invokeMethod<String>('importModel', {'path': path, 'modelsDir': modelsRoot});
-      if (mounted) setState(() { _loading = false; _status = '✓ ذخیره در:\n$savedPath'; });
+      if (mounted) setState(() { _loading = false; _status = '✓ ${L.saved}: \$savedPath'; });
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _status = 'خطا: $e'; });
+      if (mounted) setState(() { _loading = false; _status = L.errorMsg(e); });
     }
   }
 
@@ -464,10 +480,10 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
           const Row(children: [
             Icon(Icons.backup_rounded, color: Color(0xFF22c55e), size: 18),
             SizedBox(width: 8),
-            Text('بکاپ و ایمپورت مدل‌های AI', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            Text(L.backupImport, style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
           ]),
           const SizedBox(height: 4),
-          const Text('ذخیره در: Download/Vezoo/Backup/', style: TextStyle(color: Colors.white54, fontSize: 11)),
+          const Text(L.backupPath, style: TextStyle(color: Colors.white54, fontSize: 11)),
           if (_status.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11)),
@@ -481,17 +497,16 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
             Expanded(child: FilledButton.icon(
               onPressed: _loading ? null : _backupAll,
               icon: const Icon(Icons.save_alt_rounded, size: 16),
-              label: const Text('بکاپ'),
+              label: const Text(L.backup),
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFF22c55e)))),
             const SizedBox(width: 8),
             Expanded(child: OutlinedButton.icon(
               onPressed: _loading ? null : _importModel,
               icon: const Icon(Icons.upload_file_rounded, size: 16),
-              label: const Text('ایمپورت'))),
+              label: const Text(L.importModel))),
           ]),
         ]),
       ),
     ]),
   );
 }
-

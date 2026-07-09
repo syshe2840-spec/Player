@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
 import 'srt_translation_service.dart' show kTranslateLangDisplay, kTranslateLangs;
+import 'l10n.dart';
 
 /// تنظیمات زیرنویس زنده — قبل از شروع پردازش تکه‌تکه
 class LiveSubSheet extends StatefulWidget {
@@ -67,9 +68,9 @@ class _State extends State<LiveSubSheet> {
               Row(children: [
                 const Icon(Icons.fiber_smart_record, color: Colors.red, size: 20),
                 const SizedBox(width: 8),
-                const Text('زیرنویس زنده (V2)', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                const Text(L.liveSubtitleSettings, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
                 const Spacer(),
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('بستن')),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(L.close)),
               ]),
 
               // توضیح
@@ -79,17 +80,17 @@ class _State extends State<LiveSubSheet> {
                 decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.1), borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF7C3AED).withOpacity(0.3))),
                 child: const Text(
-                  'همزمان با پخش ویدیو، صدا تکه‌تکه پردازش میشه و زیرنویس روی صفحه نمایش داده میشه. SRT نهایی کنار فایل ویدیو ذخیره میشه.',
+                  L.liveSubDesc,
                   style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.5)),
               ),
 
               if (_models.isEmpty) ...[
-                const Padding(padding: EdgeInsets.all(16), child: Text('هیچ مدل AI دانلودشده‌ای نیست\nابتدا از بخش AI مدل دانلود کنید',
+                const Padding(padding: EdgeInsets.all(16), child: Text(L.noModelDownloaded2,
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 13))),
               ] else ...[
 
                 // ── مدل ──
-                _row('مدل AI', DropdownButton<WhisperModelDef>(
+                _row(L.aiModel, DropdownButton<WhisperModelDef>(
                   value: _selected, isExpanded: true, dropdownColor: const Color(0xFF2A2A35),
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   items: _models.map((m) => DropdownMenuItem(value: m, child: Row(children: [
@@ -102,7 +103,7 @@ class _State extends State<LiveSubSheet> {
                 const SizedBox(height: 10),
 
                 // ── زبان ──
-                _row('زبان', DropdownButton<String>(
+                _row(L.language, DropdownButton<String>(
                   value: _lang, isExpanded: true, dropdownColor: const Color(0xFF2A2A35),
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   items: kLanguages.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
@@ -111,50 +112,50 @@ class _State extends State<LiveSubSheet> {
                 const SizedBox(height: 10),
 
                 // ── ترجمه ──
-                _switchRow('ترجمه به انگلیسی', _translate, (v) => setState(() => _translate = v)),
+                _switchRow(L.translateToEn, _translate, (v) => setState(() => _translate = v)),
                 const SizedBox(height: 10),
 
                 // ── اندازه هر تکه ──
-                _rowLabel('اندازه هر تکه'),
+                _rowLabel(L.chunkSize),
                 const SizedBox(height:6),
                 SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[
-                  _chunkChip('۱۵s', 15000),
+                  _chunkChip('15s', 15000),
                   const SizedBox(width:6),
-                  _chunkChip('۳۰s', 30000),
+                  _chunkChip('30s', 30000),
                   const SizedBox(width:6),
-                  _chunkChip('۱min', 60000),
+                  _chunkChip('1min', 60000),
                   const SizedBox(width:6),
-                  _chunkChip('۲min', 120000),
+                  _chunkChip('2min', 120000),
                   const SizedBox(width:6),
-                  _chunkChip('۳min', 180000),
+                  _chunkChip('3min', 180000),
                   const SizedBox(width:6),
-                  _chunkChip('۴min', 240000),
+                  _chunkChip('4min', 240000),
                   const SizedBox(width:6),
-                  _chunkChip('۵min', 300000),
+                  _chunkChip('5min', 300000),
                   const SizedBox(width:6),
-                  _chunkChip('۱۰min', 600000),
+                  _chunkChip('10min', 600000),
                   const SizedBox(width:6),
-                  _chunkChip('۱۵min', 900000),
+                  _chunkChip('15min', 900000),
                 ])),
                 const SizedBox(height:10),
 
                 // ── Overlap ──
-                _switchRow('Overlap (جلوگیری از قطع شدن کلمات)', _useOverlap, (v) => setState(() => _useOverlap = v)),
+                _switchRow(L.overlapChunks, _useOverlap, (v) => setState(() => _useOverlap = v)),
                 if(_useOverlap)
                   Padding(padding:const EdgeInsets.only(top:4,right:4),child:Text(
-                    '۵ ثانیه ابتدای هر تکه با تکه قبل همپوشانی دارد — زیرنویس تکرار نمیشه',
+                    L.overlapDesc,
                     style:const TextStyle(color:Colors.white38,fontSize:10))),
                 const SizedBox(height:10),
 
                 // ── همگام‌سازی ترجمه آنلاین ──
-                _switchRow('ترجمه همزمان (Cloudflare AI)', _syncTranslate, (v) => setState(() => _syncTranslate = v)),
+                _switchRow(L.translateOnline, _syncTranslate, (v) => setState(() => _syncTranslate = v)),
                 if(_syncTranslate)...[
                   const SizedBox(height:6),
                   Container(
                     padding:const EdgeInsets.symmetric(horizontal:10,vertical:4),
                     decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(8)),
                     child:Row(children:[
-                      const Text('زبان ترجمه: ',style:TextStyle(color:Colors.white60,fontSize:12)),
+                      const Text(L.targetLanguage,style:TextStyle(color:Colors.white60,fontSize:12)),
                       const SizedBox(width:8),
                       Expanded(child:DropdownButton<String>(
                         value:_syncLang,isExpanded:true,dropdownColor:const Color(0xFF2A2A35),
@@ -166,7 +167,7 @@ class _State extends State<LiveSubSheet> {
                     ]),
                   ),
                   Padding(padding:const EdgeInsets.only(top:4,right:4),child:Text(
-                    'هر chunk که ساخته شد، موازی ترجمه میشه — کمترین تأخیر ممکن',
+                    L.syncTranslateDesc,
                     style:const TextStyle(color:Colors.white38,fontSize:10))),
                 ],
                 const SizedBox(height:10),
@@ -176,17 +177,17 @@ class _State extends State<LiveSubSheet> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('وقتی زیرنویس جا ماند:', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                    const Text(L.whenBehind, style: TextStyle(color: Colors.white60, fontSize: 12)),
                     const SizedBox(height: 8),
                     Row(children: [
-                      Expanded(child: _behindChip('توقف ویدیو', LiveBehindAction.pause, Icons.pause_circle_outline)),
+                      Expanded(child: _behindChip(L.pauseVideo, LiveBehindAction.pause, Icons.pause_circle_outline)),
                       const SizedBox(width: 8),
-                      Expanded(child: _behindChip('کاهش سرعت', LiveBehindAction.slowDown, Icons.slow_motion_video)),
+                      Expanded(child: _behindChip(L.slowDown, LiveBehindAction.slowDown, Icons.slow_motion_video)),
                     ]),
                     if (_behindAction == LiveBehindAction.slowDown) ...[
                       const SizedBox(height: 8),
                       Row(children: [
-                        const Text('سرعت: ', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        const Text(L.speedLabel, style: TextStyle(color: Colors.white54, fontSize: 12)),
                         ...[0.25, 0.5, 0.75].map((s) => Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: GestureDetector(onTap: () => setState(() => _behindSpeed = s), child: Container(
@@ -215,7 +216,7 @@ class _State extends State<LiveSubSheet> {
                     ));
                   },
                   icon: const Icon(Icons.play_arrow),
-                  label: const Text('شروع زیرنویس زنده'),
+                  label: const Text(L.startProcessing),
                   style: FilledButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 14)),
                 )),
               ],

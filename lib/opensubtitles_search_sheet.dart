@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'opensubtitles_service.dart';
 import 'srt_translate_sheet.dart';
 import 'main.dart' show showSnack;
+import 'l10n.dart';
 
 /// شیت جستجو و دانلود زیرنویس آنلاین از OpenSubtitles
 class OpenSubtitlesSheet extends StatefulWidget {
@@ -103,10 +104,10 @@ class _State extends State<OpenSubtitlesSheet> {
           case 2: widget.onDone(path); widget.onDoneSecondary?.call(path); break;
         }
         final msg = remaining != null
-          ? 'زیرنویس دانلود شد — $remaining دانلود باقی‌مانده'
-          : _subTarget == 1 ? 'زیرنویس به Sub2 اعمال شد' : 'زیرنویس دانلود شد';
+          ? '${L.subtitleDownloaded} — \$remaining ${L.downloadCount} ${L.remaining}'
+          : _subTarget == 1 ? L.sub2Applied : L.subtitleDownloaded;
         // بعد از دانلود: پیشنهاد ترجمه
-        showSnack(context, msg, actionLabel: 'ترجمه', onAction: () => SrtTranslateSheet.show(context, path, (translated) { widget.onDone(translated); }));
+        showSnack(context, msg, actionLabel: L.translationLabel, onAction: () => SrtTranslateSheet.show(context, path, (translated) { widget.onDone(translated); }));
       }
     } catch (e) {
       if (mounted) setState((){ _error = '$e'; _loading = false; });
@@ -125,12 +126,12 @@ class _State extends State<OpenSubtitlesSheet> {
           Row(children: [
             const Icon(Icons.cloud_download_outlined, color: Color(0xFF7C3AED), size: 20),
             const SizedBox(width: 8),
-            const Text('زیرنویس آنلاین', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            const Text(L.onlineSubtitleLabel, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
             const Spacer(),
             if (_phase != _Phase.titles) TextButton(
               onPressed: () => setState(() => _phase = _selectedFeature?.type == 'tvshow' && _phase == _Phase.subs ? _Phase.episode : _Phase.titles),
-              child: const Text('بازگشت', style: TextStyle(fontSize: 12))),
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('بستن')),
+              child: const Text(L.back, style: TextStyle(fontSize: 12))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(L.close)),
           ]),
           const SizedBox(height: 10),
 
@@ -140,7 +141,7 @@ class _State extends State<OpenSubtitlesSheet> {
               controller: _searchCtrl,
               style: const TextStyle(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
-                hintText: 'نام فیلم یا سریال...',
+                hintText: L.movieOrShow,
                 hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
                 filled: true, fillColor: const Color(0xFF2A2A35),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -163,7 +164,7 @@ class _State extends State<OpenSubtitlesSheet> {
             const SizedBox(width: 6),
             _subChip('Sub 2', 1),
             const SizedBox(width: 6),
-            _subChip('هر دو', 2),
+            _subChip(L.both, 2),
           ]),
           const SizedBox(height: 12),
 
@@ -185,7 +186,7 @@ class _State extends State<OpenSubtitlesSheet> {
 
   List<Widget> _buildTitles() {
     if (_titles.isEmpty) return [const Padding(padding: EdgeInsets.all(20),
-      child: Text('چیزی پیدا نشد — عبارت دیگری را امتحان کنید', style: TextStyle(color: Colors.white38, fontSize: 12)))];
+      child: Text(L.notFoundTry, style: TextStyle(color: Colors.white38, fontSize: 12)))];
     return _titles.map((f) => Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
@@ -205,7 +206,7 @@ class _State extends State<OpenSubtitlesSheet> {
           const SizedBox(width: 6),
           Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.2), borderRadius: BorderRadius.circular(6)),
-            child: Text(f.type == 'tvshow' ? 'سریال' : 'فیلم', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 10))),
+            child: Text(f.type == 'tvshow' ? L.tvShow : L.movie, style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 10))),
         ]),
         trailing: const Icon(Icons.chevron_left, color: Colors.white38, size: 18),
       ),
@@ -219,15 +220,15 @@ class _State extends State<OpenSubtitlesSheet> {
     Text(_selectedFeature?.title ?? '', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
     const SizedBox(height: 12),
     Row(children: [
-      Expanded(child: _numberField('فصل', _season, (v) => setState(() => _season = v))),
+      Expanded(child: _numberField(L.season, _season, (v) => setState(() => _season = v))),
       const SizedBox(width: 10),
-      Expanded(child: _numberField('قسمت', _episode, (v) => setState(() => _episode = v))),
+      Expanded(child: _numberField(L.episode, _episode, (v) => setState(() => _episode = v))),
     ]),
     const SizedBox(height: 14),
     SizedBox(width: double.infinity, child: FilledButton.icon(
       onPressed: _doSubsSearch,
       icon: const Icon(Icons.search, size: 16),
-      label: const Text('جستجوی زیرنویس این قسمت'),
+      label: const Text(L.searchThisEpisode),
       style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 14)),
     )),
   ];
@@ -247,7 +248,7 @@ class _State extends State<OpenSubtitlesSheet> {
 
   List<Widget> _buildSubs() {
     if (_subs.isEmpty) return [const Padding(padding: EdgeInsets.all(20),
-      child: Text('زیرنویسی برای این مورد پیدا نشد', style: TextStyle(color: Colors.white38, fontSize: 12)))];
+      child: Text(L.noSubtitleFound, style: TextStyle(color: Colors.white38, fontSize: 12)))];
 
     // زبان‌های موجود — برای دیدن این که چه کشورهایی موجودند
     final langs = _subs.map((s) => s.language).toSet().toList()..sort();
@@ -256,7 +257,7 @@ class _State extends State<OpenSubtitlesSheet> {
       if (langs.length > 1) Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-          _langChip('همه', ''),
+          _langChip(L.allItems, ''),
           ...langs.map((l) => Padding(padding: const EdgeInsets.only(left: 6), child: _langChip(l.toUpperCase(), l))),
         ])),
       ),
@@ -270,13 +271,13 @@ class _State extends State<OpenSubtitlesSheet> {
             child: Text(s.language.toUpperCase(), style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 11, fontWeight: FontWeight.bold))),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(s.release.isEmpty ? '(بدون نام)' : s.release, style: const TextStyle(color: Colors.white, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(s.release.isEmpty ? L.noName : s.release, style: const TextStyle(color: Colors.white, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
             Row(children: [
               if (s.hd) Container(padding: const EdgeInsets.symmetric(horizontal: 4), decoration: BoxDecoration(color: Colors.green.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
                 child: const Text('HD', style: TextStyle(color: Colors.green, fontSize: 9))),
               const SizedBox(width: 6),
-              Text('${s.downloadCount} دانلود', style: const TextStyle(color: Colors.white38, fontSize: 10)),
+              Text('\${s.downloadCount} \${L.downloadCount}', style: const TextStyle(color: Colors.white38, fontSize: 10)),
             ]),
           ])),
           IconButton(icon: const Icon(Icons.download, color: Color(0xFF7C3AED)), onPressed: () => _download(s)),
@@ -307,4 +308,3 @@ class _State extends State<OpenSubtitlesSheet> {
     ),
   );
 }
-

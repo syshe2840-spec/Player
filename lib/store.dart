@@ -15,12 +15,12 @@ const List<String> kSubExt = ['.srt','.ass','.ssa','.vtt','.sub','.sbv','.smi','
 
 // فونت‌های پیش‌فرض
 const List<(String label, String family)> kDefaultFonts = [
-  ('پیش‌فرض', ''),
-  ('سریف', 'serif'),
-  ('تک‌فاصله', 'monospace'),
-  ('فشرده', 'sans-serif-condensed'),
-  ('نازک', 'sans-serif-light'),
-  ('ایتالیک', 'cursive'),
+  ('Default', ''),
+  ('Serif', 'serif'),
+  ('Monospace', 'monospace'),
+  ('Condensed', 'sans-serif-condensed'),
+  ('Light', 'sans-serif-light'),
+  ('Italic', 'cursive'),
 ];
 
 // ─── ابزارها ───
@@ -430,3 +430,4 @@ class Store {
     return _durCache[path]=p.getInt('dur:$path')??0;
   }
 }
+

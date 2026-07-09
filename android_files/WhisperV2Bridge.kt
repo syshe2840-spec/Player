@@ -36,4 +36,3 @@ object WhisperV2Bridge {
     /** اطلاعات سیستم (CPU features: NEON, AVX, ...) — برای دیباگ */
     external fun nativeGetSystemInfo(): String
 }
-

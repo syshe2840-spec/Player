@@ -1,0 +1,464 @@
+// lib/l10n.dart — سیستم چند زبانه Vezoo — نسخه کامل
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+const kSupportedLangs = ['en','fa','ar','ru','zh','ja','hi'];
+const kLangNames = {
+  'en':'English','fa':'فارسی','ar':'العربية',
+  'ru':'Русский','zh':'中文','ja':'日本語','hi':'हिन्दी',
+};
+TextDirection langDir(String lang) =>
+  (lang=='fa'||lang=='ar') ? TextDirection.rtl : TextDirection.ltr;
+
+class L {
+  static String _lang = 'en';
+  static String get current => _lang;
+
+  static Future<void> load() async {
+    final p = await SharedPreferences.getInstance();
+    _lang = p.getString('app_language') ?? 'en';
+  }
+  static Future<void> set(String lang) async {
+    _lang = lang;
+    (await SharedPreferences.getInstance()).setString('app_language', lang);
+  }
+  static String _t(Map<String,String> m) => m[_lang] ?? m['en'] ?? '';
+
+  // ── عمومی ──
+  static String get ok => _t({'en':'OK','fa':'باشه','ar':'حسناً','ru':'ОК','zh':'好','ja':'OK','hi':'ठीक है'});
+  static String get cancel => _t({'en':'Cancel','fa':'لغو','ar':'إلغاء','ru':'Отмена','zh':'取消','ja':'キャンセル','hi':'रद्द'});
+  static String get close => _t({'en':'Close','fa':'بستن','ar':'إغلاق','ru':'Закрыть','zh':'关闭','ja':'閉じる','hi':'बंद करें'});
+  static String get save => _t({'en':'Save','fa':'ذخیره','ar':'حفظ','ru':'Сохранить','zh':'保存','ja':'保存','hi':'सहेजें'});
+  static String get delete => _t({'en':'Delete','fa':'حذف','ar':'حذف','ru':'Удалить','zh':'删除','ja':'削除','hi':'हटाएं'});
+  static String get error => _t({'en':'Error','fa':'خطا','ar':'خطأ','ru':'Ошибка','zh':'错误','ja':'エラー','hi':'त्रुटि'});
+  static String get loading => _t({'en':'Loading...','fa':'در حال بارگذاری...','ar':'جارٍ التحميل...','ru':'Загрузка...','zh':'加载中...','ja':'読み込み中...','hi':'लोड हो रहा है...'});
+  static String get search => _t({'en':'Search','fa':'جستجو','ar':'بحث','ru':'Поиск','zh':'搜索','ja':'検索','hi':'खोज'});
+  static String get settings => _t({'en':'Settings','fa':'تنظیمات','ar':'الإعدادات','ru':'Настройки','zh':'设置','ja':'設定','hi':'सेटिंग्स'});
+  static String get language => _t({'en':'Language','fa':'زبان','ar':'اللغة','ru':'Язык','zh':'语言','ja':'言語','hi':'भाषा'});
+  static String get confirm => _t({'en':'Confirm','fa':'تأیید','ar':'تأكيد','ru':'Подтвердить','zh':'确认','ja':'確認','hi':'पुष्टि करें'});
+  static String get yes => _t({'en':'Yes','fa':'بله','ar':'نعم','ru':'Да','zh':'是','ja':'はい','hi':'हाँ'});
+  static String get no => _t({'en':'No','fa':'خیر','ar':'لا','ru':'Нет','zh':'否','ja':'いいえ','hi':'नहीं'});
+  static String get add => _t({'en':'Add','fa':'افزودن','ar':'إضافة','ru':'Добавить','zh':'添加','ja':'追加','hi':'जोड़ें'});
+  static String get edit => _t({'en':'Edit','fa':'ویرایش','ar':'تعديل','ru':'Редактировать','zh':'编辑','ja':'編集','hi':'संपादन'});
+  static String get rename => _t({'en':'Rename','fa':'تغییر نام','ar':'إعادة تسمية','ru':'Переименовать','zh':'重命名','ja':'名前変更','hi':'नाम बदलें'});
+  static String get share => _t({'en':'Share','fa':'اشتراک‌گذاری','ar':'مشاركة','ru':'Поделиться','zh':'分享','ja':'共有','hi':'शेयर करें'});
+  static String get copy => _t({'en':'Copy','fa':'کپی','ar':'نسخ','ru':'Копировать','zh':'复制','ja':'コピー','hi':'कॉपी'});
+  static String get copied => _t({'en':'Copied','fa':'کپی شد','ar':'تم النسخ','ru':'Скопировано','zh':'已复制','ja':'コピーしました','hi':'कॉपी हो गया'});
+  static String get linkCopied => _t({'en':'Link copied','fa':'لینک کپی شد','ar':'تم نسخ الرابط','ru':'Ссылка скопирована','zh':'链接已复制','ja':'リンクをコピーしました','hi':'लिंक कॉपी हो गया'});
+  static String get view => _t({'en':'View','fa':'مشاهده','ar':'عرض','ru':'Просмотр','zh':'查看','ja':'表示','hi':'देखें'});
+  static String get all => _t({'en':'All','fa':'همه','ar':'الكل','ru':'Все','zh':'全部','ja':'すべて','hi':'सभी'});
+  static String get none => _t({'en':'None','fa':'هیچ‌کدام','ar':'لا شيء','ru':'Нет','zh':'无','ja':'なし','hi':'कोई नहीं'});
+  static String get done => _t({'en':'Done','fa':'تمام شد','ar':'تم','ru':'Готово','zh':'完成','ja':'完了','hi':'हो गया'});
+  static String get start => _t({'en':'Start','fa':'شروع','ar':'ابدأ','ru':'Начать','zh':'开始','ja':'開始','hi':'शुरू'});
+  static String get stop => _t({'en':'Stop','fa':'توقف','ar':'إيقاف','ru':'Стоп','zh':'停止','ja':'停止','hi':'रोकें'});
+  static String get continue_ => _t({'en':'Continue','fa':'ادامه','ar':'استمرار','ru':'Продолжить','zh':'继续','ja':'続ける','hi':'जारी रखें'});
+  static String get retry => _t({'en':'Retry','fa':'تلاش مجدد','ar':'إعادة المحاولة','ru':'Повторить','zh':'重试','ja':'再試行','hi':'पुनः प्रयास'});
+  static String get noResult => _t({'en':'No results','fa':'نتیجه‌ای نیست','ar':'لا توجد نتائج','ru':'Нет результатов','zh':'无结果','ja':'結果なし','hi':'कोई परिणाम नहीं'});
+  static String get noAccess => _t({'en':'Access denied','fa':'دسترسی ندارید','ar':'الوصول مرفوض','ru':'Нет доступа','zh':'拒绝访问','ja':'アクセス拒否','hi':'पहुंच अस्वीकृत'});
+  static String get fileNotFound => _t({'en':'File not found','fa':'فایل یافت نشد','ar':'الملف غير موجود','ru':'Файл не найден','zh':'文件未找到','ja':'ファイルが見つかりません','hi':'फ़ाइल नहीं मिली'});
+  static String get saved => _t({'en':'Saved','fa':'ذخیره شد','ar':'تم الحفظ','ru':'Сохранено','zh':'已保存','ja':'保存されました','hi':'सहेजा गया'});
+  static String get deleted => _t({'en':'Deleted','fa':'حذف شد','ar':'تم الحذف','ru':'Удалено','zh':'已删除','ja':'削除されました','hi':'हटा दिया गया'});
+  static String get cancelled => _t({'en':'Cancelled','fa':'لغو شد','ar':'تم الإلغاء','ru':'Отменено','zh':'已取消','ja':'キャンセルされました','hi':'रद्द कर दिया गया'});
+  static String get processing => _t({'en':'Processing...','fa':'در حال پردازش...','ar':'جارٍ المعالجة...','ru':'Обработка...','zh':'处理中...','ja':'処理中...','hi':'प्रोसेस हो रहा है...'});
+  static String get newItem => _t({'en':'New','fa':'جدید','ar':'جديد','ru':'Новый','zh':'新建','ja':'新規','hi':'नया'});
+  static String get back => _t({'en':'Back','fa':'بازگشت','ar':'رجوع','ru':'Назад','zh':'返回','ja':'戻る','hi':'वापस'});
+  static String get stay => _t({'en':'Stay','fa':'ماندن','ar':'ابق','ru':'Остаться','zh':'留下','ja':'残る','hi':'रहें'});
+
+  // ── پلیر ──
+  static String get play => _t({'en':'Play','fa':'پخش','ar':'تشغيل','ru':'Воспроизвести','zh':'播放','ja':'再生','hi':'चलाएं'});
+  static String get pause => _t({'en':'Pause','fa':'مکث','ar':'إيقاف مؤقت','ru':'Пауза','zh':'暂停','ja':'一時停止','hi':'रुकें'});
+  static String get playPause => _t({'en':'Play / Pause','fa':'پخش / توقف','ar':'تشغيل / إيقاف','ru':'Пуза/Воспр.','zh':'播放/暂停','ja':'再生/一時停止','hi':'चलाएं/रोकें'});
+  static String get subtitle => _t({'en':'Subtitle','fa':'زیرنویس','ar':'ترجمة','ru':'Субтитры','zh':'字幕','ja':'字幕','hi':'सबटाइटल'});
+  static String get subtitle2 => _t({'en':'Subtitle 2','fa':'زیرنویس ۲','ar':'ترجمة ٢','ru':'Субтитры 2','zh':'字幕 2','ja':'字幕 2','hi':'सबटाइटल 2'});
+  static String get audio => _t({'en':'Audio','fa':'صدا','ar':'صوت','ru':'Аудио','zh':'音频','ja':'音声','hi':'ऑडियो'});
+  static String get lock => _t({'en':'Lock','fa':'قفل','ar':'قفل','ru':'Блокировка','zh':'锁定','ja':'ロック','hi':'लॉक'});
+  static String get unlock => _t({'en':'Unlock','fa':'باز کردن قفل','ar':'إلغاء القفل','ru':'Разблокировать','zh':'解锁','ja':'ロック解除','hi':'अनलॉक'});
+  static String get lockScreen => _t({'en':'Lock Screen','fa':'قفل صفحه','ar':'قفل الشاشة','ru':'Блокировка экрана','zh':'锁屏','ja':'画面ロック','hi':'स्क्रीन लॉक'});
+  static String get locked => _t({'en':'Locked — tap to unlock','fa':'🔒 قفل شد — برای توقف لمس کنید','ar':'🔒 مقفل — انقر للإلغاء','ru':'🔒 Заблокировано','zh':'🔒 已锁定','ja':'🔒 ロック済み','hi':'🔒 लॉक — टैप करें'});
+  static String get pip => _t({'en':'Picture in Picture','fa':'تصویر در تصویر','ar':'صورة في صورة','ru':'Картинка в картинке','zh':'画中画','ja':'ピクチャーインピクチャー','hi':'पिक्चर इन पिक्चर'});
+  static String get pipNotSupported => _t({'en':'PiP not supported','fa':'PiP پشتیبانی نمیشه','ar':'PiP غير مدعوم','ru':'PiP не поддерживается','zh':'不支持画中画','ja':'PiP非対応','hi':'PiP समर्थित नहीं'});
+  static String get screenshot => _t({'en':'Screenshot','fa':'اسکرین‌شات','ar':'لقطة شاشة','ru':'Скриншот','zh':'截图','ja':'スクリーンショット','hi':'स्क्रीनशॉट'});
+  static String get screenshotSaved => _t({'en':'Screenshot saved','fa':'اسکرین‌شات ذخیره شد','ar':'تم حفظ لقطة الشاشة','ru':'Скриншот сохранён','zh':'截图已保存','ja':'スクリーンショット保存','hi':'स्क्रीनशॉट सहेजा'});
+  static String get screenshotError => _t({'en':'Screenshot error','fa':'خطا در اسکرین‌شات','ar':'خطأ في لقطة الشاشة','ru':'Ошибка скриншота','zh':'截图错误','ja':'スクリーンショットエラー','hi':'स्क्रीनशॉट त्रुटि'});
+  static String get copyText => _t({'en':'Copy Text','fa':'کپی متن','ar':'نسخ النص','ru':'Копировать текст','zh':'复制文字','ja':'テキストをコピー','hi':'टेक्स्ट कॉपी'});
+  static String get textCopied => _t({'en':'Text copied','fa':'متن کپی شد','ar':'تم نسخ النص','ru':'Текст скопирован','zh':'文字已复制','ja':'テキストをコピーしました','hi':'टेक्स्ट कॉपी हो गया'});
+  static String get speed => _t({'en':'Speed','fa':'سرعت','ar':'السرعة','ru':'Скорость','zh':'速度','ja':'速度','hi':'गति'});
+  static String get normal => _t({'en':'Normal','fa':'عادی','ar':'عادي','ru':'Обычный','zh':'正常','ja':'通常','hi':'सामान्य'});
+  static String get ratio => _t({'en':'Aspect Ratio','fa':'نسبت تصویر','ar':'نسبة العرض','ru':'Соотношение','zh':'宽高比','ja':'アスペクト比','hi':'अनुपात'});
+  static String get fit => _t({'en':'Fit','fa':'متناسب','ar':'ملاءمة','ru':'По размеру','zh':'适应','ja':'フィット','hi':'फ़िट'});
+  static String get fill => _t({'en':'Fill','fa':'پر','ar':'ملء','ru':'Заполнить','zh':'填充','ja':'フィル','hi':'भरें'});
+  static String get stretch => _t({'en':'Stretch','fa':'کشیده','ar':'مطاطة','ru':'Растянуть','zh':'拉伸','ja':'ストレッチ','hi':'खींचें'});
+  static String get rotate => _t({'en':'Rotate','fa':'چرخش','ar':'تدوير','ru':'Поворот','zh':'旋转','ja':'回転','hi':'घुमाएं'});
+  static String get mute => _t({'en':'Mute','fa':'بی‌صدا','ar':'كتم','ru':'Без звука','zh':'静音','ja':'ミュート','hi':'म्यूट'});
+  static String get unmute => _t({'en':'Unmute','fa':'لغو بی‌صدا','ar':'إلغاء كتم','ru':'Включить звук','zh':'取消静音','ja':'ミュート解除','hi':'अनम्यूट'});
+  static String get nightMode => _t({'en':'Night Mode','fa':'حالت شب','ar':'وضع الليل','ru':'Ночной режим','zh':'夜间模式','ja':'ナイトモード','hi':'नाइट मोड'});
+  static String get disableNightMode => _t({'en':'Disable Night Mode','fa':'خاموش حالت شب','ar':'تعطيل وضع الليل','ru':'Откл. ночной режим','zh':'关闭夜间模式','ja':'ナイトモード解除','hi':'नाइट मोड बंद'});
+  static String get repeat => _t({'en':'Repeat','fa':'تکرار','ar':'تكرار','ru':'Повтор','zh':'重复','ja':'繰り返し','hi':'दोहराएं'});
+  static String get repeatOff => _t({'en':'Repeat: Off','fa':'تکرار: خاموش','ar':'تكرار: إيقاف','ru':'Повтор: Выкл','zh':'重复: 关','ja':'繰り返し: オフ','hi':'दोहराएं: बंद'});
+  static String get repeatOne => _t({'en':'Repeat: One','fa':'تکرار: یک','ar':'تكرار: واحد','ru':'Повтор: Один','zh':'重复: 单曲','ja':'繰り返し: 1曲','hi':'दोहराएं: एक'});
+  static String get repeatAll => _t({'en':'Repeat: All','fa':'تکرار: همه','ar':'تكرار: الكل','ru':'Повтор: Все','zh':'重复: 全部','ja':'繰り返し: すべて','hi':'दोहराएं: सभी'});
+  static String get videoInfo => _t({'en':'Video Info','fa':'اطلاعات ویدیو','ar':'معلومات الفيديو','ru':'Инфо видео','zh':'视频信息','ja':'ビデオ情報','hi':'वीडियो जानकारी'});
+  static String get resolution => _t({'en':'Resolution','fa':'رزولوشن','ar':'الدقة','ru':'Разрешение','zh':'分辨率','ja':'解像度','hi':'रेज़ॉल्यूशन'});
+  static String get frameRate => _t({'en':'Frame Rate','fa':'فریم ریت','ar':'معدل الإطار','ru':'Частота кадров','zh':'帧率','ja':'フレームレート','hi':'फ्रेम रेट'});
+  static String get codec => _t({'en':'Codec','fa':'کدک','ar':'كودك','ru':'Кодек','zh':'编解码器','ja':'コーデック','hi':'कोडेक'});
+  static String get bitrate => _t({'en':'Bitrate','fa':'بیت‌ریت','ar':'معدل البت','ru':'Битрейт','zh':'比特率','ja':'ビットレート','hi':'बिटरेट'});
+  static String get hwDecode => _t({'en':'Hardware Decode','fa':'سخت‌افزاری (HW)','ar':'فك تشفير الأجهزة','ru':'Аппаратное декод.','zh':'硬件解码','ja':'ハードウェアデコード','hi':'हार्डवेयर डीकोड'});
+  static String get swDecode => _t({'en':'Software Decode','fa':'نرم‌افزاری (SW)','ar':'فك تشفير البرامج','ru':'Программное декод.','zh':'软件解码','ja':'ソフトウェアデコード','hi':'सॉफ्टवेयर डीकोड'});
+  static String get hwActive => _t({'en':'Hardware active','fa':'سخت‌افزاری فعال','ar':'الأجهزة نشطة','ru':'Аппаратное активно','zh':'硬件激活','ja':'ハードウェア有効','hi':'हार्डवेयर सक्रिय'});
+  static String get audioTracks => _t({'en':'Audio Tracks','fa':'تراک صوتی','ar':'مسارات الصوت','ru':'Аудио дорожки','zh':'音轨','ja':'音声トラック','hi':'ऑडियो ट्रैक'});
+  static String get audioTrackNotFound => _t({'en':'No audio track found','fa':'تراک صوتی یافت نشد','ar':'لم يوجد مسار صوتي','ru':'Аудио дорожки нет','zh':'未找到音轨','ja':'音声トラックなし','hi':'ऑडियो ट्रैक नहीं मिला'});
+  static String get selectAudioTrack => _t({'en':'Select Audio Track','fa':'انتخاب تراک صوتی','ar':'اختر مسار الصوت','ru':'Выбрать аудио','zh':'选择音轨','ja':'音声トラック選択','hi':'ऑडियो ट्रैक चुनें'});
+  static String get resumeFrom => _t({'en':'Resume from here?','fa':'از اینجا ادامه دهیم؟','ar':'هل تريد الاستئناف؟','ru':'Продолжить отсюда?','zh':'从这里继续?','ja':'ここから再開しますか?','hi':'यहाँ से जारी रखें?'});
+  static String get fromBeginning => _t({'en':'From beginning','fa':'از ابتدا','ar':'من البداية','ru':'С начала','zh':'从头开始','ja':'最初から','hi':'शुरू से'});
+  static String get sleepTimer => _t({'en':'Sleep Timer','fa':'تایمر خواب','ar':'مؤقت النوم','ru':'Таймер сна','zh':'睡眠定时器','ja':'スリープタイマー','hi':'स्लीप टाइमर'});
+  static String get tenSecBack => _t({'en':'10s back','fa':'۱۰ ثانیه عقب','ar':'١٠ ثواني للخلف','ru':'10 сек. назад','zh':'后退10秒','ja':'10秒戻る','hi':'10 सेकंड पीछे'});
+  static String get tenSecForward => _t({'en':'10s forward','fa':'۱۰ ثانیه ⏭','ar':'١٠ ثواني للأمام','ru':'10 сек. вперёд','zh':'快进10秒','ja':'10秒進む','hi':'10 सेकंड आगे'});
+  static String get aToB => _t({'en':'A-B Repeat','fa':'A-B پاک شد','ar':'تكرار A-B','ru':'Повтор A-B','zh':'AB重复','ja':'ABリピート','hi':'A-B रिपीट'});
+  static String get decoding => _t({'en':'Decoding...','fa':'رمزگشایی...','ar':'جارٍ فك التشفير...','ru':'Декодирование...','zh':'解码中...','ja':'デコード中...','hi':'डीकोड हो रहा है...'});
+  static String get decodeError => _t({'en':'Decode error','fa':'خطای رمزگشایی','ar':'خطأ في فك التشفير','ru':'Ошибка декодирования','zh':'解码错误','ja':'デコードエラー','hi':'डीकोड त्रुटि'});
+  static String get fontLoaded => _t({'en':'Font loaded','fa':'فونت بارگذاری شد','ar':'تم تحميل الخط','ru':'Шрифт загружен','zh':'字体已加载','ja':'フォント読み込み完了','hi':'फ़ॉन्ट लोड हो गया'});
+  static String get fontError => _t({'en':'Font error','fa':'خطا در فونت','ar':'خطأ في الخط','ru':'Ошибка шрифта','zh':'字体错误','ja':'フォントエラー','hi':'फ़ॉन्ट त्रुटि'});
+  static String get settingsSaved => _t({'en':'Settings saved for this video','fa':'تنظیمات برای این ویدیو ذخیره شد','ar':'تم حفظ الإعدادات','ru':'Настройки сохранены','zh':'设置已保存','ja':'設定を保存しました','hi':'सेटिंग्स सहेजी गईं'});
+
+  // ── زیرنویس ──
+  static String get loadSubtitle => _t({'en':'Load Subtitle','fa':'بارگذاری زیرنویس','ar':'تحميل الترجمة','ru':'Загрузить субтитры','zh':'加载字幕','ja':'字幕を読み込む','hi':'सबटाइटल लोड'});
+  static String get onlineSubtitle => _t({'en':'Online Subtitle','fa':'زیرنویس آنلاین','ar':'ترجمة عبر الإنترنت','ru':'Онлайн субтитры','zh':'在线字幕','ja':'オンライン字幕','hi':'ऑनलाइन सबटाइटल'});
+  static String get liveSubtitle => _t({'en':'Live Subtitle (V2)','fa':'زیرنویس زنده (V2)','ar':'ترجمة مباشرة (V2)','ru':'Живые субтитры (V2)','zh':'实时字幕 (V2)','ja':'ライブ字幕 (V2)','hi':'लाइव सबटाइटल (V2)'});
+  static String get aiSubtitle => _t({'en':'AI Subtitle (Offline)','fa':'زیرنویس AI (آفلاین)','ar':'ترجمة الذكاء الاصطناعي','ru':'ИИ субтитры (офлайн)','zh':'AI字幕 (离线)','ja':'AI字幕 (オフライン)','hi':'AI सबटाइटल (ऑफलाइन)'});
+  static String get translateSubtitle => _t({'en':'Translate Subtitle','fa':'ترجمه زیرنویس','ar':'ترجمة الترجمة','ru':'Перевести субтитры','zh':'翻译字幕','ja':'字幕を翻訳','hi':'सबटाइटल अनुवाद'});
+  static String get editSubtitle => _t({'en':'Edit Subtitle','fa':'ویرایش زیرنویس','ar':'تعديل الترجمة','ru':'Редактировать субтитры','zh':'编辑字幕','ja':'字幕を編集','hi':'सबटाइटल संपादन'});
+  static String get musicSubtitle => _t({'en':'Music Subtitle (LRCLib)','fa':'زیرنویس موزیک (LRCLib)','ar':'ترجمة الموسيقى','ru':'Муз. субтитры','zh':'音乐字幕','ja':'音楽字幕','hi':'संगीत सबटाइटल'});
+  static String get syncSubtitle => _t({'en':'Sync','fa':'همگام‌سازی','ar':'مزامنة','ru':'Синхронизация','zh':'同步','ja':'同期','hi':'सिंक'});
+  static String get subtitleSettings => _t({'en':'Subtitle Settings','fa':'تنظیمات نمایش زیرنویس','ar':'إعدادات الترجمة','ru':'Настройки субтитров','zh':'字幕设置','ja':'字幕設定','hi':'सबटाइटल सेटिंग्स'});
+  static String get subtitleEmpty => _t({'en':'Subtitle was empty','fa':'زیرنویس خالی بود','ar':'الترجمة فارغة','ru':'Субтитры пусты','zh':'字幕为空','ja':'字幕が空でした','hi':'सबटाइटल खाली था'});
+  static String get subtitleLoaded => _t({'en':'Subtitle loaded','fa':'زیرنویس بارگذاری شد','ar':'تم تحميل الترجمة','ru':'Субтитры загружены','zh':'字幕已加载','ja':'字幕読み込み完了','hi':'सबटाइटल लोड हो गया'});
+  static String get aiSubtitleLoaded => _t({'en':'AI subtitle loaded','fa':'زیرنویس AI بارگذاری شد','ar':'تم تحميل ترجمة AI','ru':'ИИ субтитры загружены','zh':'AI字幕已加载','ja':'AI字幕を読み込みました','hi':'AI सबटाइटल लोड'});
+  static String get onlineSubtitleLoaded => _t({'en':'Online subtitle loaded','fa':'زیرنویس آنلاین بارگذاری شد','ar':'تم تحميل الترجمة','ru':'Онлайн субтитры загружены','zh':'在线字幕已加载','ja':'オンライン字幕読み込み完了','hi':'ऑनलाइन सबटाइटल लोड'});
+  static String get noSubtitleLoaded => _t({'en':'Load a subtitle first','fa':'ابتدا یک زیرنویس بارگذاری کنید','ar':'يرجى تحميل ترجمة أولاً','ru':'Сначала загрузите субтитры','zh':'请先加载字幕','ja':'字幕を先に読み込んでください','hi':'पहले सबटाइटल लोड करें'});
+  static String get translationCancelled => _t({'en':'Translation cancelled','fa':'ترجمه لغو شد','ar':'تم إلغاء الترجمة','ru':'Перевод отменён','zh':'翻译已取消','ja':'翻訳キャンセル','hi':'अनुवाद रद्द'});
+  static String get translationDone => _t({'en':'✓ Translation complete','fa':'✓ ترجمه کامل شد و اعمال شد','ar':'✓ اكتمل الترجمة','ru':'✓ Перевод завершён','zh':'✓ 翻译完成','ja':'✓ 翻訳完了','hi':'✓ अनुवाद पूर्ण'});
+  static String get translationOnSub2 => _t({'en':'✓ Translation applied to Sub2','fa':'✓ ترجمه روی Sub2 اعمال شد','ar':'✓ تم تطبيق الترجمة على Sub2','ru':'✓ Перевод применён к Sub2','zh':'✓ 翻译已应用到Sub2','ja':'✓ Sub2に翻訳適用','hi':'✓ Sub2 पर अनुवाद'});
+  static String get delay => _t({'en':'Delay (ms)','fa':'دیلی (ms)','ar':'التأخير (ms)','ru':'Задержка (мс)','zh':'延迟 (ms)','ja':'ディレイ (ms)','hi':'देरी (ms)'});
+  static String get subDelay => _t({'en':'Subtitle Delay (ms):','fa':'دیلی زیرنویس (ms):','ar':'تأخير الترجمة (ms):','ru':'Задержка субтитров (мс):','zh':'字幕延迟 (ms):','ja':'字幕ディレイ (ms):','hi':'सबटाइटल देरी (ms):'});
+  static String get subDelay2 => _t({'en':'Subtitle 2 Delay (ms):','fa':'دیلی زیرنویس ۲ (ms):','ar':'تأخير ترجمة ٢ (ms):','ru':'Задержка субтитров 2 (мс):','zh':'字幕2延迟 (ms):','ja':'字幕2ディレイ (ms):','hi':'सबटाइटल 2 देरी (ms):'});
+  static String get audioDelay => _t({'en':'Audio Delay (ms):','fa':'دیلی صدا (ms):','ar':'تأخير الصوت (ms):','ru':'Задержка аудио (мс):','zh':'音频延迟 (ms):','ja':'音声ディレイ (ms):','hi':'ऑडियो देरी (ms):'});
+  static String get fontSize => _t({'en':'Font Size','fa':'اندازه فونت','ar':'حجم الخط','ru':'Размер шрифта','zh':'字体大小','ja':'フォントサイズ','hi':'फ़ॉन्ट आकार'});
+  static String get fontColor => _t({'en':'Color','fa':'رنگ','ar':'اللون','ru':'Цвет','zh':'颜色','ja':'色','hi':'रंग'});
+  static String get textColor => _t({'en':'Text Color','fa':'رنگ متن','ar':'لون النص','ru':'Цвет текста','zh':'文字颜色','ja':'テキスト色','hi':'टेक्स्ट रंग'});
+  static String get bgColor => _t({'en':'Background Color','fa':'رنگ پس‌زمینه','ar':'لون الخلفية','ru':'Цвет фона','zh':'背景颜色','ja':'背景色','hi':'पृष्ठभूमि रंग'});
+  static String get bold => _t({'en':'Bold','fa':'ضخیم','ar':'غامق','ru':'Жирный','zh':'粗体','ja':'太字','hi':'बोल्ड'});
+  static String get shadow => _t({'en':'Shadow','fa':'سایه','ar':'ظل','ru':'Тень','zh':'阴影','ja':'影','hi':'छाया'});
+  static String get background => _t({'en':'Background','fa':'پس‌زمینه','ar':'الخلفية','ru':'Фон','zh':'背景','ja':'背景','hi':'पृष्ठभूमि'});
+  static String get position => _t({'en':'Position','fa':'موقعیت','ar':'الموضع','ru':'Позиция','zh':'位置','ja':'位置','hi':'स्थिति'});
+  static String get alignment => _t({'en':'Alignment','fa':'چینش','ar':'محاذاة','ru':'Выравнивание','zh':'对齐','ja':'整列','hi':'संरेखण'});
+  static String get left => _t({'en':'Left','fa':'چپ','ar':'يسار','ru':'Лево','zh':'左','ja':'左','hi':'बाएं'});
+  static String get center => _t({'en':'Center','fa':'وسط','ar':'وسط','ru':'Центр','zh':'中','ja':'中央','hi':'केंद्र'});
+  static String get right => _t({'en':'Right','fa':'راست','ar':'يمين','ru':'Право','zh':'右','ja':'右','hi':'दाएं'});
+  static String get font => _t({'en':'Font','fa':'فونت','ar':'الخط','ru':'Шрифт','zh':'字体','ja':'フォント','hi':'फ़ॉन्ट'});
+  static String get defaultFont => _t({'en':'Default','fa':'پیش‌فرض','ar':'افتراضي','ru':'По умолчанию','zh':'默认','ja':'デフォルト','hi':'डिफ़ॉल्ट'});
+  static String get customFont => _t({'en':'Custom font (TTF/OTF)','fa':'فونت دلخواه از فایل (TTF/OTF)','ar':'خط مخصص (TTF/OTF)','ru':'Свой шрифт (TTF/OTF)','zh':'自定义字体','ja':'カスタムフォント','hi':'कस्टम फ़ॉन्ट'});
+  static String get transparency => _t({'en':'Transparency','fa':'شفافیت','ar':'الشفافية','ru':'Прозрачность','zh':'透明度','ja':'透明度','hi':'पारदर्शिता'});
+  static String get showSubToolbar => _t({'en':'Show drag & copy buttons','fa':'نمایش دکمه‌های زیرنویس','ar':'إظهار أزرار الترجمة','ru':'Кнопки субтитров','zh':'显示字幕按钮','ja':'字幕ボタン表示','hi':'सबटाइटल बटन दिखाएं'});
+  static String get subToolbarDesc => _t({'en':'Drag and copy icon on screen','fa':'دکمه کپی و آیکون جابجایی روی صفحه','ar':'أيقونات النسخ والنقل','ru':'Кнопки копирования и перемещения','zh':'复制和移动图标','ja':'コピー・移動ボタン','hi':'कॉपी और मूव बटन'});
+  static String get embeddedSubtitle => _t({'en':'Embedded Subtitle (Softsub)','fa':'زیرنویس داخلی (Softsub)','ar':'ترجمة مضمنة','ru':'Встроенные субтитры','zh':'内嵌字幕','ja':'内蔵字幕','hi':'एम्बेडेड सबटाइटल'});
+  static String get embeddedSubtitleVideo => _t({'en':'Embedded video subtitle','fa':'زیرنویس داخلی ویدیو','ar':'ترجمة داخل الفيديو','ru':'Встроенные субтитры видео','zh':'视频内嵌字幕','ja':'ビデオ内蔵字幕','hi':'वीडियो सबटाइटल'});
+  static String get noEmbeddedSubtitle => _t({'en':'No embedded subtitle track','fa':'این ویدیو تراک زیرنویس داخلی ندارد','ar':'لا يوجد مسار ترجمة مضمن','ru':'Нет встроенных субтитров','zh':'无内嵌字幕','ja':'内蔵字幕なし','hi':'कोई एम्बेडेड ट्रैक नहीं'});
+  static String get enableEmbeddedSub => _t({'en':'Enable embedded subtitle','fa':'فعال‌سازی زیرنویس داخلی','ar':'تفعيل الترجمة المضمنة','ru':'Включить встроенные субтитры','zh':'启用内嵌字幕','ja':'内蔵字幕を有効化','hi':'एम्बेडेड सबटाइटल सक्षम'});
+  static String get loadSubSub2 => _t({'en':'Load Subtitle 2','fa':'بارگذاری زیرنویس ۲','ar':'تحميل الترجمة ٢','ru':'Загрузить субтитры 2','zh':'加载字幕 2','ja':'字幕2読み込み','hi':'सबटाइटल 2 लोड'});
+  static String get selectSub1 => _t({'en':'Sub 1 selection','fa':'انتخاب زیرنویس ۱','ar':'اختيار ترجمة ١','ru':'Выбор субтитров 1','zh':'选择字幕1','ja':'字幕1選択','hi':'सब 1 चुनें'});
+  static String get subDragCopy => _t({'en':'Drag & Copy buttons','fa':'دکمه drag و کپی','ar':'أزرار السحب والنسخ','ru':'Кнопки перемещения','zh':'拖拽复制按钮','ja':'ドラッグ＆コピー','hi':'ड्रैग और कॉपी'});
+  static String get copySub => _t({'en':'Copy Subtitle','fa':'کپی زیرنویس','ar':'نسخ الترجمة','ru':'Копировать субтитры','zh':'复制字幕','ja':'字幕をコピー','hi':'सबटाइटल कॉपी'});
+  static String get moveSub => _t({'en':'Move','fa':'جابجا کن','ar':'نقل','ru':'Переместить','zh':'移动','ja':'移動','hi':'स्थानांतरित करें'});
+  static String get liveRunning => _t({'en':'Live subtitle running','fa':'زیرنویس زنده — در حال اجرا','ar':'الترجمة المباشرة تعمل','ru':'Живые субтитры активны','zh':'实时字幕运行中','ja':'ライブ字幕実行中','hi':'लाइव सबटाइटल चल रहा है'});
+  static String get liveDone => _t({'en':'✓ Live subtitle complete','fa':'✓ زیرنویس زنده کامل شد','ar':'✓ اكتملت الترجمة المباشرة','ru':'✓ Живые субтитры завершены','zh':'✓ 实时字幕完成','ja':'✓ ライブ字幕完了','hi':'✓ लाइव सबटाइटल पूर्ण'});
+  static String get cancelLive => _t({'en':'Cancel live subtitle?','fa':'لغو زیرنویس زنده؟','ar':'إلغاء الترجمة المباشرة؟','ru':'Отменить живые субтитры?','zh':'取消实时字幕?','ja':'ライブ字幕をキャンセル?','hi':'लाइव सबटाइटल रद्द करें?'});
+  static String get skipChunk => _t({'en':'Skip chunk — next starts','fa':'رد این تکه — chunk بعدی شروع میشه','ar':'تخطي القطعة','ru':'Пропустить часть','zh':'跳过片段','ja':'チャンクをスキップ','hi':'चंक छोड़ें'});
+  static String get liveSubtitleSettings => _t({'en':'Live Subtitle (V2)','fa':'زیرنویس زنده (V2)','ar':'ترجمة مباشرة (V2)','ru':'Живые субтитры (V2)','zh':'实时字幕 (V2)','ja':'ライブ字幕 (V2)','hi':'लाइव सबटाइटल (V2)'});
+  static String get aiModel => _t({'en':'AI Model','fa':'مدل AI','ar':'نموذج AI','ru':'Модель ИИ','zh':'AI模型','ja':'AIモデル','hi':'AI मॉडल'});
+  static String get chunkSize => _t({'en':'Chunk size','fa':'اندازه هر تکه','ar':'حجم القطعة','ru':'Размер части','zh':'片段大小','ja':'チャンクサイズ','hi':'चंक आकार'});
+  static String get translateToEn => _t({'en':'Translate to English','fa':'ترجمه به انگلیسی','ar':'الترجمة إلى الإنجليزية','ru':'Перевести на английский','zh':'翻译成英语','ja':'英語に翻訳','hi':'अंग्रेजी में अनुवाद'});
+  static String get translateOnline => _t({'en':'Online Translation (Cloudflare AI)','fa':'ترجمه همزمان (Cloudflare AI)','ar':'الترجمة المتزامنة','ru':'Онлайн перевод','zh':'在线翻译','ja':'オンライン翻訳','hi':'ऑनलाइन अनुवाद'});
+  static String get targetLanguage => _t({'en':'Target language:','fa':'زبان ترجمه:','ar':'لغة الهدف:','ru':'Язык перевода:','zh':'目标语言:','ja':'翻訳先言語:','hi':'लक्ष्य भाषा:'});
+  static String get startProcessing => _t({'en':'Start Processing','fa':'شروع پردازش','ar':'ابدأ المعالجة','ru':'Начать обработку','zh':'开始处理','ja':'処理開始','hi':'प्रोसेस शुरू'});
+  static String get startTranslate => _t({'en':'Start translation in background','fa':'شروع ترجمه در پس‌زمینه','ar':'ابدأ الترجمة في الخلفية','ru':'Перевод в фоне','zh':'后台翻译','ja':'バックグラウンド翻訳開始','hi':'पृष्ठभूमि में अनुवाद'});
+  static String get translating => _t({'en':'Translating...','fa':'در حال ترجمه...','ar':'جارٍ الترجمة...','ru':'Перевод...','zh':'翻译中...','ja':'翻訳中...','hi':'अनुवाद हो रहा है...'});
+  static String get translationProgress => _t({'en':'Preparing...','fa':'در حال آماده‌سازی...','ar':'جارٍ التحضير...','ru':'Подготовка...','zh':'准备中...','ja':'準備中...','hi':'तैयारी हो रहा है...'});
+  static String get cancelTranslation => _t({'en':'Cancel Translation','fa':'لغو ترجمه','ar':'إلغاء الترجمة','ru':'Отменить перевод','zh':'取消翻译','ja':'翻訳キャンセル','hi':'अनुवाद रद्द'});
+  static String get applyTo => _t({'en':'Apply to:','fa':'اعمال روی:','ar':'تطبيق على:','ru':'Применить к:','zh':'应用到:','ja':'適用先:','hi':'लागू करें:'});
+  static String get both => _t({'en':'Both','fa':'هر دو','ar':'كلاهما','ru':'Оба','zh':'两者','ja':'両方','hi':'दोनों'});
+  static String get improvedSubtitle => _t({'en':'✨ Subtitle improved','fa':'✨ زیرنویس بهبود یافت','ar':'✨ تحسين الترجمة','ru':'✨ Субтитры улучшены','zh':'✨ 字幕已改善','ja':'✨ 字幕改善完了','hi':'✨ सबटाइटल बेहतर हो गया'});
+  static String get improving => _t({'en':'Improving...','fa':'در حال بهبود...','ar':'جارٍ التحسين...','ru':'Улучшение...','zh':'改善中...','ja':'改善中...','hi':'बेहतर हो रहा है...'});
+  static String get improveSubtitle => _t({'en':'✨ Improve Subtitle','fa':'✨ بهبود زیرنویس','ar':'✨ تحسين الترجمة','ru':'✨ Улучшить субтитры','zh':'✨ 改善字幕','ja':'✨ 字幕を改善','hi':'✨ सबटाइटल सुधारें'});
+  static String get preview => _t({'en':'Preview','fa':'پیش‌نمایش','ar':'معاينة','ru':'Предпросмотр','zh':'预览','ja':'プレビュー','hi':'पूर्वावलोकन'});
+  static String get previewLoaded => _t({'en':'Loaded for preview','fa':'روی پلیر بارگذاری شد برای پیش‌نمایش','ar':'تم التحميل للمعاينة','ru':'Загружено для просмотра','zh':'已加载预览','ja':'プレビュー読み込み完了','hi':'पूर्वावलोकन लोड'});
+  static String get use => _t({'en':'Use','fa':'استفاده','ar':'استخدام','ru':'Использовать','zh':'使用','ja':'使用','hi':'उपयोग'});
+  static String get createNewLang => _t({'en':'Create new language','fa':'ساخت زبان جدید','ar':'إنشاء لغة جديدة','ru':'Создать новый язык','zh':'创建新语言','ja':'新言語作成','hi':'नई भाषा बनाएं'});
+  static String get deleteSubtitle => _t({'en':'Delete subtitle','fa':'حذف زیرنویس','ar':'حذف الترجمة','ru':'Удалить субтитры','zh':'删除字幕','ja':'字幕を削除','hi':'सबटाइटल हटाएं'});
+  static String get deleteAllSubtitles => _t({'en':'Delete all AI subtitles','fa':'حذف همه زیرنویس‌های AI','ar':'حذف جميع ترجمات AI','ru':'Удалить все ИИ субтитры','zh':'删除所有AI字幕','ja':'すべてのAI字幕を削除','hi':'सभी AI सबटाइटल हटाएं'});
+  static String get improved => _t({'en':'Improved','fa':'بهبودیافته','ar':'محسّن','ru':'Улучшенный','zh':'已改善','ja':'改善済み','hi':'बेहतर'});
+  static String get translateText => _t({'en':'Translate','fa':'ترجمه','ar':'ترجمة','ru':'Перевод','zh':'翻译','ja':'翻訳','hi':'अनुवाद'});
+  static String get translatePaste => _t({'en':'Copy text and paste in translation app','fa':'متن زیرنویس را کپی کرده و در اپ ترجمه paste کنید','ar':'انسخ النص والصقه في تطبيق الترجمة','ru':'Скопируйте текст для перевода','zh':'复制文字粘贴到翻译应用','ja':'テキストをコピーして翻訳アプリに貼り付け','hi':'टेक्स्ट कॉपी करें और ट्रांसलेशन ऐप में पेस्ट करें'});
+  static String get dictionary => _t({'en':'Dictionary','fa':'دیکشنری','ar':'قاموس','ru':'Словарь','zh':'词典','ja':'辞書','hi':'शब्दकोश'});
+  static String get dictionarySearch => _t({'en':'Copy text and search in dictionary','fa':'متن را کپی کرده و در دیکشنری جستجو کنید','ar':'انسخ النص وابحث في القاموس','ru':'Скопируйте и найдите в словаре','zh':'复制文字在词典搜索','ja':'テキストをコピーして辞書検索','hi':'टेक्स्ट कॉपी कर शब्दकोश में खोजें'});
+  static String get received => _t({'en':'Downloaded','fa':'دریافت شد','ar':'تم التنزيل','ru':'Получено','zh':'已下载','ja':'ダウンロード完了','hi':'डाउनलोड हो गया'});
+  static String get downloadCount => _t({'en':'downloads','fa':'دانلود','ar':'تحميل','ru':'загрузок','zh':'下载','ja':'ダウンロード','hi':'डाउनलोड'});
+  static String get noSubtitleFound => _t({'en':'No subtitle found','fa':'زیرنویسی برای این مورد پیدا نشد','ar':'لم يوجد ترجمة','ru':'Субтитры не найдены','zh':'未找到字幕','ja':'字幕が見つかりません','hi':'कोई सबटाइटल नहीं मिला'});
+  static String get noSubtitleEdit => _t({'en':'No subtitle to edit','fa':'زیرنویسی برای ویرایش وجود ندارد','ar':'لا توجد ترجمة للتعديل','ru':'Нет субтитров для редактирования','zh':'无字幕可编辑','ja':'編集する字幕なし','hi':'संपादन के लिए सबटाइटल नहीं'});
+  static String get saveChanges => _t({'en':'Save Changes','fa':'ذخیره تغییرات','ar':'حفظ التغييرات','ru':'Сохранить изменения','zh':'保存更改','ja':'変更を保存','hi':'बदलाव सहेजें'});
+  static String get unsavedChanges => _t({'en':'Unsaved changes','fa':'تغییرات ذخیره نشده','ar':'تغييرات غير محفوظة','ru':'Несохранённые изменения','zh':'未保存的更改','ja':'未保存の変更','hi':'असहेजे बदलाव'});
+  static String get exitWithoutSave => _t({'en':'Exit without saving?','fa':'بدون ذخیره خارج می‌شوید؟','ar':'هل تريد الخروج بدون حفظ؟','ru':'Выйти без сохранения?','zh':'不保存退出?','ja':'保存せずに終了しますか?','hi':'बिना सहेजे बाहर निकलें?'});
+  static String get exitNoSave => _t({'en':'Exit without saving','fa':'خروج بدون ذخیره','ar':'الخروج بدون حفظ','ru':'Выйти без сохранения','zh':'不保存退出','ja':'保存せずに終了','hi':'बिना सहेजे बाहर'});
+  static String get startTime => _t({'en':'Start time (mm:ss)','fa':'زمان شروع (mm:ss)','ar':'وقت البداية (mm:ss)','ru':'Начало (мм:сс)','zh':'开始时间 (mm:ss)','ja':'開始時間 (mm:ss)','hi':'शुरू समय (mm:ss)'});
+  static String get endTime => _t({'en':'End time (mm:ss)','fa':'زمان پایان (mm:ss)','ar':'وقت النهاية (mm:ss)','ru':'Конец (мм:сс)','zh':'结束时间 (mm:ss)','ja':'終了時間 (mm:ss)','hi':'अंत समय (mm:ss)'});
+  static String get apply => _t({'en':'Apply','fa':'ثبت','ar':'تطبيق','ru':'Применить','zh':'应用','ja':'適用','hi':'लागू करें'});
+  static String get wrongTimeFormat => _t({'en':'Wrong format — use mm:ss','fa':'فرمت اشتباه — باید mm:ss باشد','ar':'تنسيق خاطئ — استخدم mm:ss','ru':'Неверный формат — нужен mm:ss','zh':'格式错误 — 用 mm:ss','ja':'形式が正しくありません mm:ss','hi':'गलत फ़ॉर्मेट — mm:ss का उपयोग करें'});
+  static String get editSrtTitle => _t({'en':'Edit Subtitle','fa':'ویرایش زیرنویس','ar':'تعديل الترجمة','ru':'Редактировать субтитры','zh':'编辑字幕','ja':'字幕を編集','hi':'सबटाइटल संपादन'});
+
+  // ── فایل مرورگر ──
+  static String get files => _t({'en':'Files','fa':'فایل‌ها','ar':'الملفات','ru':'Файлы','zh':'文件','ja':'ファイル','hi':'फ़ाइलें'});
+  static String get favorites => _t({'en':'Favorites','fa':'علاقه‌مندی','ar':'المفضلة','ru':'Избранное','zh':'收藏','ja':'お気に入り','hi':'पसंदीदा'});
+  static String get bookmarks => _t({'en':'Bookmarks','fa':'نشانه‌ها','ar':'الإشارات','ru':'Закладки','zh':'书签','ja':'ブックマーク','hi':'बुकमार्क'});
+  static String get history => _t({'en':'History','fa':'تاریخچه','ar':'السجل','ru':'История','zh':'历史','ja':'履歴','hi':'इतिहास'});
+  static String get folders => _t({'en':'Folders','fa':'پوشه‌ها','ar':'المجلدات','ru':'Папки','zh':'文件夹','ja':'フォルダ','hi':'फ़ोल्डर'});
+  static String get playlist => _t({'en':'Playlist','fa':'پلی‌لیست','ar':'قائمة التشغيل','ru':'Плейлист','zh':'播放列表','ja':'プレイリスト','hi':'प्लेलिस्ट'});
+  static String get sponsors => _t({'en':'Sponsors','fa':'اسپانسر','ar':'الرعاة','ru':'Спонсоры','zh':'赞助商','ja':'スポンサー','hi':'प्रायोजक'});
+  static String get tools => _t({'en':'Tools','fa':'ابزارها','ar':'الأدوات','ru':'Инструменты','zh':'工具','ja':'ツール','hi':'उपकरण'});
+  static String get app => _t({'en':'App','fa':'اپ','ar':'التطبيق','ru':'Приложение','zh':'应用','ja':'アプリ','hi':'ऐप'});
+  static String get internalStorage => _t({'en':'Internal Storage','fa':'حافظه داخلی','ar':'التخزين الداخلي','ru':'Внутренняя память','zh':'内部存储','ja':'内部ストレージ','hi':'आंतरिक स्टोरेज'});
+  static String get downloads => _t({'en':'Downloads','fa':'دانلودها','ar':'التنزيلات','ru':'Загрузки','zh':'下载','ja':'ダウンロード','hi':'डाउनलोड'});
+  static String get movies => _t({'en':'Movies','fa':'فیلم‌ها','ar':'الأفلام','ru':'Фильмы','zh':'电影','ja':'映画','hi':'फ़िल्में'});
+  static String get customPath => _t({'en':'Custom Path...','fa':'مسیر دلخواه...','ar':'مسار مخصص...','ru':'Свой путь...','zh':'自定义路径...','ja':'カスタムパス...','hi':'कस्टम पाथ...'});
+  static String get selectStorage => _t({'en':'Select Storage','fa':'انتخاب حافظه','ar':'اختر التخزين','ru':'Выбор памяти','zh':'选择存储','ja':'ストレージ選択','hi':'स्टोरेज चुनें'});
+  static String get searchAll => _t({'en':'Search everywhere','fa':'همه‌جا','ar':'في كل مكان','ru':'Везде','zh':'全局搜索','ja':'すべて検索','hi':'हर जगह'});
+  static String get searchHere => _t({'en':'Search here','fa':'جستجو در این پوشه...','ar':'البحث هنا...','ru':'Поиск здесь...','zh':'在此搜索...','ja':'ここで検索...','hi':'यहाँ खोजें...'});
+  static String get sortName => _t({'en':'Name','fa':'نام','ar':'الاسم','ru':'Имя','zh':'名称','ja':'名前','hi':'नाम'});
+  static String get sortDate => _t({'en':'Date','fa':'تاریخ','ar':'التاريخ','ru':'Дата','zh':'日期','ja':'日付','hi':'दिनांक'});
+  static String get sortSize => _t({'en':'Size','fa':'حجم','ar':'الحجم','ru':'Размер','zh':'大小','ja':'サイズ','hi':'आकार'});
+  static String get sortType => _t({'en':'Type','fa':'نوع','ar':'النوع','ru':'Тип','zh':'类型','ja':'タイプ','hi':'प्रकार'});
+  static String get addBookmark => _t({'en':'Bookmark','fa':'نشانه‌گذاری','ar':'وضع إشارة','ru':'Закладка','zh':'添加书签','ja':'ブックマーク追加','hi':'बुकमार्क करें'});
+  static String get removeBookmark => _t({'en':'Remove Bookmark','fa':'حذف نشانه','ar':'إزالة الإشارة','ru':'Убрать закладку','zh':'删除书签','ja':'ブックマーク削除','hi':'बुकमार्क हटाएं'});
+  static String get addFavorite => _t({'en':'Add to Favorites','fa':'علاقه‌مندی','ar':'إضافة للمفضلة','ru':'В избранное','zh':'收藏','ja':'お気に入り追加','hi':'पसंदीदा में जोड़ें'});
+  static String get removeFavorite => _t({'en':'Remove from Favorites','fa':'حذف از علاقه‌مندی','ar':'إزالة من المفضلة','ru':'Убрать из избранного','zh':'取消收藏','ja':'お気に入り削除','hi':'पसंदीदा से हटाएं'});
+  static String get addToPlaylist => _t({'en':'Add to playlist','fa':'افزودن به پلی‌لیست','ar':'إضافة للقائمة','ru':'В плейлист','zh':'添加到播放列表','ja':'プレイリストに追加','hi':'प्लेलिस्ट में जोड़ें'});
+  static String get noPlaylist => _t({'en':'Create a playlist first','fa':'ابتدا یک پلی‌لیست بسازید','ar':'أنشئ قائمة أولاً','ru':'Сначала создайте плейлист','zh':'请先创建播放列表','ja':'プレイリストを作成してください','hi':'पहले प्लेलिस्ट बनाएं'});
+  static String get addedTo => _t({'en':'Added to','fa':'اضافه شد به','ar':'أضيف إلى','ru':'Добавлено в','zh':'已添加到','ja':'に追加','hi':'में जोड़ा'});
+  static String get deleteAll => _t({'en':'Delete all','fa':'حذف همه','ar':'حذف الكل','ru':'Удалить все','zh':'删除全部','ja':'すべて削除','hi':'सभी हटाएं'});
+  static String get deleteAllHistory => _t({'en':'Delete all history?','fa':'حذف همه تاریخچه؟','ar':'حذف كل السجل؟','ru':'Удалить всю историю?','zh':'删除所有历史?','ja':'すべての履歴を削除?','hi':'सभी इतिहास हटाएं?'});
+  static String get nothingYet => _t({'en':'Nothing yet','fa':'هنوز چیزی نیست','ar':'لا يوجد شيء بعد','ru':'Пока ничего','zh':'暂无内容','ja':'まだありません','hi':'अभी कुछ नहीं'});
+  static String get noSavedFolders => _t({'en':'No saved folders','fa':'پوشه‌ای ذخیره نشده','ar':'لا توجد مجلدات محفوظة','ru':'Нет сохранённых папок','zh':'无已保存文件夹','ja':'保存済みフォルダなし','hi':'कोई फ़ोल्डर नहीं'});
+  static String get pinFolderHint => _t({'en':'Tap 📌 in browser to pin a folder','fa':'در مرورگر آیکون 📌 را بزنید','ar':'اضغط 📌 في المتصفح','ru':'Нажмите 📌 в браузере','zh':'在浏览器按📌固定文件夹','ja':'ブラウザで📌をタップ','hi':'ब्राउज़र में 📌 टैप करें'});
+  static String get noPlaylists => _t({'en':'No playlists','fa':'پلی‌لیستی ندارید','ar':'لا توجد قوائم تشغيل','ru':'Нет плейлистов','zh':'无播放列表','ja':'プレイリストなし','hi':'कोई प्लेलिस्ट नहीं'});
+  static String get createPlaylist => _t({'en':'Create with New button','fa':'با دکمه «جدید» بسازید','ar':'أنشئ بزر \"جديد\"','ru':'Создайте кнопкой «Новый»','zh':'用新建按钮创建','ja':'「新規」ボタンで作成','hi':'\"नया\" बटन से बनाएं'});
+  static String get newPlaylist => _t({'en':'New Playlist','fa':'پلی‌لیست جدید','ar':'قائمة تشغيل جديدة','ru':'Новый плейлист','zh':'新建播放列表','ja':'新規プレイリスト','hi':'नई प्लेलिस्ट'});
+  static String get playlistName => _t({'en':'Playlist name...','fa':'نام پلی‌لیست...','ar':'اسم القائمة...','ru':'Имя плейлиста...','zh':'播放列表名称...','ja':'プレイリスト名...','hi':'प्लेलिस्ट नाम...'});
+  static String get create => _t({'en':'Create','fa':'ساخت','ar':'إنشاء','ru':'Создать','zh':'创建','ja':'作成','hi':'बनाएं'});
+  static String get deletePlaylist => _t({'en':'Delete playlist','fa':'حذف','ar':'حذف القائمة','ru':'Удалить плейлист','zh':'删除播放列表','ja':'プレイリスト削除','hi':'प्लेलिस्ट हटाएं'});
+  static String get noSponsors => _t({'en':'No sponsors yet','fa':'هنوز اسپانسری نیست','ar':'لا يوجد رعاة بعد','ru':'Спонсоров нет','zh':'暂无赞助商','ja':'スポンサーなし','hi':'अभी कोई प्रायोजक नहीं'});
+  static String get deleteFile => _t({'en':'Delete File','fa':'حذف فایل','ar':'حذف الملف','ru':'Удалить файл','zh':'删除文件','ja':'ファイルを削除','hi':'फ़ाइल हटाएं'});
+  static String get copyTo => _t({'en':'Copy to','fa':'کپی به','ar':'نسخ إلى','ru':'Скопировать в','zh':'复制到','ja':'コピー先','hi':'यहाँ कॉपी करें'});
+  static String get moveTo => _t({'en':'Move to','fa':'انتقال به','ar':'نقل إلى','ru':'Переместить в','zh':'移动到','ja':'移動先','hi':'यहाँ स्थानांतरित करें'});
+  static String get newName => _t({'en':'New name','fa':'نام جدید','ar':'اسم جديد','ru':'Новое имя','zh':'新名称','ja':'新しい名前','hi':'नया नाम'});
+  static String get selectGroup => _t({'en':'Select multiple','fa':'انتخاب گروهی','ar':'تحديد متعدد','ru':'Мультивыбор','zh':'多选','ja':'複数選択','hi':'एकाधिक चुनें'});
+  static String get recentViews => _t({'en':'Recent views','fa':'آخرین مشاهده‌ها','ar':'آخر المشاهدات','ru':'Последние просмотры','zh':'最近观看','ja':'最近の視聴','hi':'हाल के दृश्य'});
+  static String get fileInfo => _t({'en':'Info','fa':'اطلاعات','ar':'معلومات','ru':'Инфо','zh':'信息','ja':'情報','hi':'जानकारी'});
+  static String get format => _t({'en':'Format','fa':'فرمت','ar':'الصيغة','ru':'Формат','zh':'格式','ja':'フォーマット','hi':'प्रारूप'});
+  static String get precise => _t({'en':'Precise','fa':'دقیق','ar':'دقيق','ru':'Точный','zh':'精确','ja':'正確','hi':'सटीक'});
+  static String get probableCodec => _t({'en':'Probable codec','fa':'کدک احتمالی','ar':'كودك محتمل','ru':'Вероятный кодек','zh':'可能的编解码器','ja':'推定コーデック','hi':'संभावित कोडेक'});
+  static String get status => _t({'en':'Status','fa':'وضعیت','ar':'الحالة','ru':'Статус','zh':'状态','ja':'ステータス','hi':'स्थिति'});
+  static String get watched => _t({'en':'Watched ✓','fa':'دیده شده ✓','ar':'تمت المشاهدة ✓','ru':'Просмотрено ✓','zh':'已观看 ✓','ja':'視聴済み ✓','hi':'देखा गया ✓'});
+  static String get notWatched => _t({'en':'Not watched','fa':'دیده نشده','ar':'لم تشاهد','ru':'Не просмотрено','zh':'未观看','ja':'未視聴','hi':'नहीं देखा'});
+  static String get rating => _t({'en':'Rating','fa':'امتیاز','ar':'التقييم','ru':'Оценка','zh':'评分','ja':'評価','hi':'रेटिंग'});
+  static String get yourRating => _t({'en':'Your rating:','fa':'امتیاز شما:','ar':'تقييمك:','ru':'Ваша оценка:','zh':'你的评分:','ja':'あなたの評価:','hi':'आपकी रेटिंग:'});
+  static String get note => _t({'en':'Note','fa':'یادداشت','ar':'ملاحظة','ru':'Заметка','zh':'备注','ja':'メモ','hi':'नोट'});
+  static String get writeNote => _t({'en':'Write your note...','fa':'یادداشت خود را بنویسید...','ar':'اكتب ملاحظتك...','ru':'Напишите заметку...','zh':'写备注...','ja':'メモを入力...','hi':'नोट लिखें...'});
+  static String get subtitlesFound => _t({'en':'subtitles','fa':'زیرنویس‌ها','ar':'ترجمات','ru':'субтитры','zh':'字幕','ja':'字幕','hi':'सबटाइटल'});
+  static String get notFound => _t({'en':'Not found','fa':'یافت نشد','ar':'غير موجود','ru':'Не найдено','zh':'未找到','ja':'見つかりません','hi':'नहीं मिला'});
+  static String get searching => _t({'en':'Searching...','fa':'در حال جستجوی کل حافظه...','ar':'جارٍ البحث...','ru':'Поиск...','zh':'搜索中...','ja':'検索中...','hi':'खोज रहा है...'});
+  static String get noFilesFound => _t({'en':'No files found','fa':'فایلی یافت نشد','ar':'لم توجد ملفات','ru':'Файлы не найдены','zh':'未找到文件','ja':'ファイルなし','hi':'कोई फ़ाइल नहीं मिली'});
+  static String get permissionNeeded => _t({'en':'Storage permission needed','fa':'اپ به دسترسی فایل‌ها نیاز دارد.','ar':'مطلوب إذن التخزين','ru':'Нужно разрешение','zh':'需要存储权限','ja':'ストレージ権限が必要','hi':'स्टोरेज अनुमति आवश्यक'});
+  static String get grantPermission => _t({'en':'Grant Permission','fa':'اجازه دسترسی','ar':'منح الإذن','ru':'Разрешить','zh':'授予权限','ja':'権限を付与','hi':'अनुमति दें'});
+  static String get appSettings => _t({'en':'App Settings','fa':'تنظیمات اپ','ar':'إعدادات التطبيق','ru':'Настройки приложения','zh':'应用设置','ja':'アプリ設定','hi':'ऐप सेटिंग्स'});
+  static String get reportBug => _t({'en':'Report / Suggest','fa':'گزارش مشکل / پیشنهاد','ar':'الإبلاغ / اقتراح','ru':'Сообщить / Предложить','zh':'反馈/建议','ja':'バグ報告/提案','hi':'रिपोर्ट/सुझाव'});
+
+  // ── AI مدل ──
+  static String get aiModels => _t({'en':'AI Models','fa':'مدل‌های AI','ar':'نماذج الذكاء الاصطناعي','ru':'Модели ИИ','zh':'AI模型','ja':'AIモデル','hi':'AI मॉडल'});
+  static String get aiSubtitleOffline => _t({'en':'AI Subtitle (Offline)','fa':'زیرنویس AI آفلاین','ar':'ترجمة AI غير متصل','ru':'ИИ субтитры (офлайн)','zh':'AI字幕 (离线)','ja':'AI字幕 (オフライン)','hi':'AI सबटाइटल (ऑफलाइन)'});
+  static String get download => _t({'en':'Download','fa':'دانلود','ar':'تنزيل','ru':'Скачать','zh':'下载','ja':'ダウンロード','hi':'डाउनलोड'});
+  static String get downloading => _t({'en':'Downloading...','fa':'در حال دانلود...','ar':'جارٍ التنزيل...','ru':'Загрузка...','zh':'下载中...','ja':'ダウンロード中...','hi':'डाउनलोड हो रहा है...'});
+  static String get downloaded => _t({'en':'Downloaded','fa':'دانلود شده','ar':'تم التنزيل','ru':'Загружено','zh':'已下载','ja':'ダウンロード済み','hi':'डाउनलोड हो गया'});
+  static String get noModelDownloaded => _t({'en':'No AI model downloaded\nDownload a model from AI section','fa':'هیچ مدلی دانلود نشده\nابتدا از بخش AI مدل دانلود کنید','ar':'لم يتم تنزيل نموذج\nنزّل نموذجاً من قسم AI','ru':'Нет загруженных моделей\nСначала загрузите модель ИИ','zh':'未下载AI模型\n请先从AI部分下载模型','ja':'モデル未ダウンロード\nAIセクションからダウンロードしてください','hi':'कोई AI मॉडल नहीं\nAI सेक्शन से मॉडल डाउनलोड करें'});
+  static String get importModel => _t({'en':'Import Model','fa':'ایمپورت مدل','ar':'استيراد النموذج','ru':'Импорт модели','zh':'导入模型','ja':'モデルをインポート','hi':'मॉडल आयात करें'});
+  static String get importFromFile => _t({'en':'Install from file','fa':'نصب دستی از فایل','ar':'تثبيت من ملف','ru':'Установить из файла','zh':'从文件安装','ja':'ファイルからインストール','hi':'फ़ाइल से स्थापित'});
+  static String get backup => _t({'en':'Backup','fa':'بکاپ','ar':'نسخ احتياطي','ru':'Резервное копирование','zh':'备份','ja':'バックアップ','hi':'बैकअप'});
+  static String get backupImport => _t({'en':'Backup & Import AI Models','fa':'بکاپ و ایمپورت مدل‌های AI','ar':'نسخ احتياطي واستيراد نماذج AI','ru':'Резервное копирование/импорт','zh':'备份和导入AI模型','ja':'AIモデルのバックアップ/インポート','hi':'AI मॉडल बैकअप और आयात'});
+  static String get backupPath => _t({'en':'Saved to: Download/Vezoo/Backup/','fa':'ذخیره در: Download/Vezoo/Backup/','ar':'محفوظ في: Download/Vezoo/Backup/','ru':'Сохранено в: Download/Vezoo/Backup/','zh':'保存至: Download/Vezoo/Backup/','ja':'保存先: Download/Vezoo/Backup/','hi':'यहाँ सहेजा: Download/Vezoo/Backup/'});
+  static String get importing => _t({'en':'Importing...','fa':'در حال ایمپورت...','ar':'جارٍ الاستيراد...','ru':'Импорт...','zh':'导入中...','ja':'インポート中...','hi':'आयात हो रहा है...'});
+  static String get backingUp => _t({'en':'Backing up...','fa':'در حال بکاپ...','ar':'جارٍ النسخ الاحتياطي...','ru':'Резервное копирование...','zh':'备份中...','ja':'バックアップ中...','hi':'बैकअप हो रहा है...'});
+  static String get quantized => _t({'en':'Quantized','fa':'فشرده','ar':'مضغوط','ru':'Сжатый','zh':'量化','ja':'量子化','hi':'क्वांटाइज़्ड'});
+  static String get full => _t({'en':'Full','fa':'کامل','ar':'كامل','ru':'Полный','zh':'完整','ja':'フル','hi':'पूर्ण'});
+  static String get active => _t({'en':'Active','fa':'فعال','ar':'نشط','ru':'Активный','zh':'激活','ja':'アクティブ','hi':'सक्रिय'});
+  static String get recommended => _t({'en':'⭐ Recommended','fa':'⭐ پیشنهادی','ar':'⭐ موصى به','ru':'⭐ Рекомендован','zh':'⭐ 推荐','ja':'⭐ おすすめ','hi':'⭐ अनुशंसित'});
+  static String get accuracy => _t({'en':'Accuracy','fa':'دقت','ar':'الدقة','ru':'Точность','zh':'准确度','ja':'精度','hi':'सटीकता'});
+  static String get cancelResume => _t({'en':'Cancel (resumable)','fa':'لغو (قابل ادامه)','ar':'إلغاء (قابل للاستئناف)','ru':'Отмена (возобновляемо)','zh':'取消 (可恢复)','ja':'キャンセル (再開可能)','hi':'रद्द (फिर शुरू)'});
+  static String get activate => _t({'en':'Activate','fa':'فعال‌سازی','ar':'تفعيل','ru':'Активировать','zh':'激活','ja':'有効化','hi':'सक्रिय करें'});
+  static String get noModelDownloaded2 => _t({'en':'No AI model downloaded','fa':'هیچ مدل AI دانلودشده‌ای نیست\nابتدا از بخش AI مدل دانلود کنید','ar':'لم يتم تنزيل نموذج AI','ru':'Нет загруженных ИИ моделей','zh':'未下载AI模型','ja':'AIモデル未ダウンロード','hi':'कोई AI मॉडल नहीं'});
+  static String get aiHistory => _t({'en':'AI Subtitle History','fa':'تاریخچه زیرنویس AI','ar':'سجل ترجمة AI','ru':'История ИИ субтитров','zh':'AI字幕历史','ja':'AI字幕履歴','hi':'AI सबटाइटल इतिहास'});
+  static String get batchQueue => _t({'en':'Batch Queue','fa':'ساخت دسته‌ای زیرنویس','ar':'قائمة الدُفعة','ru':'Пакетная обработка','zh':'批量队列','ja':'バッチキュー','hi':'बैच कतार'});
+  static String get addVideo => _t({'en':'Add Video','fa':'افزودن ویدیو','ar':'إضافة فيديو','ru':'Добавить видео','zh':'添加视频','ja':'動画を追加','hi':'वीडियो जोड़ें'});
+  static String get cancelQueue => _t({'en':'Cancel queue','fa':'لغو صف','ar':'إلغاء قائمة الانتظار','ru':'Отменить очередь','zh':'取消队列','ja':'キューをキャンセル','hi':'कतार रद्द'});
+  static String get noVideoAdded => _t({'en':'No videos added — use the button above','fa':'ویدیویی اضافه نشده — از دکمه بالا اضافه کنید','ar':'لم تُضف مقاطع فيديو','ru':'Видео не добавлены','zh':'未添加视频','ja':'動画が追加されていません','hi':'कोई वीडियो नहीं जोड़ा'});
+  static String get clearAudioCache => _t({'en':'Clear Audio Cache','fa':'پاکسازی کش صدا','ar':'مسح ذاكرة الصوت','ru':'Очистить кэш звука','zh':'清除音频缓存','ja':'音声キャッシュを消去','hi':'ऑडियो कैश साफ करें'});
+  static String get noAudioCache => _t({'en':'Audio cache is empty','fa':'کش صدا خالی است','ar':'ذاكرة الصوت فارغة','ru':'Кэш звука пуст','zh':'音频缓存为空','ja':'音声キャッシュは空','hi':'ऑडियो कैश खाली है'});
+  static String get vadMode => _t({'en':'Voice Detection (VAD)','fa':'تشخیص سکوت (VAD)','ar':'كشف الصوت (VAD)','ru':'Обнаружение голоса (VAD)','zh':'语音检测 (VAD)','ja':'音声検出 (VAD)','hi':'वाक् पहचान (VAD)'});
+  static String get engineV1 => _t({'en':'V1 (Stable)','fa':'پایدار','ar':'V1 مستقر','ru':'V1 (Стабильный)','zh':'V1 (稳定)','ja':'V1 (安定版)','hi':'V1 (स्थिर)'});
+  static String get engineV2 => _t({'en':'V2 (Experimental, faster)','fa':'آزمایشی، سریع‌تر','ar':'V2 تجريبي، أسرع','ru':'V2 (Экспер., быстрее)','zh':'V2 (实验性，更快)','ja':'V2 (実験的、高速)','hi':'V2 (प्रयोगात्मक, तेज)'});
+
+  // ── تنظیمات ──
+  static String get appearance => _t({'en':'Appearance','fa':'ظاهر','ar':'المظهر','ru':'Внешний вид','zh':'外观','ja':'外観','hi':'उपस्थिति'});
+  static String get playback => _t({'en':'Audio / Playback','fa':'صدا / پخش','ar':'الصوت / التشغيل','ru':'Аудио/Воспр.','zh':'音频/播放','ja':'音声/再生','hi':'ऑडियो/प्लेबैक'});
+  static String get other => _t({'en':'Other','fa':'سایر','ar':'أخرى','ru':'Другое','zh':'其他','ja':'その他','hi':'अन्य'});
+  static String get gestures => _t({'en':'Gestures','fa':'ژست‌ها','ar':'الإيماءات','ru':'Жесты','zh':'手势','ja':'ジェスチャー','hi':'जेस्चर'});
+  static String get autoPlay => _t({'en':'Auto Play','fa':'پخش خودکار','ar':'التشغيل التلقائي','ru':'Авт. воспроизведение','zh':'自动播放','ja':'自動再生','hi':'ऑटो प्ले'});
+  static String get rememberPosition => _t({'en':'Remember Position','fa':'به خاطر سپردن موقعیت','ar':'تذكر الموضع','ru':'Запомнить позицию','zh':'记住播放位置','ja':'再生位置を記憶','hi':'स्थिति याद रखें'});
+  static String get brightness => _t({'en':'Brightness','fa':'روشنایی','ar':'السطوع','ru':'Яркость','zh':'亮度','ja':'明るさ','hi':'चमक'});
+  static String get volume => _t({'en':'Volume','fa':'حجم','ar':'الصوت','ru':'Громкость','zh':'音量','ja':'音量','hi':'वॉल्यूम'});
+  static String get saveForThisVideo => _t({'en':'Save for this video','fa':'ذخیره برای این ویدیو','ar':'حفظ لهذا الفيديو','ru':'Сохранить для видео','zh':'为此视频保存','ja':'このビデオ用に保存','hi':'इस वीडियो के लिए'});
+  static String get saveVideoSettings => _t({'en':'Save video settings','fa':'ذخیره تنظیمات برای این ویدیو','ar':'حفظ الإعدادات لهذا الفيديو','ru':'Сохранить настройки видео','zh':'保存视频设置','ja':'ビデオ設定を保存','hi':'वीडियो सेटिंग्स सहेजें'});
+  static String get saveVideoSettingsDesc => _t({'en':'All subtitle and playback settings saved for this video','fa':'با زدن این دکمه، همه تنظیمات زیرنویس و پخش فعلی برای این ویدیو ذخیره می‌شود.','ar':'حفظ جميع إعدادات الترجمة والتشغيل لهذا الفيديو','ru':'Все настройки субтитров и воспроизведения будут сохранены','zh':'保存当前所有字幕和播放设置','ja':'現在の字幕と再生設定をすべて保存','hi':'सभी सेटिंग्स इस वीडियो के लिए सहेजी जाएंगी'});
+  static String get guide => _t({'en':'Guide','fa':'راهنما','ar':'الدليل','ru':'Руководство','zh':'指南','ja':'ガイド','hi':'गाइड'});
+  static String get swipeHorizontal => _t({'en':'Swipe horizontal','fa':'↔ کشیدن افقی','ar':'↔ السحب الأفقي','ru':'↔ Горизонтальный свайп','zh':'↔ 水平滑动','ja':'↔ 横スワイプ','hi':'↔ क्षैतिज स्वाइप'});
+  static String get seekVideo => _t({'en':'Seek video','fa':'جلو/عقب بردن ویدیو','ar':'التقديم/التأخير','ru':'Перемотка видео','zh':'视频跳转','ja':'ビデオシーク','hi':'वीडियो सीक'});
+  static String get swipeLeft => _t({'en':'Swipe left','fa':'↕ کشیدن چپ','ar':'↕ السحب لليسار','ru':'↕ Свайп влево','zh':'↕ 左侧滑动','ja':'↕ 左スワイプ','hi':'↕ बाएं स्वाइप'});
+  static String get adjustBrightness => _t({'en':'Adjust brightness','fa':'تنظیم نور صفحه','ar':'ضبط السطوع','ru':'Яркость экрана','zh':'调节亮度','ja':'画面の明るさ調節','hi':'चमक समायोजित करें'});
+  static String get swipeRight => _t({'en':'Swipe right','fa':'↕ کشیدن راست','ar':'↕ السحب لليمين','ru':'↕ Свайп вправо','zh':'↕ 右侧滑动','ja':'↕ 右スワイプ','hi':'↕ दाएं स्वाइप'});
+  static String get adjustVolume => _t({'en':'Adjust volume','fa':'تنظیم صدای گوشی','ar':'ضبط مستوى الصوت','ru':'Регулировка громкости','zh':'调节音量','ja':'音量調節','hi':'वॉल्यूम समायोजित'});
+  static String get swipeBottomSub => _t({'en':'Swipe bottom of screen','fa':'↕ کشیدن پایین صفحه','ar':'↕ السحب من أسفل','ru':'↕ Свайп снизу','zh':'↕ 屏幕底部滑动','ja':'↕ 画面下スワイプ','hi':'↕ स्क्रीन के नीचे'});
+  static String get moveSubtitle => _t({'en':'Move subtitle','fa':'جابجایی زیرنویس','ar':'نقل الترجمة','ru':'Переместить субтитры','zh':'移动字幕','ja':'字幕を移動','hi':'सबटाइटल मूव'});
+  static String get twoFingers => _t({'en':'Two fingers','fa':'🤏 دو انگشت','ar':'🤏 إصبعان','ru':'🤏 Два пальца','zh':'🤏 两指','ja':'🤏 2本指','hi':'🤏 दो उंगलियाँ'});
+  static String get zoomMove => _t({'en':'Zoom & Move','fa':'زوم و جابجایی','ar':'تكبير وتحريك','ru':'Масштаб и перемещение','zh':'缩放和移动','ja':'ズーム&移動','hi':'ज़ूम और मूव'});
+  static String get doubleTapLeft => _t({'en':'Double tap left','fa':'دو ضربه چپ','ar':'نقر مزدوج يسار','ru':'Двойное нажатие влево','zh':'双击左侧','ja':'左ダブルタップ','hi':'बाएं डबल टैप'});
+  static String get doubleTapRight => _t({'en':'Double tap right','fa':'دو ضربه راست','ar':'نقر مزدوج يمين','ru':'Двойное нажатие вправо','zh':'双击右侧','ja':'右ダブルタップ','hi':'दाएं डबल टैप'});
+  static String get doubleTapCenter => _t({'en':'Double tap center','fa':'دو ضربه وسط','ar':'نقر مزدوج وسط','ru':'Двойное нажатие центр','zh':'双击中间','ja':'中央ダブルタップ','hi':'मध्य डबल टैप'});
+  static String get holdDown => _t({'en':'Hold down','fa':'نگه داشتن','ar':'الضغط المطول','ru':'Удерживать','zh':'长按','ja':'長押し','hi':'लंबे समय तक दबाएं'});
+  static String get seekPreview => _t({'en':'Seek Preview','fa':'پیش‌نمایش اسکراب','ar':'معاينة الإيجاد','ru':'Превью перемотки','zh':'缩略图预览','ja':'シークプレビュー','hi':'सीक प्रीव्यू'});
+  static String get seekPreviewDesc => _t({'en':'Thumbnail when dragging timeline','fa':'نمایش تصویر کوچک هنگام کشیدن نوار زمان','ar':'صورة مصغرة عند السحب','ru':'Миниатюра при перемотке','zh':'拖动时显示缩略图','ja':'タイムライン操作時のサムネイル','hi':'टाइमलाइन ड्रैग पर थंबनेल'});
+  static String get volumeBoost => _t({'en':'Volume Boost','fa':'تقویت صدا','ar':'تعزيز الصوت','ru':'Усиление звука','zh':'音量增强','ja':'音量ブースト','hi':'वॉल्यूम बूस्ट'});
+  static String get disabled => _t({'en':'Disabled','fa':'غیرفعال','ar':'معطل','ru':'Отключено','zh':'已禁用','ja':'無効','hi':'अक्षम'});
+  static String get liveSubtitleTools => _t({'en':'Live Subtitle Tools','fa':'ابزارهای زیرنویس زنده','ar':'أدوات الترجمة المباشرة','ru':'Инструменты живых субтитров','zh':'实时字幕工具','ja':'ライブ字幕ツール','hi':'लाइव सबटाइटल टूल्स'});
+  static String get whenBehind => _t({'en':'When subtitle is behind:','fa':'وقتی زیرنویس جا ماند:','ar':'عند تأخر الترجمة:','ru':'Если субтитры отстают:','zh':'字幕落后时:','ja':'字幕が遅れた時:','hi':'सबटाइटल पीछे होने पर:'});
+  static String get pauseVideo => _t({'en':'Pause video','fa':'توقف ویدیو','ar':'إيقاف الفيديو','ru':'Пауза видео','zh':'暂停视频','ja':'動画を一時停止','hi':'वीडियो रोकें'});
+  static String get slowDown => _t({'en':'Slow down','fa':'کاهش سرعت','ar':'تبطيء السرعة','ru':'Замедлить','zh':'减速','ja':'スロー','hi':'धीमा करें'});
+  static String get overlapChunks => _t({'en':'Overlap (prevent word cutting)','fa':'Overlap (جلوگیری از قطع شدن کلمات)','ar':'تداخل (منع قطع الكلمات)','ru':'Перекрытие (без обрезки слов)','zh':'重叠（防止词语切断）','ja':'オーバーラップ（語句の切断防止）','hi':'ओवरलैप (शब्द कटने से रोकें)'});
+  static String get updateAvailable => _t({'en':'Update available — Download','fa':'نسخه جدید موجود است — دانلود','ar':'تحديث متاح — تنزيل','ru':'Доступно обновление','zh':'有更新 — 下载','ja':'更新あり — ダウンロード','hi':'अपडेट उपलब्ध'});
+  static String get upToDate => _t({'en':'App is up to date','fa':'اپ بروز است','ar':'التطبيق محدّث','ru':'Приложение актуально','zh':'应用已是最新','ja':'アプリは最新版','hi':'ऐप अद्यतन है'});
+  static String get update => _t({'en':'Update','fa':'بروزرسانی','ar':'تحديث','ru':'Обновление','zh':'更新','ja':'アップデート','hi':'अपडेट'});
+  static String get later => _t({'en':'Later','fa':'بعداً','ar':'لاحقاً','ru':'Позже','zh':'稍后','ja':'後で','hi':'बाद में'});
+  static String get newVersionAvailable => _t({'en':'New version available','fa':'نسخه جدید منتشر شد','ar':'إصدار جديد متوفر','ru':'Доступна новая версия','zh':'新版本可用','ja':'新バージョン利用可能','hi':'नया संस्करण उपलब्ध'});
+  static String get telegramChannel => _t({'en':'Telegram Channel','fa':'کانال تلگرام','ar':'قناة تيليغرام','ru':'Telegram канал','zh':'Telegram频道','ja':'Telegramチャンネル','hi':'Telegram चैनल'});
+
+  // ── آنلاین ──
+  static String get onlineVideo => _t({'en':'Online Video','fa':'پخش آنلاین','ar':'فيديو عبر الإنترنت','ru':'Онлайн видео','zh':'在线视频','ja':'オンライン動画','hi':'ऑनलाइन वीडियो'});
+  static String get enterUrl => _t({'en':'Enter URL (MP4, M3U8...)','fa':'URL وارد کنید (MP4، M3U8...)','ar':'أدخل الرابط (MP4، M3U8...)','ru':'Введите URL (MP4, M3U8...)','zh':'输入URL (MP4, M3U8...)','ja':'URLを入力 (MP4, M3U8...)','hi':'URL दर्ज करें (MP4, M3U8...)'});
+  static String get playBtn => _t({'en':'Play','fa':'پخش کن','ar':'شغّل','ru':'Играть','zh':'播放','ja':'再生する','hi':'चलाएं'});
+  static String get invalidUrl => _t({'en':'URL must start with http:// or https://','fa':'URL باید با http:// یا https:// شروع شود','ar':'يجب أن يبدأ الرابط بـ http:// أو https://','ru':'URL должен начинаться с http:// или https://','zh':'URL必须以http://或https://开头','ja':'URLはhttp://またはhttps://で始まる必要があります','hi':'URL को http:// या https:// से शुरू होना चाहिए'});
+  static String get recentUrls => _t({'en':'Recent URLs','fa':'لینک‌های اخیر','ar':'الروابط الأخيرة','ru':'Последние URL','zh':'最近URL','ja':'最近のURL','hi':'हाल के URL'});
+  static String get pasteUrl => _t({'en':'Paste','fa':'جای‌گذاری','ar':'لصق','ru':'Вставить','zh':'粘贴','ja':'貼り付け','hi':'पेस्ट'});
+
+  // ── OpenSubtitles ──
+  static String get movieOrShow => _t({'en':'Movie or TV show name...','fa':'نام فیلم یا سریال...','ar':'اسم الفيلم أو المسلسل...','ru':'Название фильма или сериала...','zh':'电影或节目名称...','ja':'映画またはドラマ名...','hi':'फिल्म या शो का नाम...'});
+  static String get notFoundTry => _t({'en':'Nothing found — try another phrase','fa':'چیزی پیدا نشد — عبارت دیگری را امتحان کنید','ar':'لم يوجد شيء — جرب عبارة أخرى','ru':'Ничего не найдено — попробуйте другую фразу','zh':'未找到 — 请尝试其他词语','ja':'見つかりません — 別のフレーズを試してください','hi':'कुछ नहीं मिला — दूसरा वाक्यांश आजमाएं'});
+  static String get tvShow => _t({'en':'TV Show','fa':'سریال','ar':'مسلسل','ru':'Сериал','zh':'电视剧','ja':'ドラマ','hi':'टीवी शो'});
+  static String get movie => _t({'en':'Movie','fa':'فیلم','ar':'فيلم','ru':'Фильм','zh':'电影','ja':'映画','hi':'फिल्म'});
+  static String get season => _t({'en':'Season','fa':'فصل','ar':'موسم','ru':'Сезон','zh':'季','ja':'シーズン','hi':'सीजन'});
+  static String get episode => _t({'en':'Episode','fa':'قسمت','ar':'حلقة','ru':'Эпизод','zh':'集','ja':'エピソード','hi':'एपिसोड'});
+  static String get searchThisEpisode => _t({'en':'Search subtitle for this episode','fa':'جستجوی زیرنویس این قسمت','ar':'البحث عن ترجمة هذه الحلقة','ru':'Поиск субтитров эпизода','zh':'搜索此剧集字幕','ja':'このエピソードの字幕を検索','hi':'इस एपिसोड का सबटाइटल खोजें'});
+  static String get noName => _t({'en':'(no name)','fa':'(بدون نام)','ar':'(بلا اسم)','ru':'(без имени)','zh':'(无名称)','ja':'(名無し)','hi':'(कोई नाम नहीं)'});
+  static String get sub2Applied => _t({'en':'Subtitle applied to Sub2','fa':'زیرنویس به Sub2 اعمال شد','ar':'تم تطبيق الترجمة على Sub2','ru':'Субтитры применены к Sub2','zh':'字幕已应用到Sub2','ja':'Sub2に字幕適用','hi':'Sub2 पर सबटाइटल लागू'});
+  static String get subtitleDownloaded => _t({'en':'Subtitle downloaded','fa':'زیرنویس دانلود شد','ar':'تم تنزيل الترجمة','ru':'Субтитры загружены','zh':'字幕已下载','ja':'字幕ダウンロード完了','hi':'सबटाइटल डाउनलोड'});
+
+  // ── موزیک زیرنویس ──
+  static String get searchSong => _t({'en':'Song name + artist...','fa':'نام آهنگ + خواننده...','ar':'اسم الأغنية + المطرب...','ru':'Название песни + исполнитель...','zh':'歌曲名 + 歌手...','ja':'曲名 + アーティスト...','hi':'गाने का नाम + कलाकार...'});
+  static String get lrcSynced => _t({'en':'✓ LRC synced applied','fa':'✓ LRC sync شده اعمال شد','ar':'✓ تم تطبيق LRC المتزامن','ru':'✓ LRC синхронизировано','zh':'✓ LRC同步已应用','ja':'✓ LRC同期済み適用','hi':'✓ LRC सिंक लागू'});
+  static String get textApplied => _t({'en':'✓ Text applied (no sync)','fa':'✓ متن اعمال شد (بدون sync)','ar':'✓ تم تطبيق النص','ru':'✓ Текст применён (без синхр.)','zh':'✓ 文字已应用 (无同步)','ja':'✓ テキスト適用 (同期なし)','hi':'✓ टेक्स्ट लागू (सिंक नहीं)'});
+  static String get fetchFailed => _t({'en':'Fetch failed','fa':'دریافت ناموفق','ar':'فشل الاسترداد','ru':'Ошибка получения','zh':'获取失败','ja':'取得失敗','hi':'प्राप्ति विफल'});
+  static String get noLyrics => _t({'en':'No lyrics found','fa':'متن یافت نشد','ar':'لم توجد كلمات','ru':'Текст не найден','zh':'未找到歌词','ja':'歌詞が見つかりません','hi':'गाने के बोल नहीं मिले'});
+  static String get searchHint => _t({'en':'Search','fa':'جستجو کنید','ar':'ابحث','ru':'Поиск','zh':'搜索','ja':'検索してください','hi':'खोजें'});
+
+  // ── پیام خطا ──
+  static String errorMsg(dynamic e) => '${error}: $e';
+  static String errorShort(dynamic e) {
+    final s = '$e';
+    return '${error}: ${s.length > 80 ? s.substring(0, 80) : s}';
+  }
+  static String cancelledFull(String msg) => '${cancelled}: $msg';
+  // ── اضافه شده در مرحله دوم ──
+  static String get subShowDisplay => _t({'en':'Show Subtitle','fa':'نمایش زیرنویس','ar':'إظهار الترجمة','ru':'Показать субтитры','zh':'显示字幕','ja':'字幕表示','hi':'सबटाइटल दिखाएं'});
+  static String get continuePlaying => _t({'en':'Continue playing','fa':'ادامه پخش','ar':'مواصلة التشغيل','ru':'Продолжить','zh':'继续播放','ja':'再生を続ける','hi':'चलाते रहें'});
+  static String get chooseSub1 => _t({'en':'Sub 1','fa':'انتخاب زیرنویس ۱','ar':'الترجمة ١','ru':'Субтитры 1','zh':'字幕1','ja':'字幕1','hi':'सब 1'});
+  static String get liveSub => _t({'en':'Live subtitle — running','fa':'زیرنویس زنده — در حال اجرا','ar':'ترجمة مباشرة — قيد التشغيل','ru':'Живые субтитры','zh':'实时字幕运行中','ja':'ライブ字幕実行中','hi':'लाइव सबटाइटल चल रहा है'});
+  static String get internalEmbedded => _t({'en':'Active — libmpv rendering','fa':'فعال — libmpv رندر می‌کنه','ar':'نشط — libmpv يعرض','ru':'Активно — рендер libmpv','zh':'激活 — libmpv渲染','ja':'有効 — libmpvがレンダリング','hi':'सक्रिय — libmpv रेंडर'});
+  static String get bothAtOnce => _t({'en':'⚡ Internal + external subtitle shown simultaneously','fa':'⚡ زیرنویس داخلی + خارجی هم‌زمان نمایش داده می‌شن','ar':'⚡ الترجمة الداخلية + الخارجية معاً','ru':'⚡ Внутренние + внешние субтитры одновременно','zh':'⚡ 内嵌+外部字幕同时显示','ja':'⚡ 内蔵+外部字幕同時表示','hi':'⚡ आंतरिक+बाहरी सबटाइटल'});
+  static String get activeTick => _t({'en':'Active ✓','fa':'فعال ✓','ar':'نشط ✓','ru':'Активный ✓','zh':'激活 ✓','ja':'有効 ✓','hi':'सक्रिय ✓'});
+  static String get duration => _t({'en':'Duration','fa':'مدت','ar':'المدة','ru':'Длительность','zh':'时长','ja':'再生時間','hi':'अवधि'});
+  static String get decoder => _t({'en':'Decoder','fa':'دیکودر','ar':'فك الترميز','ru':'Декодер','zh':'解码器','ja':'デコーダー','hi':'डीकोडर'});
+  static String get select => _t({'en':'Select','fa':'انتخاب','ar':'اختر','ru':'Выбрать','zh':'选择','ja':'選択','hi':'चुनें'});
+  static String get activeV => _t({'en':'Active','fa':'فعال','ar':'نشط','ru':'Активный','zh':'激活','ja':'アクティブ','hi':'सक्रिय'});
+  static String get minutes => _t({'en':'min','fa':'دقیقه','ar':'دقيقة','ru':'мин','zh':'分钟','ja':'分','hi':'मिनट'});
+  static String get remaining => _t({'en':'Remaining','fa':'باقی‌مانده','ar':'المتبقي','ru':'Осталось','zh':'剩余','ja':'残り','hi':'शेष'});
+  static String get path => _t({'en':'Path','fa':'مسیر','ar':'المسار','ru':'Путь','zh':'路径','ja':'パス','hi':'पाथ'});
+  static String get noFolderSaved => _t({'en':'Save a folder first','fa':'ابتدا یک پوشه را ذخیره کنید','ar':'احفظ مجلداً أولاً','ru':'Сначала сохраните папку','zh':'请先保存文件夹','ja':'先にフォルダを保存','hi':'पहले फ़ोल्डर सहेजें'});
+  static String get rename_ => _t({'en':'Rename','fa':'تغییر نام','ar':'إعادة تسمية','ru':'Переименовать','zh':'重命名','ja':'名前変更','hi':'नाम बदलें'});
+  static String get transferTo => _t({'en':'Transfer to','fa':'انتقال به','ar':'نقل إلى','ru':'Переместить в','zh':'移至','ja':'転送先','hi':'स्थानांतरित करें'});
+  static String get deleteQ => _t({'en':'Delete?','fa':'حذف شود؟','ar':'حذف؟','ru':'Удалить?','zh':'删除?','ja':'削除しますか?','hi':'हटाएं?'});
+  static String get yourRatingLabel => _t({'en':'Your rating:','fa':'امتیاز شما:','ar':'تقييمك:','ru':'Ваша оценка:','zh':'你的评分:','ja':'あなたの評価:','hi':'आपकी रेटिंग:'});
+  static String get writtenNote => _t({'en':'Write your note...','fa':'یادداشت خود را بنویسید...','ar':'اكتب ملاحظتك...','ru':'Напишите заметку...','zh':'写下你的备注...','ja':'メモを入力...','hi':'नोट लिखें...'});
+  static String get allItems => _t({'en':'All','fa':'همه','ar':'الكل','ru':'Все','zh':'全部','ja':'すべて','hi':'सभी'});
+  static String get cleanUp => _t({'en':'Clean up','fa':'پاکسازی','ar':'تنظيف','ru':'Очистить','zh':'清理','ja':'クリーンアップ','hi':'साफ करें'});
+  static String get boldLabel => _t({'en':'Bold','fa':'Bold (پررنگ)','ar':'غامق','ru':'Жирный','zh':'粗体','ja':'太字','hi':'बोल्ड'});
+  static String get subtitleDisplay => _t({'en':'Subtitle Display','fa':'نمایش زیرنویس','ar':'عرض الترجمة','ru':'Отображение субтитров','zh':'字幕显示','ja':'字幕表示','hi':'सबटाइटल डिस्प्ले'});
+  static String get aiSubLabel => _t({'en':'AI Subtitle','fa':'زیرنویس AI','ar':'ترجمة AI','ru':'ИИ субтитры','zh':'AI字幕','ja':'AI字幕','hi':'AI सबटाइटल'});
+  static String get vezooSubtitle => _t({'en':'Vezoo Subtitle','fa':'زیرنویس Vezoo','ar':'ترجمة Vezoo','ru':'Субтитры Vezoo','zh':'Vezoo字幕','ja':'Vezoo字幕','hi':'Vezoo सबटाइटल'});
+  static String get builtSubtitles => _t({'en':'Built subtitles:','fa':'زیرنویس‌های ساخته‌شده:','ar':'الترجمات المُنشأة:','ru':'Созданные субтитры:','zh':'已创建字幕:','ja':'作成した字幕:','hi':'बनाए गए सबटाइटल:'});
+  static String get onlineOnlyLocal => _t({'en':'This feature is for local video files only.
+
+For online video use Live Subtitle.','fa':'این ویژگی فقط برای فایل‌های ویدیوی محلی در دسترس است.
+
+برای ویدیوی آنلاین از «زیرنویس زنده» استفاده کنید که صدا را تکه‌تکه پردازش می‌کند.','ar':'هذه الميزة للملفات المحلية فقط.
+
+للفيديو الإنترنت استخدم الترجمة المباشرة.','ru':'Функция только для локальных файлов.
+
+Для онлайн видео используйте живые субтитры.','zh':'此功能仅适用于本地视频文件。
+
+在线视频请使用实时字幕。','ja':'この機能はローカルビデオのみです。
+
+オンライン動画にはライブ字幕を使用してください。','hi':'यह सुविधा केवल स्थानीय वीडियो के लिए है।
+
+ऑनलाइन वीडियो के लिए लाइव सबटाइटल का उपयोग करें।'});
+  static String get liveSubDesc => _t({'en':'Audio is processed chunk by chunk while playing — subtitle appears on screen in real-time','fa':'همزمان با پخش ویدیو، صدا تکه‌تکه پردازش میشه و زیرنویس روی صفحه نمایش داده میشه','ar':'الصوت يُعالج قطعة بقطعة أثناء التشغيل','ru':'Аудио обрабатывается по частям во время воспроизведения','zh':'播放时逐段处理音频，字幕实时显示','ja':'再生中に音声をチャンク処理し、字幕をリアルタイム表示','hi':'चलाते समय ऑडियो टुकड़ों में प्रोसेस होता है'});
+  static String get overlapDesc => _t({'en':'5 seconds overlap with previous chunk — no subtitle repetition','fa':'۵ ثانیه ابتدای هر تکه با تکه قبل همپوشانی دارد — زیرنویس تکرار نمیشه','ar':'5 ثوانٍ تداخل مع القطعة السابقة','ru':'5 секунд перекрытия с предыдущим фрагментом','zh':'5秒与前段重叠，字幕不重复','ja':'前チャンクと5秒重複 — 字幕繰り返しなし','hi':'5 सेकंड पिछले चंक से ओवरलैप'});
+  static String get syncTranslateDesc => _t({'en':'Each chunk is translated in parallel — minimum delay','fa':'هر chunk که ساخته شد، موازی ترجمه میشه — کمترین تأخیر ممکن','ar':'كل قطعة تُترجم بالتوازي','ru':'Каждый фрагмент переводится параллельно','zh':'每个片段并行翻译，最小延迟','ja':'各チャンクを並行翻訳 — 最小遅延','hi':'प्रत्येक चंक समानांतर में अनुवाद'});
+  static String get cacheAudio => _t({'en':'Audio cache','fa':'کش صدای استخراج‌شده','ar':'ذاكرة الصوت المستخرج','ru':'Кэш извлечённого звука','zh':'提取的音频缓存','ja':'抽出音声キャッシュ','hi':'निकाला गया ऑडियो कैश'});
+  static String get cacheCleared => _t({'en':'✓ Audio cache cleared','fa':'✓ کش صدا پاک شد','ar':'✓ تم مسح ذاكرة الصوت','ru':'✓ Кэш звука очищен','zh':'✓ 音频缓存已清除','ja':'✓ 音声キャッシュを消去しました','hi':'✓ ऑडियो कैश साफ'});
+  static String get aiModelsLabel => _t({'en':'AI Subtitle Models','fa':'مدل‌های AI زیرنویس','ar':'نماذج ترجمة AI','ru':'Модели ИИ субтитров','zh':'AI字幕模型','ja':'AI字幕モデル','hi':'AI सबटाइटल मॉडल'});
+  static String get subtitleHistory => _t({'en':'Subtitle History','fa':'تاریخچه زیرنویس‌ها','ar':'سجل الترجمات','ru':'История субтитров','zh':'字幕历史','ja':'字幕履歴','hi':'सबटाइटल इतिहास'});
+  static String get canDownloadMultiple => _t({'en':'You can download multiple models — choose at subtitle creation','fa':'می‌توانید چند مدل دانلود کنید — هنگام ساخت زیرنویس انتخاب می‌کنید','ar':'يمكنك تنزيل نماذج متعددة — اختر عند الإنشاء','ru':'Можно загрузить несколько моделей','zh':'可下载多个模型 — 创建时选择','ja':'複数モデルをダウンロード可能','hi':'कई मॉडल डाउनलोड कर सकते हैं'});
+  static String get deleteFromHistory => _t({'en':'Remove from history','fa':'حذف از تاریخچه','ar':'إزالة من السجل','ru':'Удалить из истории','zh':'从历史记录中删除','ja':'履歴から削除','hi':'इतिहास से हटाएं'});
+  static String get deleteFromHistoryDesc => _t({'en':'Only removes from list; subtitle files are not deleted.','fa':'فقط از این لیست حذف می‌شود؛ خود فایل‌های زیرنویس پاک نمی‌شوند.','ar':'يُزال من القائمة فقط؛ ملفات الترجمة لا تُحذف.','ru':'Только из списка; файлы субтитров не удаляются.','zh':'仅从列表中删除；字幕文件不会被删除。','ja':'リストからのみ削除；字幕ファイルは削除されません。','hi':'केवल सूची से हटाया जाएगा; फ़ाइलें नहीं।'});
+  static String get noAiHistoryYet => _t({'en':'No AI subtitle created yet','fa':'هنوز برای هیچ ویدیویی زیرنویس AI نساخته‌اید','ar':'لم تُنشئ ترجمة AI بعد','ru':'ИИ субтитры ещё не созданы','zh':'尚未创建AI字幕','ja':'まだAI字幕は作成されていません','hi':'अभी कोई AI सबटाइटल नहीं बना'});
+  static String get translateSub => _t({'en':'Translate Subtitle','fa':'ترجمه زیرنویس','ar':'ترجمة الترجمة','ru':'Перевести субтитры','zh':'翻译字幕','ja':'字幕を翻訳','hi':'सबटाइटल अनुवाद'});
+  static String get cloudflareAiNote => _t({'en':'Text translated by Cloudflare AI — timestamps preserved','fa':'متن توسط Cloudflare AI ترجمه میشه — timestamp ها دست‌نخورده می‌مونن','ar':'الترجمة بواسطة Cloudflare AI — الطوابع الزمنية محفوظة','ru':'Перевод через Cloudflare AI — временные метки сохранены','zh':'由Cloudflare AI翻译 — 时间戳保留','ja':'Cloudflare AIで翻訳 — タイムスタンプ保持','hi':'Cloudflare AI से अनुवाद — टाइमस्टैम्प सुरक्षित'});
+  static String get targetLang => _t({'en':'Target language:','fa':'زبان مقصد:','ar':'لغة الهدف:','ru':'Язык перевода:','zh':'目标语言:','ja':'翻訳先言語:','hi':'लक्ष्य भाषा:'});
+  static String get onlineSubtitleLabel => _t({'en':'Online Subtitle','fa':'زیرنویس آنلاین','ar':'ترجمة عبر الإنترنت','ru':'Онлайн субтитры','zh':'在线字幕','ja':'オンライン字幕','hi':'ऑनलाइन सबटाइटल'});
+  static String get translationLabel => _t({'en':'Translate','fa':'ترجمه','ar':'ترجمة','ru':'Перевод','zh':'翻译','ja':'翻訳','hi':'अनुवाद'});
+  static String get startingLabel => _t({'en':'Starting...','fa':'شروع...','ar':'جارٍ البدء...','ru':'Запуск...','zh':'开始...','ja':'開始中...','hi':'शुरू हो रहा है...'});
+  static String get overallProgress => _t({'en':'Overall: {done} of {total}','fa':'پیشرفت کلی: {done} از {total}','ar':'الإجمالي: {done} من {total}','ru':'Общий: {done} из {total}','zh':'总体: {done}/{total}','ja':'全体: {done}/{total}','hi':'कुल: {done}/{total}'});
+  static String get batchQueueTitle => _t({'en':'Batch Queue ({count} videos)','fa':'صف دسته‌ای ({count} ویدیو)','ar':'قائمة الدُفعة ({count} فيديو)','ru':'Очередь ({count} видео)','zh':'批量队列({count}个视频)','ja':'バッチキュー({count}本)','hi':'बैच कतार ({count} वीडियो)'});
+  static String get searchingGlobal => _t({'en':'Searching storage...','fa':'در حال جستجوی کل حافظه...','ar':'جارٍ البحث في التخزين...','ru':'Поиск в памяти...','zh':'搜索存储中...','ja':'ストレージを検索中...','hi':'स्टोरेज खोज रहा है...'});
+  static String get musicSubLabel => _t({'en':'Music Subtitle (LRCLib)','fa':'زیرنویس موزیک (LRCLib)','ar':'ترجمة الموسيقى (LRCLib)','ru':'Муз. субтитры (LRCLib)','zh':'音乐字幕 (LRCLib)','ja':'音楽字幕 (LRCLib)','hi':'संगीत सबटाइटल (LRCLib)'});
+  static String get searching2 => _t({'en':'Searching...','fa':'در حال جستجو...','ar':'جارٍ البحث...','ru':'Поиск...','zh':'搜索中...','ja':'検索中...','hi':'खोज रहा है...'});
+  static String get speedLabel => _t({'en':'Speed: ','fa':'سرعت: ','ar':'السرعة: ','ru':'Скорость: ','zh':'速度: ','ja':'速度: ','hi':'गति: '});
+
+  static String get features => _t({'en':'Features','fa':'ویژگی‌ها','ar':'المميزات','ru':'Возможности','zh':'功能','ja':'機能','hi':'विशेषताएं'});
+  static String get subtitleLoaded2 => _t({'en':'Subtitle loaded','fa':'زیرنویس بارگذاری شد','ar':'تم تحميل الترجمة','ru':'Субтитры загружены','zh':'字幕已加载','ja':'字幕読み込み完了','hi':'सबटाइटल लोड'});
+
+}

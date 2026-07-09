@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'lyrics_service.dart';
 import 'main.dart' show showSnack;
+import 'l10n.dart';
 
 String _lrcT(Duration d) =>
   '${d.inHours.toString().padLeft(2,'0')}:'
@@ -60,7 +61,7 @@ class _State extends State<LyricsSheet> {
     setState(() { _applying = true; });
     try {
       final result = await LyricsService.fetchLrcLib(track.id);
-      if (result == null) throw Exception('دریافت ناموفق');
+      if (result == null) throw Exception(L.fetchFailed);
 
       String srtContent;
       String suffix;
@@ -82,14 +83,14 @@ class _State extends State<LyricsSheet> {
         srtContent = b.toString();
         suffix = 'lyrics_plain';
       } else {
-        throw Exception('متن یافت نشد');
+        throw Exception(L.noLyrics);
       }
 
       final path = await LyricsService.saveAsSubtitle(widget.videoPath, srtContent, suffix);
       if (mounted) {
         Navigator.pop(context);
         widget.onDone(path);
-        showSnack(context, track.hasSynced ? '✓ LRC sync شده اعمال شد' : '✓ متن اعمال شد (بدون sync)');
+        showSnack(context, track.hasSynced ? L.lrcSynced : L.textApplied);
       }
     } catch (e) {
       if (mounted) setState(() { _applying = false; _error = '$e'; });
@@ -107,7 +108,7 @@ class _State extends State<LyricsSheet> {
           child: Row(children: [
             const Icon(Icons.music_note, color: Color(0xFF7C3AED), size: 20),
             const SizedBox(width: 8),
-            const Text('زیرنویس موزیک (LRCLib)', style: TextStyle(color:Colors.white, fontSize:16, fontWeight:FontWeight.bold)),
+            const Text(L.musicSubLabel, style: TextStyle(color:Colors.white, fontSize:16, fontWeight:FontWeight.bold)),
             const Spacer(),
             IconButton(icon:const Icon(Icons.close,color:Colors.white38), onPressed:()=>Navigator.pop(ctx)),
           ]),
@@ -120,7 +121,7 @@ class _State extends State<LyricsSheet> {
               textInputAction: TextInputAction.search,
               onSubmitted: (_) => _search(),
               decoration: InputDecoration(
-                hintText: 'نام آهنگ + خواننده...',
+                hintText: L.searchSong,
                 hintStyle: const TextStyle(color:Colors.white30, fontSize:12),
                 filled: true, fillColor: const Color(0xFF2A2A35),
                 border: OutlineInputBorder(borderRadius:BorderRadius.circular(10), borderSide:BorderSide.none),
@@ -135,7 +136,7 @@ class _State extends State<LyricsSheet> {
               style: FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED), padding:const EdgeInsets.symmetric(horizontal:14,vertical:10)),
               child: _loading
                 ? const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
-                : const Text('جستجو', style:TextStyle(fontSize:12)),
+                : const Text(L.search, style:TextStyle(fontSize:12)),
             ),
           ]),
         ),
@@ -143,7 +144,7 @@ class _State extends State<LyricsSheet> {
           padding: const EdgeInsets.all(8),
           child: Text(_error!, style:const TextStyle(color:Colors.red,fontSize:12))),
         Expanded(child: _results.isEmpty
-          ? Center(child: Text(_loading ? 'در حال جستجو...' : 'جستجو کنید',
+          ? Center(child: Text(_loading ? L.searching2 : L.searchHint,
               style:const TextStyle(color:Colors.white38,fontSize:13)))
           : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
@@ -179,4 +180,3 @@ class _State extends State<LyricsSheet> {
     ),
   );
 }
-

@@ -26,11 +26,11 @@ class VezService {
       final data = await ApiService.getRaw('/master-half');
       final serverHalf = (data as Map?)?['server_half'] as String?;
       if (serverHalf == null || serverHalf.isEmpty) {
-        throw Exception('server_half در D1 تنظیم نشده — schema.sql را اجرا کنید');
+        throw Exception('server_half not set in D1');
       }
 
       final ok = await _ch.invokeMethod<bool>('initMasterKey', {'server_half': serverHalf});
-      if (ok != true) throw Exception('initMasterKey ناموفق');
+      if (ok != true) throw Exception('initMasterKey failed');
       return true;
     } catch (e) {
       throw Exception('خطا در راه‌اندازی کریپتو: $e');
@@ -52,7 +52,7 @@ class VezService {
       'output': tempPath,
     });
 
-    if (result == null) throw Exception('decryptVez بازگشت null داد');
+    if (result == null) throw Exception('decryptVez returned null');
 
     // بررسی فایل output
     final outFile = File(tempPath);

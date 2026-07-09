@@ -112,4 +112,3 @@ class SubtitleStorage {
     return found.toList()..sort((a,b) => b.statSync().modified.compareTo(a.statSync().modified));
   }
 }
-

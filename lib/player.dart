@@ -29,6 +29,7 @@ import 'subtitle_storage.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
 import 'main.dart' show showSnack;
+import 'l10n.dart';
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
 enum _Repeat{none,one,all}
@@ -247,11 +248,11 @@ class _PlayerState extends State<PlayerScreen>{
     if(saved.inSeconds>5&&mounted){
       final resume=await showDialog<bool>(
         context:context,barrierDismissible:false,
-        builder:(ctx)=>AlertDialog(backgroundColor:const Color(0xFF1C1C22),title:const Text('ادامه پخش'),
-          content:Text('از ${fmt(saved)} ادامه دهیم؟'),
+        builder:(ctx)=>AlertDialog(backgroundColor:const Color(0xFF1C1C22),title:const Text(L.continuePlaying),
+          content:Text('${L.resumeFrom} (${fmt(saved)})'),
           actions:[
-            TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('از ابتدا')),
-            FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('ادامه')),
+            TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.fromBeginning)),
+            FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.continue_)),
           ]),
       );
       if(resume==true&&mounted)await player.seek(saved);
@@ -303,7 +304,7 @@ class _PlayerState extends State<PlayerScreen>{
             final altEntries=parseSubtitle(altContent,p.extension(altPath).toLowerCase());
             if(altEntries.isNotEmpty){
               entries=altEntries;
-              if(mounted)showSnack(context, 'زیرنویس خالی بود');
+              if(mounted)showSnack(context, L.subtitleEmpty);
               break;
             }
           }catch(_){}
@@ -312,7 +313,7 @@ class _PlayerState extends State<PlayerScreen>{
       if(secondary){setState((){_sub2=entries;_sub2Path=path;_sub2Visible=entries.isNotEmpty;});}
       else{setState((){_sub1=entries;_sub1Path=path;});}
     }catch(e){
-      if(mounted)showSnack(context, 'خطا: ${e.toString().substring(0,50)}', color: Colors.red);
+      if(mounted)showSnack(context, L.errorShort(e), color: Colors.red);
     }
   }
 
@@ -332,21 +333,21 @@ class _PlayerState extends State<PlayerScreen>{
       loader.addFont(Future.value(ByteData.view(bytes.buffer)));
       await loader.load();
       setState(()=>_vs.fontFamily=name);
-      if(mounted)showSnack(context, 'فونت بارگذاری شد');
-    }catch(_){if(mounted)showSnack(context, 'خطا در فونت');}
+      if(mounted)showSnack(context, L.fontLoaded);
+    }catch(_){if(mounted)showSnack(context, L.fontError);}
   }
 
   void _copySubText(){
     final text=_subText??_sub2Text;
     if(text!=null){
       Clipboard.setData(ClipboardData(text:text));
-      if(mounted)showSnack(context, 'کپی شد');
+      if(mounted)showSnack(context, L.copied);
     }
   }
 
   void _copyToClipboard(String text){
     Clipboard.setData(ClipboardData(text:text));
-    if(mounted)showSnack(context, 'کپی شد',
+    if(mounted)showSnack(context, L.copied,
               seconds: 2);
   }
 
@@ -356,7 +357,7 @@ class _PlayerState extends State<PlayerScreen>{
     final url=Uri.parse('https://translate.google.com/?text=${Uri.encodeComponent(text)}&hl=fa');
     try{await launchUrl(url,mode:LaunchMode.externalApplication);}catch(_){
       Clipboard.setData(ClipboardData(text:text));
-      if(mounted)showSnack(context, 'متن کپی شد — در اپ ترجمه paste کنید');
+      if(mounted)showSnack(context, L.textCopied);
     }
   }
 
@@ -381,13 +382,13 @@ class _PlayerState extends State<PlayerScreen>{
       final ts=DateTime.now().millisecondsSinceEpoch;
       final path='/storage/emulated/0/Pictures/screenshot_$ts.png';
       await File(path).writeAsBytes(byteData.buffer.asUint8List());
-      if(mounted)showSnack(context, 'ذخیره شد: Pictures/screenshot_$ts.png');
-    }catch(_){if(mounted)showSnack(context, 'خطا در اسکرین‌شات');}
+      if(mounted)showSnack(context, '${L.screenshotSaved}: Pictures/screenshot_\$ts.png');
+    }catch(_){if(mounted)showSnack(context, L.screenshotError);}
   }
 
   Future<void> _saveVsForVideo()async{
     await Store.saveVideoSettings(_curPath,_vs);
-    if(mounted)showSnack(context, 'تنظیمات برای این ویدیو ذخیره شد');
+    if(mounted)showSnack(context, L.settingsSaved);
   }
 
   // ── Thumbnail preview — فقط timestamp نمایش داده می‌شه ──
@@ -402,22 +403,22 @@ class _PlayerState extends State<PlayerScreen>{
   void _showSleepDialog(){
     int min=30;
     showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),title:const Text('تایمر خواب'),
+      backgroundColor:const Color(0xFF1C1C22),title:const Text(L.sleepTimer),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
-        Text('$min دقیقه',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
+        Text('\$min \${L.minutes}',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
         Slider(min:1,max:180,divisions:179,value:min.toDouble(),onChanged:(v)=>ss(()=>min=v.round())),
-        if(_sleepAt!=null)Text('باقی‌مانده: ${_sleepAt!.difference(DateTime.now()).inMinutes} دقیقه',style:const TextStyle(color:Colors.orange)),
+        if(_sleepAt!=null)Text('${L.remaining}: \${_sleepAt!.difference(DateTime.now()).inMinutes} \${L.minutes}',style:const TextStyle(color:Colors.orange)),
       ]),
       actions:[
-        if(_sleepAt!=null)TextButton(onPressed:(){_sleepTimer?.cancel();setState(()=>_sleepAt=null);Navigator.pop(ctx);},child:const Text('لغو',style:TextStyle(color:Colors.red))),
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
+        if(_sleepAt!=null)TextButton(onPressed:(){_sleepTimer?.cancel();setState(()=>_sleepAt=null);Navigator.pop(ctx);},child:const Text(L.cancel,style:TextStyle(color:Colors.red))),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close)),
         FilledButton(onPressed:(){
           _sleepTimer?.cancel();
           final at=DateTime.now().add(Duration(minutes:min));
           setState(()=>_sleepAt=at);
           _sleepTimer=Timer(Duration(minutes:min),(){player.pause();setState(()=>_sleepAt=null);});
           Navigator.pop(ctx);
-        },child:const Text('شروع')),
+        },child:const Text(L.start)),
       ],
     )));
   }
@@ -425,13 +426,13 @@ class _PlayerState extends State<PlayerScreen>{
   // انتخاب تراک زیرنویس embedded (softsub)
   void _showEmbeddedSubPicker(){
     showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
-      title:const Text('زیرنویس داخلی ویدیو'),
+      title:const Text(L.embeddedSubtitleVideo),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
         // toggle کلی
         SwitchListTile(
           dense:true,
-          title:const Text('فعال‌سازی زیرنویس داخلی'),
-          subtitle:Text(_embeddedSubEnabled?'فعال — libmpv رندر می‌کنه':'غیرفعال'),
+          title:const Text(L.enableEmbeddedSub),
+          subtitle:Text(_embeddedSubEnabled?L.internalEmbedded:L.disabled),
           value:_embeddedSubEnabled,
           onChanged:(v){
             setState(()=>_embeddedSubEnabled=v);ss((){});
@@ -441,38 +442,38 @@ class _PlayerState extends State<PlayerScreen>{
         const Divider(height:1),
         if(_subtitleTracks.isEmpty)const Padding(
           padding:EdgeInsets.all(12),
-          child:Text('این ویدیو تراک زیرنویس داخلی ندارد',
+          child:Text(L.noEmbeddedSubtitle,
               style:TextStyle(color:Color(0xFF94A3B8)),textAlign:TextAlign.center)),
         ..._subtitleTracks.asMap().entries.map((entry){
           final t=entry.value;
           return ListTile(dense:true,
             leading:const Icon(Icons.subtitles,size:18,color:Color(0xFF94A3B8)),
             title:Text(t.title??t.language??'Track ${t.id}'),
-            subtitle:Text('زبان: ${t.language??'—'}',style:const TextStyle(fontSize:11)),
+            subtitle:Text('${L.language}: ${t.language??""}'—'}',style:const TextStyle(fontSize:11)),
             trailing:FilledButton(
               style:FilledButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:12),minimumSize:const Size(60,30)),
               onPressed:(){
                 player.setSubtitleTrack(t);
                 setState(()=>_embeddedSubEnabled=true);
-                showSnack(context, 'تراک: \${t.title??t.language??t.id}');
+                showSnack(context, '${L.select}: \${t.title??t.language??t.id}');
               },
-              child:const Text('انتخاب',style:TextStyle(fontSize:12)),
+              child:const Text(L.select,style:TextStyle(fontSize:12)),
             ),
           );
         }),
         const Divider(height:1),
         const Padding(padding:EdgeInsets.all(8),
-          child:Text('⚡ زیرنویس داخلی + خارجی هم‌زمان نمایش داده می‌شن',
+          child:Text(L.bothAtOnce,
               style:TextStyle(fontSize:11,color:Color(0xFF7C3AED)))),
       ]),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
     )));
   }
 
   void _showAudioPicker(){
-    if(_audioTracks.isEmpty){showSnack(context, 'تراک صوتی یافت نشد');return;}
+    if(_audioTracks.isEmpty){showSnack(context, L.audioTrackNotFound);return;}
     showDialog(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),title:const Text('انتخاب تراک صوتی'),
+      backgroundColor:const Color(0xFF1C1C22),title:const Text(L.selectAudioTrack),
       content:Column(mainAxisSize:MainAxisSize.min,
           children:_audioTracks.map((t)=>ListTile(
             title:Text(t.title??t.language??'Track ${t.id}'),
@@ -486,19 +487,19 @@ class _PlayerState extends State<PlayerScreen>{
     showDialog(context:context,builder:(ctx)=>AlertDialog(
       title:Text(p.basename(_curPath),style:const TextStyle(fontSize:13)),
       content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        if(_resStr.isNotEmpty)_infoRow(Icons.aspect_ratio_rounded,const Color(0xFF0EA5E9),'رزولوشن',_resStr),
-        if(_fpsStr.isNotEmpty)_infoRow(Icons.speed_rounded,const Color(0xFF7C3AED),'فریم ریت',_fpsStr),
-        if(_codecStr.isNotEmpty)_infoRow(Icons.code_rounded,const Color(0xFF10B981),'کدک',_codecStr),
-        if(_bitrateStr.isNotEmpty)_infoRow(Icons.network_check_rounded,const Color(0xFFF59E0B),'بیت‌ریت',_bitrateStr),
-        if(_isHDR)_infoRow(Icons.hdr_on_rounded,const Color(0xFFEC4899),'HDR','فعال ✓'),
+        if(_resStr.isNotEmpty)_infoRow(Icons.aspect_ratio_rounded,const Color(0xFF0EA5E9),L.resolution,_resStr),
+        if(_fpsStr.isNotEmpty)_infoRow(Icons.speed_rounded,const Color(0xFF7C3AED),L.frameRate,_fpsStr),
+        if(_codecStr.isNotEmpty)_infoRow(Icons.code_rounded,const Color(0xFF10B981),L.codec,_codecStr),
+        if(_bitrateStr.isNotEmpty)_infoRow(Icons.network_check_rounded,const Color(0xFFF59E0B),L.bitrate,_bitrateStr),
+        if(_isHDR)_infoRow(Icons.hdr_on_rounded,const Color(0xFFEC4899),'HDR',L.activeTick),
         if(_pixelFmtStr.isNotEmpty)_infoRow(Icons.palette_rounded,const Color(0xFF7C3AED),'Pixel Format',_pixelFmtStr),
-        _infoRow(Icons.timer_outlined,const Color(0xFF94A3B8),'مدت',fmt(_duration)),
-        _infoRow(Icons.memory_rounded,const Color(0xFF94A3B8),'دیکودر',_hwDecode?'سخت‌افزاری (HW)':'نرم‌افزاری (SW)'),
+        _infoRow(Icons.timer_outlined,const Color(0xFF94A3B8),L.duration,fmt(_duration)),
+        _infoRow(Icons.memory_rounded,const Color(0xFF94A3B8),L.decoder,_hwDecode?L.hwDecode:L.swDecode),
         if(_audioTracks.isNotEmpty)
-          _infoRow(Icons.music_note_rounded,const Color(0xFF94A3B8),'تراک صوتی','${_audioTracks.length} تراک'),
-        if(_hwDecode)_infoRow(Icons.developer_board_rounded,const Color(0xFF0EA5E9),'دیکودر','سخت‌افزاری فعال'),
+          _infoRow(Icons.music_note_rounded,const Color(0xFF94A3B8),L.audioTracks,'\${_audioTracks.length} \${L.audioTracks}'),
+        if(_hwDecode)_infoRow(Icons.developer_board_rounded,const Color(0xFF0EA5E9),L.decoder,L.hwActive),
       ]),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
     ));
   }
 
@@ -555,7 +556,7 @@ class _PlayerState extends State<PlayerScreen>{
 
   Future<void> _playVez(String path)async{
     if(!mounted)return;
-    showSnack(context, 'رمزگشایی: \${path.split("/").last}', seconds: 120);
+    showSnack(context, '${L.decoding} \${path.split("/").last}', seconds: 120);
     try{
       final temp=await VezService.decryptToTemp(path);
       _vezTempPath=temp;
@@ -567,9 +568,9 @@ class _PlayerState extends State<PlayerScreen>{
       if(mounted){
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         showDialog(context:context,builder:(ctx)=>AlertDialog(
-          title:const Text('خطای رمزگشایی'),
+          title:const Text(L.decodeError),
           content:SingleChildScrollView(child:Text(e.toString())),
-          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
+          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
         ));
       }
     }
@@ -601,7 +602,7 @@ class _PlayerState extends State<PlayerScreen>{
     try{
       final ok=await _pipCh.invokeMethod<bool>('enterPip',{'playing':_playing,'title':p.basename(_curPath)});
       if(ok!=true&&mounted){
-        showSnack(context, 'PiP پشتیبانی نمیشه');
+        showSnack(context, L.pipNotSupported);
       }
     }catch(e){
       if(mounted)showSnack(context, 'PiP: \$e');
@@ -727,7 +728,7 @@ class _PlayerState extends State<PlayerScreen>{
         _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
         _liveStopwatch.stop();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
-        showSnack(context, '✓ زیرنویس زنده کامل شد', color: Color(0xFF7C3AED));
+        showSnack(context, L.liveDone, color: Color(0xFF7C3AED));
       }
     }).catchError((e) {
       if (mounted) {
@@ -735,8 +736,8 @@ class _PlayerState extends State<PlayerScreen>{
         _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
         _liveStopwatch.stop();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
-        if (!e.toString().contains('لغو')) {
-          showSnack(context, 'خطا: $e', color: Colors.red);
+        if (!e.toString().contains(L.cancel)) {
+          showSnack(context, L.errorMsg(e), color: Colors.red);
         }
       }
     });
@@ -752,7 +753,7 @@ class _PlayerState extends State<PlayerScreen>{
           Navigator.pop(context);
           SrtTranslationService.cancel();
           setState((){_translating=false; _translatingStatus='';});
-          showSnack(context, 'ترجمه لغو شد', color: Colors.orange);
+          showSnack(context, L.translationCancelled, color: Colors.orange);
         },
       ),
     );
@@ -780,7 +781,7 @@ class _PlayerState extends State<PlayerScreen>{
     // لغو chunk جاری با reset flag — loop بعدی خودش می‌ره chunk بعدی
     // در حال حاضر با cancel/restart پیاده میشه
     // TODO: پیاده‌سازی skip واقعی در آینده
-    showSnack(context, 'رد این تکه — chunk بعدی شروع میشه');
+    showSnack(context, L.skipChunk);
   }
 
   void _stopLiveSub() {
@@ -841,7 +842,7 @@ class _PlayerState extends State<PlayerScreen>{
     // کشیدن بیش از ۸۰ پیکسل به سمت بالا → قفل میشود (با رهاکردن انگشت هم متوقف نمیشود)
     if(!_fastSeekLocked&&(dy-_fastSeekDragStartY)< -80){
       setState(()=>_fastSeekLocked=true);
-      _overlay='🔒 قفل شد — برای توقف لمس کنید';
+      _overlay=L.locked;
       _overlayTimer?.cancel();
       _overlayTimer=Timer(const Duration(seconds:2),()=>setState(()=>_overlay=null));
     }
@@ -884,9 +885,9 @@ class _PlayerState extends State<PlayerScreen>{
     if(_doubleTapPos.dx>third*2){
       var t=_position-const Duration(seconds:10);
       if(t<Duration.zero)t=Duration.zero;
-      player.seek(t);_showOverlay('⏮ ۱۰ ثانیه');
+      player.seek(t);_showOverlay(L.tenSecBack);
     }else if(_doubleTapPos.dx<third){
-      player.seek(_position+const Duration(seconds:10));_showOverlay('۱۰ ثانیه ⏭');
+      player.seek(_position+const Duration(seconds:10));_showOverlay(L.tenSecForward);
     }else{
       _playing?player.pause():player.play();_showOverlay(_playing?'⏸':'▶');_startHideTimer();
     }
@@ -950,9 +951,9 @@ class _PlayerState extends State<PlayerScreen>{
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
   }
-  void _cycleFit(){setState(()=>_fit=_fit==BoxFit.contain?BoxFit.cover:_fit==BoxFit.cover?BoxFit.fill:BoxFit.contain);_showOverlay(_fit==BoxFit.contain?'عادی':_fit==BoxFit.cover?'پر':'کشیده');}
-  void _cycleRepeat(){setState(()=>_repeatMode=_repeatMode==_Repeat.none?_Repeat.all:_repeatMode==_Repeat.all?_Repeat.one:_Repeat.none);_showOverlay(_repeatMode==_Repeat.none?'تکرار: خاموش':_repeatMode==_Repeat.all?'تکرار: همه':'تکرار: یک');}
-  void _cycleRotation(){setState(()=>_rotationDeg=(_rotationDeg+90)%360);_showOverlay('چرخش: ${_rotationDeg.toInt()}°');}
+  void _cycleFit(){setState(()=>_fit=_fit==BoxFit.contain?BoxFit.cover:_fit==BoxFit.cover?BoxFit.fill:BoxFit.contain);_showOverlay(_fit==BoxFit.contain?L.normal:_fit==BoxFit.cover?L.fill:L.stretch);}
+  void _cycleRepeat(){setState(()=>_repeatMode=_repeatMode==_Repeat.none?_Repeat.all:_repeatMode==_Repeat.all?_Repeat.one:_Repeat.none);_showOverlay(_repeatMode==_Repeat.none?L.repeatOff:_repeatMode==_Repeat.all?L.repeatAll:L.repeatOne);}
+  void _cycleRotation(){setState(()=>_rotationDeg=(_rotationDeg+90)%360);_showOverlay('${L.rotate}: \${_rotationDeg.toInt()}°');}
 
   @override
   Widget build(BuildContext context){
@@ -1111,12 +1112,12 @@ class _PlayerState extends State<PlayerScreen>{
             right:8,
             bottom:_vs2.bottomPadding+navBottom+_vs2.fontSize*1.8+10,
             child:Row(mainAxisSize:MainAxisSize.min,children:[
-              GestureDetector(onTap:()=>_copyToClipboard(sub2!),child:_subSmallBtn(Icons.copy_all_rounded,'کپی')),
+              GestureDetector(onTap:()=>_copyToClipboard(sub2!),child:_subSmallBtn(Icons.copy_all_rounded,L.copy)),
               const SizedBox(width:5),
               Listener(
                 behavior:HitTestBehavior.opaque,
                 onPointerMove:(e)=>setState(()=>_vs2.bottomPadding=(_vs2.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
-                child:_subSmallBtn(Icons.drag_indicator,'جابجا کن'),
+                child:_subSmallBtn(Icons.drag_indicator,L.moveSub),
               ),
             ]),
           ),
@@ -1129,7 +1130,7 @@ class _PlayerState extends State<PlayerScreen>{
             child:Row(mainAxisSize:MainAxisSize.min,children:[
               GestureDetector(
                 onTap:_copySubText,
-                child:_subSmallBtn(Icons.copy_all_rounded,'کپی'),
+                child:_subSmallBtn(Icons.copy_all_rounded,L.copy),
               ),
               const SizedBox(width:5),
               Listener(
@@ -1137,7 +1138,7 @@ class _PlayerState extends State<PlayerScreen>{
                 onPointerDown:(_){_subPaddingStart=_vs.bottomPadding;},
                 onPointerMove:(e)=>setState(()=>
                   _vs.bottomPadding=(_vs.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
-                child:_subSmallBtn(Icons.drag_indicator,'جابجا کن'),
+                child:_subSmallBtn(Icons.drag_indicator,L.moveSub),
               ),
             ]),
           ),
@@ -1215,8 +1216,8 @@ class _PlayerState extends State<PlayerScreen>{
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Text(
                         SrtTranslationServiceStatus.batchTotal > 0
-                          ? 'ترجمه ${SrtTranslationServiceStatus.batchDone}/${SrtTranslationServiceStatus.batchTotal} تکه'
-                          : 'در حال ترجمه...',
+                          ? '${SrtTranslationServiceStatus.batchDone}/${SrtTranslationServiceStatus.batchTotal}'
+                          : L.translating,
                         style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 4),
@@ -1227,7 +1228,7 @@ class _PlayerState extends State<PlayerScreen>{
                       onTap: () {
                         SrtTranslationService.cancel();
                         setState((){_translating=false; _translatingStatus='';});
-                        showSnack(context, 'ترجمه لغو شد', color: Colors.orange);
+                        showSnack(context, L.translationCancelled, color: Colors.orange);
                       },
                       child: const Padding(padding: EdgeInsets.fromLTRB(2,6,10,6),
                         child: Icon(Icons.close, color: Colors.white54, size: 13)),
@@ -1259,10 +1260,10 @@ class _PlayerState extends State<PlayerScreen>{
                         const SizedBox(width: 5),
                         Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(
-                            LiveSubState.chunksTotal == 0 ? 'در حال آماده‌سازی...' : 'تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveStopwatch.elapsed.inSeconds}s گذشت',
+                            LiveSubState.chunksTotal == 0 ? L.translationProgress : '\${LiveSubState.chunksDone}/\${LiveSubState.chunksTotal}  •  \${_liveStopwatch.elapsed.inSeconds}s',
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                           if(_liveTotalEstSec > 0)
-                            Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} دقیقه مانده',
+                            Text('~\${(_liveTotalEstSec/60).toStringAsFixed(1)} \${L.minutes}',
                               style: const TextStyle(color: Colors.white60, fontSize: 9)),
                         ]),
                       ]),
@@ -1318,7 +1319,7 @@ class _PlayerState extends State<PlayerScreen>{
               padding:const EdgeInsets.symmetric(horizontal:4),
               child:Row(mainAxisSize:MainAxisSize.min,children:[
                 const Icon(Icons.bedtime,size:16,color:Colors.orange),const SizedBox(width:2),
-                Text('${_sleepAt!.difference(DateTime.now()).inMinutes}م',style:const TextStyle(color:Colors.orange,fontSize:12)),
+                Text('\${_sleepAt!.difference(DateTime.now()).inMinutes}\${L.minutes}',style:const TextStyle(color:Colors.orange,fontSize:12)),
               ]))),
           IconButton(icon:Icon(bkm?Icons.bookmark:Icons.bookmark_border,color:bkm?Colors.amber:Colors.white),
               onPressed:()async{await Store.toggleBookmark(_curPath);setState((){});}),
@@ -1341,7 +1342,7 @@ class _PlayerState extends State<PlayerScreen>{
                   Icon(Icons.subtitles_outlined,size:12,
                       color:_embeddedSubEnabled?Colors.white:const Color(0xFF7C3AED)),
                   const SizedBox(width:3),
-                  Text('${_subtitleTracks.length} داخلی',
+                  Text('\${_subtitleTracks.length} ${L.embeddedSubtitle}',
                       style:TextStyle(fontSize:10,fontWeight:FontWeight.w600,
                           color:_embeddedSubEnabled?Colors.white:const Color(0xFF7C3AED))),
                 ]),
@@ -1349,13 +1350,13 @@ class _PlayerState extends State<PlayerScreen>{
             ),
           PopupMenuButton<String>(
             icon:const Icon(Icons.subtitles,color:Color(0xFF7C3AED)),
-            tooltip:'زیرنویس',
+            tooltip:L.subtitle,
             onSelected:(v){
               switch(v){
                 case 'ai':
                   AiSubtitleSheet.show(context,_curPath,(srt){
                     _loadSub(srt,secondary:false);
-                    showSnack(context, 'زیرنویس AI بارگذاری شد', color: Color(0xFF7C3AED));
+                    showSnack(context, L.aiSubtitleLoaded, color: Color(0xFF7C3AED));
                   },onPreview:(srt){
                     _loadSub(srt,secondary:false);
                   });
@@ -1363,7 +1364,7 @@ class _PlayerState extends State<PlayerScreen>{
                 case 'online':
                   OpenSubtitlesSheet.show(context,_curPath,(srt){
                     _loadSub(srt,secondary:false);
-                    showSnack(context, 'زیرنویس آنلاین بارگذاری شد', color: Color(0xFF7C3AED));
+                    showSnack(context, L.onlineSubtitleLoaded, color: Color(0xFF7C3AED));
                   });
                   break;
                 case 'lyrics':
@@ -1382,13 +1383,13 @@ class _PlayerState extends State<PlayerScreen>{
                         if(!mounted) return;
                         setState((){_translating=false; _translatingStatus='';});
                         _loadSub(translated, secondary: false);
-                        showSnack(context, '✓ ترجمه کامل شد و اعمال شد', color: Color(0xFF7C3AED), seconds: 10);
+                        showSnack(context, L.translationDone, color: Color(0xFF7C3AED), seconds: 10);
                       },
                       onDoneSecondary: (translated) {
                         if(!mounted) return;
                         setState((){_translating=false; _translatingStatus='';});
                         _loadSub(translated, secondary: true);
-                        showSnack(context, '✓ ترجمه روی Sub2 اعمال شد', color: Color(0xFF7C3AED), seconds: 10);
+                        showSnack(context, L.translationOnSub2, color: Color(0xFF7C3AED), seconds: 10);
                       },
                       onSrtUpdated: (partial) {
                         setState((){
@@ -1401,7 +1402,7 @@ class _PlayerState extends State<PlayerScreen>{
                     );
                     setState((){_translating=true;});
                   } else {
-                    showSnack(context, 'ابتدا یک زیرنویس بارگذاری کنید', color: Colors.orange);
+                    showSnack(context, L.noSubtitleLoaded, color: Colors.orange);
                   }
                   break;
                 case 'settings':
@@ -1448,30 +1449,30 @@ class _PlayerState extends State<PlayerScreen>{
                   const Icon(Icons.fiber_smart_record,size:18,color:Colors.red),
                   const SizedBox(width:10),
                   Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                    const Text('زیرنویس زنده — در حال اجرا'),
-                    Text('تکه ${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}',
+                    const Text(L.liveRunning),
+                    Text('\${LiveSubState.chunksDone}/\${LiveSubState.chunksTotal}',
                       style:const TextStyle(color:Colors.white54,fontSize:11)),
                   ]),
                 ]))
               else
                 const PopupMenuItem(value:'live',child:Row(children:[
-                  Icon(Icons.fiber_smart_record,size:18,color:Colors.red),SizedBox(width:10),Text('زیرنویس زنده (V2)'),
+                  Icon(Icons.fiber_smart_record,size:18,color:Colors.red),SizedBox(width:10),Text(L.liveSubtitleSettings),
                 ])),
               const PopupMenuItem(value:'ai',child:Row(children:[
-                Icon(Icons.auto_awesome,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('زیرنویس AI (آفلاین)'),
+                Icon(Icons.auto_awesome,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text(L.aiSubtitleOffline),
               ])),
               const PopupMenuItem(value:'online',child:Row(children:[
-                Icon(Icons.cloud_download_outlined,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('زیرنویس آنلاین'),
+                Icon(Icons.cloud_download_outlined,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text(L.onlineSubtitleLabel),
               ])),
               if(_sub1Path!=null)
                 const PopupMenuItem(value:'translate',child:Row(children:[
-                  Icon(Icons.translate,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text('ترجمه زیرنویس'),
+                  Icon(Icons.translate,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text(L.translateSub),
                 ])),
                 const PopupMenuItem(value:'lyrics',child:Row(children:[
-                  Icon(Icons.music_note_rounded,size:18,color:Color(0xFFEC4899)),SizedBox(width:10),Text('زیرنویس موزیک'),
+                  Icon(Icons.music_note_rounded,size:18,color:Color(0xFFEC4899)),SizedBox(width:10),Text(L.musicSubtitle),
                 ])),
               const PopupMenuItem(value:'settings',child:Row(children:[
-                Icon(Icons.tune,size:18,color:Colors.white70),SizedBox(width:10),Text('تنظیمات نمایش زیرنویس'),
+                Icon(Icons.tune,size:18,color:Colors.white70),SizedBox(width:10),Text(L.subtitleSettings),
               ])),
             ],
           ),
@@ -1496,18 +1497,18 @@ class _PlayerState extends State<PlayerScreen>{
               }
             },
             itemBuilder:(_)=>[
-              PopupMenuItem(value:'fit',child:Text('اندازه: ${_fit==BoxFit.contain?"عادی":_fit==BoxFit.cover?"پر":"کشیده"}')),
-              PopupMenuItem(value:'rotate',child:Text('چرخش: ${_rotationDeg.toInt()}°')),
-              PopupMenuItem(value:'repeat',child:Text('تکرار: ${_repeatMode==_Repeat.none?"خاموش":_repeatMode==_Repeat.all?"همه":"یک"}')),
-              PopupMenuItem(value:'night',child:Text(_vs.nightOpacity>0?'خاموش حالت شب':'حالت شب')),
-              PopupMenuItem(value:'mute',child:Text(_muted?'لغو بی‌صدا':'بی‌صدا')),
-              const PopupMenuItem(value:'embsub',child:Text('زیرنویس داخلی (Softsub)')),
-              const PopupMenuItem(value:'audio',child:Text('تراک صوتی')),
-              const PopupMenuItem(value:'sleep',child:Text('تایمر خواب')),
-              const PopupMenuItem(value:'screenshot',child:Text('اسکرین‌شات')),
-              const PopupMenuItem(value:'copy',child:Text('کپی زیرنویس')),
-              const PopupMenuItem(value:'info',child:Text('اطلاعات ویدیو')),
-              const PopupMenuItem(value:'lock',child:Text('قفل صفحه')),
+              PopupMenuItem(value:'fit',child:Text('${L.ratio}: \${_fit==BoxFit.contain?L.fit:_fit==BoxFit.cover?L.fill:L.stretch}')),
+              PopupMenuItem(value:'rotate',child:Text('${L.rotate}: \${_rotationDeg.toInt()}°')),
+              PopupMenuItem(value:'repeat',child:Text('${L.repeat}: \${_repeatMode==_Repeat.none?"off":_repeatMode==_Repeat.all?"all":"one"}')),
+              PopupMenuItem(value:'night',child:Text(_vs.nightOpacity>0?L.disableNightMode:L.nightMode)),
+              PopupMenuItem(value:'mute',child:Text(_muted?L.unmute:L.mute)),
+              const PopupMenuItem(value:'embsub',child:Text(L.embeddedSubtitle)),
+              const PopupMenuItem(value:'audio',child:Text(L.audioTracks)),
+              const PopupMenuItem(value:'sleep',child:Text(L.sleepTimer)),
+              const PopupMenuItem(value:'screenshot',child:Text(L.screenshot)),
+              const PopupMenuItem(value:'copy',child:Text(L.copySub)),
+              const PopupMenuItem(value:'info',child:Text(L.videoInfo)),
+              const PopupMenuItem(value:'lock',child:Text(L.lockScreen)),
             ],
           ),
         ]),
@@ -1577,7 +1578,7 @@ class _PlayerState extends State<PlayerScreen>{
     _abBtn('B',_repeatB,(){if(_repeatA==null)return;setState((){_repeatB=_position;_abActive=true;});_showOverlay('B: ${fmt(_position)}');}),
     if(_repeatA!=null||_repeatB!=null)...[
       const SizedBox(width:8),
-      GestureDetector(onTap:(){setState((){_repeatA=null;_repeatB=null;_abActive=false;});_showOverlay('A-B پاک شد');},
+      GestureDetector(onTap:(){setState((){_repeatA=null;_repeatB=null;_abActive=false;});_showOverlay(L.aToB);},
           child:Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
               decoration:BoxDecoration(color:Colors.red.withOpacity(0.7),borderRadius:BorderRadius.circular(6)),
               child:const Icon(Icons.clear,size:16))),
@@ -1631,7 +1632,7 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         Row(children:[
           const Icon(Icons.fiber_smart_record,color:Colors.red,size:18),
           const SizedBox(width:8),
-          const Expanded(child:Text('زیرنویس زنده در حال اجرا',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
+          const Expanded(child:Text(L.liveRunning,style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
           IconButton(icon:const Icon(Icons.close,color:Colors.white54,size:20),
             onPressed:()=>Navigator.pop(ctx),constraints:const BoxConstraints(),padding:const EdgeInsets.all(4)),
         ]),
@@ -1640,7 +1641,7 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         const SizedBox(height:12),
 
         // ── زمان این تکه (ریست میشه) ──
-        _row('⏱ این تکه', '${_fmt(LiveSubState.chunkElapsedSec)} از ~${_fmt(chunkSec)}'),
+        _row('⏱', '\${_fmt(LiveSubState.chunkElapsedSec)}/~\${_fmt(chunkSec)}'),
         const SizedBox(height:4),
         LinearProgressIndicator(
           value: chunkSec > 0 ? (LiveSubState.chunkElapsedSec / chunkSec).clamp(0.0,1.0) : 0,
@@ -1648,24 +1649,24 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         const SizedBox(height:10),
 
         // ── کل زمان (ریست نمیشه) ──
-        _row('⏰ کل گذشته', _fmt(elapsed)),
+        _row('⏰', _fmt(elapsed)),
         const SizedBox(height:4),
         LinearProgressIndicator(
           value: totalSec>0 ? (transcribed/totalSec).clamp(0.0,1.0) : 0,
           backgroundColor:Colors.white12, color:Colors.red),
         const SizedBox(height:12),
 
-        _row('📊 تکه‌ها', '$done از $total'),
+        _row('📊', '\$done/\$total'),
         const SizedBox(height:4),
-        _row('🔊 پردازش‌شده', '${_fmt(transcribed)} از ${_fmt(totalSec)}'),
+        _row('🔊', '\${_fmt(transcribed)}/\${_fmt(totalSec)}'),
         const SizedBox(height:4),
-        _row('⏳ تخمین مانده', '~${_fmt(remaining)}'),
+        _row('⏳', '~${_fmt(remaining)}'),
         const SizedBox(height:4),
-        _row('🧩 اندازه هر تکه', _fmt(LiveSubState.chunkMs ~/ 1000)),
+        _row('🧩', _fmt(LiveSubState.chunkMs ~/ 1000)),
         const SizedBox(height:4),
-        _row('🌐 زبان', kLanguages[LiveSubState.language] ?? LiveSubState.language),
+        _row('🌐', kLanguages[LiveSubState.language] ?? LiveSubState.language),
         const SizedBox(height:4),
-        _row('🔗 Overlap', LiveSubState.useOverlap ? 'فعال (۵s)' : 'غیرفعال'),
+        _row('🔗 Overlap', LiveSubState.useOverlap ? L.active : L.disabled),
         const SizedBox(height:16),
 
         const Divider(color:Colors.white12),
@@ -1675,13 +1676,13 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
           Expanded(child:OutlinedButton.icon(
             onPressed:widget.onToggleVideo,
             icon:const Icon(Icons.pause,size:16),
-            label:const Text('توقف/ادامه',style:TextStyle(fontSize:12)),
+            label:const Text(L.playPause,style:TextStyle(fontSize:12)),
             style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24)))),
           const SizedBox(width:8),
           Expanded(child:OutlinedButton.icon(
             onPressed:widget.onSkipChunk,
             icon:const Icon(Icons.skip_next,size:16),
-            label:const Text('رد این تکه',style:TextStyle(fontSize:12)),
+            label:const Text(L.skipChunk,style:TextStyle(fontSize:12)),
             style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.orange),foregroundColor:Colors.orange))),
         ]),
         const SizedBox(height:8),
@@ -1690,19 +1691,19 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
           onPressed:() async {
             final ok = await showDialog<bool>(context:ctx,builder:(_)=>AlertDialog(
               backgroundColor:const Color(0xFF1C1C22),
-              title:const Text('لغو زیرنویس زنده؟',style:TextStyle(color:Colors.white,fontSize:15)),
-              content:Text('تا اینجا ${_fmt(transcribed)} پردازش و در SRT ذخیره شده.',
+              title:const Text(L.cancelLive,style:TextStyle(color:Colors.white,fontSize:15)),
+              content:Text('\${_fmt(transcribed)} saved',
                 style:const TextStyle(color:Colors.white70,fontSize:12)),
               actions:[
-                TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('ادامه')),
+                TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.continue_)),
                 FilledButton(onPressed:()=>Navigator.pop(ctx,true),
-                  style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('لغو کامل')),
+                  style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text(L.cancel)),
               ],
             ));
             if(ok==true) widget.onStop();
           },
           icon:const Icon(Icons.stop,size:16),
-          label:const Text('لغو کامل'),
+          label:const Text(L.cancel),
           style:FilledButton.styleFrom(backgroundColor:Colors.red,padding:const EdgeInsets.symmetric(vertical:12)),
         )),
       ]),
@@ -1750,7 +1751,7 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
         Row(children:[
           const Icon(Icons.translate,color:Color(0xFF7C3AED),size:18),
           const SizedBox(width:8),
-          const Expanded(child:Text('ترجمه آنلاین در حال اجرا',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
+          const Expanded(child:Text(L.translateOnline,style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
           IconButton(icon:const Icon(Icons.close,color:Colors.white54,size:20),
             onPressed:()=>Navigator.pop(ctx),constraints:const BoxConstraints(),padding:const EdgeInsets.all(4)),
         ]),
@@ -1764,15 +1765,15 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
             Row(children:[
               const Icon(Icons.translate,color:Color(0xFF7C3AED),size:14),
               const SizedBox(width:6),
-              const Text('زبان مقصد: ',style:TextStyle(color:Colors.white60,fontSize:13)),
+              const Text(L.targetLang,style:TextStyle(color:Colors.white60,fontSize:13)),
               Text(lang,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
             ]),
             const SizedBox(height:8),
-            _row('⏱ زمان گذشته', _fmt(elapsed)),
+            _row('⏱', _fmt(elapsed)),
             const SizedBox(height:4),
-            _row('📊 تکه‌ها', '$done از $total'),
+            _row('📊', '\$done/\$total'),
             const SizedBox(height:4),
-            if(remaining>0) _row('⏳ تخمین مانده','~${_fmt(remaining)}'),
+            if(remaining>0) _row('⏳','~${_fmt(remaining)}'),
             const SizedBox(height:6),
             LinearProgressIndicator(
               value: total>0 ? (done/total).clamp(0.0,1.0) : null,
@@ -1788,7 +1789,7 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
         SizedBox(width:double.infinity,child:FilledButton.icon(
           onPressed:widget.onCancel,
           icon:const Icon(Icons.stop,size:16),
-          label:const Text('لغو ترجمه'),
+          label:const Text(L.cancelTranslation),
           style:FilledButton.styleFrom(backgroundColor:Colors.red,padding:const EdgeInsets.symmetric(vertical:12)),
         )),
       ]),
@@ -1801,4 +1802,3 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
-

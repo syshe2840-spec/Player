@@ -91,7 +91,7 @@ class OpenSubtitlesService {
       return cached;
     }
 
-    throw Exception('دریافت کلید سرویس زیرنویس ناموفق بود — اتصال اینترنت را بررسی کنید');
+    throw Exception('Service key error — check internet');
   }
 
   static Future<Map<String, String>> _baseHeaders() async => {
@@ -109,9 +109,9 @@ class OpenSubtitlesService {
     } catch (_) {}
     final lower = msg.toLowerCase();
     if (status == 406 || status == 403 || lower.contains('limit') || lower.contains('quota') || lower.contains('reached')) {
-      return 'به محدودیت دانلود روزانه رسیدید — ظرف چند ساعت دیگر دوباره امتحان کنید';
+      return 'Daily download limit reached — try again later';
     }
-    if (status == 400) return 'جستجوی نامعتبر — عبارت را تغییر دهید';
+    if (status == 400) return 'Invalid search — change query';
     return 'خطا (${status}): $msg';
   }
 
@@ -157,7 +157,7 @@ class OpenSubtitlesService {
       if (feature.imdbId != null) params['imdb_id'] = '${feature.imdbId}';
     }
     if (language != null && language.isNotEmpty) params['languages'] = language;
-    if (params.isEmpty) throw Exception('اطلاعات کافی برای جستجو موجود نیست');
+    if (params.isEmpty) throw Exception('Not enough info to search');
 
     final data = await _get('/subtitles', params);
     final list = (data['data'] as List?) ?? [];
@@ -191,7 +191,7 @@ class OpenSubtitlesService {
     } finally {
       client.close();
     }
-    if (link == null) throw Exception('لینک دانلود دریافت نشد — احتمالاً به محدودیت روزانه رسیده‌اید');
+    if (link == null) throw Exception('Download link not received — daily limit?');
 
     // دانلود محتوای واقعی فایل srt از لینک موقت
     final client2 = HttpClient();
@@ -254,4 +254,3 @@ class OpenSubtitlesService {
     return ParsedFileInfo(title: cutTitle, year: year, season: season, episode: episode, isSeries: isSeries);
   }
 }
-

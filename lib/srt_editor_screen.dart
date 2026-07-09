@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'whisper_service.dart';
 import 'main.dart' show showSnack;
+import 'l10n.dart';
 
 /// ویرایشگر دستی زیرنویس — اصلاح متن و زمان‌بندی هر خط
 class SrtEditorScreen extends StatefulWidget {
@@ -51,7 +52,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C22),
-        title: Text(isStart ? 'زمان شروع (mm:ss)' : 'زمان پایان (mm:ss)',
+        title: Text(isStart ? L.startTime : L.endTime,
           style: const TextStyle(color: Colors.white, fontSize: 14)),
         content: TextField(
           controller: ctrl, autofocus: true,
@@ -59,15 +60,15 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
           decoration: const InputDecoration(hintText: '00:05', hintStyle: TextStyle(color: Colors.white38)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لغو')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('ثبت')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(L.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text(L.apply)),
         ],
       ),
     );
     if (result == null) return;
     final parsed = _parseShort(result);
     if (parsed == null) {
-      if (mounted) showSnack(context, 'فرمت اشتباه — باید mm:ss باشد');
+      if (mounted) showSnack(context, L.wrongTimeFormat);
       return;
     }
     setState(() {
@@ -91,7 +92,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
     }
     writeSrtEntries(widget.srtPath, _entries);
     setState((){ _saving = false; _dirty = false; });
-    if (mounted) showSnack(context, '✓ ذخیره شد');
+    if (mounted) showSnack(context, L.saved);
   }
 
   @override
@@ -101,12 +102,12 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
       if (didPop) return;
       final leave = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C22),
-        title: const Text('تغییرات ذخیره نشده', style: TextStyle(color: Colors.white, fontSize: 15)),
-        content: const Text('بدون ذخیره خارج می‌شوید؟', style: TextStyle(color: Colors.white70)),
+        title: const Text(L.unsavedChanges, style: TextStyle(color: Colors.white, fontSize: 15)),
+        content: const Text(L.exitWithoutSave, style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ماندن')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text(L.stay)),
           FilledButton(onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('خروج بدون ذخیره')),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text(L.exitNoSave)),
         ],
       ));
       if (leave == true && context.mounted) Navigator.pop(context);
@@ -115,7 +116,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
       backgroundColor: const Color(0xFF0F0F14),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1C22),
-        title: Text('ویرایش زیرنویس (${_entries.length} خط)', style: const TextStyle(color: Colors.white, fontSize: 14)),
+        title: Text('${L.editSrtTitle} (\${_entries.length})', style: const TextStyle(color: Colors.white, fontSize: 14)),
         actions: [
           if (_dirty) IconButton(
             icon: _saving
@@ -126,7 +127,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
         ],
       ),
       body: _entries.isEmpty
-        ? const Center(child: Text('زیرنویسی برای ویرایش وجود ندارد', style: TextStyle(color: Colors.white54)))
+        ? const Center(child: Text(L.noSubtitleEdit, style: TextStyle(color: Colors.white54)))
         : ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: _entries.length,
@@ -167,11 +168,10 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
         child: SizedBox(width: double.infinity, child: FilledButton.icon(
           onPressed: _saving ? null : _save,
           icon: const Icon(Icons.save),
-          label: const Text('ذخیره تغییرات'),
+          label: const Text(L.saveChanges),
           style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 14)),
         )),
       )) : null,
     ),
   );
 }
-

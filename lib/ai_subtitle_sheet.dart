@@ -6,6 +6,7 @@ import 'whisper_service.dart';
 import 'main.dart' show showSnack;
 import 'ai_models_screen.dart';
 import 'srt_editor_screen.dart';
+import 'l10n.dart';
 
 class AiSubtitleSheet extends StatefulWidget {
   final String videoPath;
@@ -68,9 +69,9 @@ class _State extends State<AiSubtitleSheet> {
 
   Future<void> _start() async {
     if(_selected==null) return;
-    setState((){ _running=true; _mode='running'; _progress=0; _status='شروع...'; });
+    setState((){ _running=true; _mode='running'; _progress=0; _status=L.startingLabel; });
     // notification: fire-and-forget — هرگز await نمی‌شود تا UI رو بلاک نکند
-    WhisperService.showProgressNotification('ساخت زیرنویس: ${widget.videoPath.split('/').last}');
+    WhisperService.showProgressNotification('${L.aiSubtitle}: \${widget.videoPath.split('/').last}');
     try {
       final path = await WhisperService.transcribe(
         videoPath: widget.videoPath,
@@ -86,7 +87,7 @@ class _State extends State<AiSubtitleSheet> {
       );
       if(mounted) setState((){ _running=false; _mode='done'; _srtPath=path; });
     } catch(e){
-      if(mounted) setState((){ _running=false; _mode='new'; _status='خطا: $e'; });
+      if(mounted) setState((){ _running=false; _mode='new'; _status=L.errorMsg(e); });
     } finally {
       WhisperService.hideProgressNotification(); // fire-and-forget
     }
@@ -98,10 +99,10 @@ class _State extends State<AiSubtitleSheet> {
     try {
       final improved = await WhisperService.improveSrt(_srtPath!);
       setState((){ _srtPath=improved; _improving=false; });
-      if(mounted) showSnack(context, '✨ زیرنویس بهبود یافت', color: const Color(0xFF7C3AED));
+      if(mounted) showSnack(context, L.improvedSubtitle, color: const Color(0xFF7C3AED));
     } catch(e){
       setState(()=>_improving=false);
-      if(mounted) showSnack(context, 'خطا: $e');
+      if(mounted) showSnack(context, L.errorMsg(e));
     }
   }
 
@@ -110,9 +111,9 @@ class _State extends State<AiSubtitleSheet> {
     setState(()=>_improvingLang=lang);
     try {
       await WhisperService.improveSrt(WhisperService.bestSrtPath(widget.videoPath, lang));
-      if(mounted) showSnack(context, '✨ زیرنویس بهبود یافت', color: const Color(0xFF7C3AED));
+      if(mounted) showSnack(context, L.improvedSubtitle, color: const Color(0xFF7C3AED));
     } catch(e){
-      if(mounted) showSnack(context, 'خطا: $e');
+      if(mounted) showSnack(context, L.errorMsg(e));
     } finally {
       if(mounted) setState((){ _existingLangs=WhisperService.existingLanguages(widget.videoPath); _improvingLang=null; });
     }
@@ -121,12 +122,12 @@ class _State extends State<AiSubtitleSheet> {
   Future<void> _deleteLang(String lang) async {
     final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text('حذف زیرنویس',style:TextStyle(color:Colors.white,fontSize:15)),
-      content:Text('زیرنویس ${kLanguages[lang]??lang} حذف شود؟',style:const TextStyle(color:Colors.white70)),
+      title:const Text(L.deleteSubtitle,style:TextStyle(color:Colors.white,fontSize:15)),
+      content:Text('\${kLanguages[lang]??lang}?',style:const TextStyle(color:Colors.white70)),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('لغو')),
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text(L.cancel)),
         FilledButton(onPressed:()=>Navigator.pop(context,true),
-          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('حذف')),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text(L.delete)),
       ],
     ));
     if(ok==true){
@@ -138,13 +139,13 @@ class _State extends State<AiSubtitleSheet> {
   Future<void> _deleteAll() async {
     final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text('حذف همه زیرنویس‌های AI',style:TextStyle(color:Colors.white,fontSize:15)),
-      content:Text('همه ${_existingLangs.length} زیرنویس ساخته‌شده برای این ویدیو حذف شوند؟',
+      title:const Text(L.deleteAllSubtitles,style:TextStyle(color:Colors.white,fontSize:15)),
+      content:Text(L.deleteAllSubtitles,
         style:const TextStyle(color:Colors.white70)),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('لغو')),
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text(L.cancel)),
         FilledButton(onPressed:()=>Navigator.pop(context,true),
-          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('حذف همه')),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text(L.deleteAll)),
       ],
     ));
     if(ok==true){
@@ -163,18 +164,17 @@ class _State extends State<AiSubtitleSheet> {
           decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2))),
         const Icon(Icons.wifi_off_rounded, color: Colors.white38, size: 48),
         const SizedBox(height:16),
-        const Text('زیرنویس AI آفلاین', style: TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
+        const Text(L.aiSubtitleOffline, style: TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
         const SizedBox(height:8),
         const Text(
-          'این ویژگی فقط برای فایل‌های ویدیوی محلی در دسترس است.\n\n'
-          'برای ویدیوی آنلاین از «زیرنویس زنده» استفاده کنید که صدا را تکه‌تکه پردازش می‌کند.',
+          L.onlineOnlyLocal,
           textAlign: TextAlign.center,
           style: TextStyle(color:Colors.white60, fontSize:13, height:1.6)),
         const SizedBox(height:20),
         FilledButton(
           onPressed: () => Navigator.pop(ctx),
           style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
-          child: const Text('بستن')),
+          child: const Text(L.close)),
       ]),
     ));  // end online SafeArea
 
@@ -192,9 +192,9 @@ class _State extends State<AiSubtitleSheet> {
             Row(children:[
               const Icon(Icons.auto_awesome,color: const Color(0xFF7C3AED),size:20),
               const SizedBox(width:8),
-              const Text('زیرنویس AI',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.bold)),
+              const Text(L.aiSubLabel,style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.bold)),
               const Spacer(),
-              TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن')),
+              TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close)),
             ]),
             const SizedBox(height:12),
 
@@ -215,7 +215,7 @@ class _State extends State<AiSubtitleSheet> {
     const Padding(
       padding: EdgeInsets.only(bottom:8),
       child: Align(alignment:Alignment.centerRight,
-        child:Text('زیرنویس‌های ساخته‌شده:',style:TextStyle(color:Colors.white60,fontSize:12))),
+        child:Text(L.builtSubtitles,style:TextStyle(color:Colors.white60,fontSize:12))),
     ),
 
     ..._existingLangs.map((lang){
@@ -234,7 +234,7 @@ class _State extends State<AiSubtitleSheet> {
               const SizedBox(width:6),
               Container(padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
                 decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.2),borderRadius:BorderRadius.circular(6)),
-                child:const Text('بهبودیافته',style:TextStyle(color: const Color(0xFF7C3AED),fontSize:10))),
+                child:const Text(L.improved,style:TextStyle(color: const Color(0xFF7C3AED),fontSize:10))),
             ],
           ]),
           const SizedBox(height:8),
@@ -244,15 +244,15 @@ class _State extends State<AiSubtitleSheet> {
               child:Row(children:[
                 IconButton(
                   icon:const Icon(Icons.share,color: const Color(0xFF7C3AED),size:18),
-                  tooltip:'اشتراک‌گذاری',
+                  tooltip:L.share,
                   onPressed:()=>SharePlus.instance.share(ShareParams(
                     files:[XFile(WhisperService.bestSrtPath(widget.videoPath, lang))],
-                    text:'زیرنویس Vezoo')),
+                    text:L.vezooSubtitle)),
                   constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
                 ),
                 IconButton(
                   icon:const Icon(Icons.edit,color:Colors.white70,size:18),
-                  tooltip:'ویرایش',
+                  tooltip:L.edit,
                   onPressed:()async{
                     await Navigator.push(context,MaterialPageRoute(
                       builder:(_)=>SrtEditorScreen(srtPath:WhisperService.bestSrtPath(widget.videoPath, lang))));
@@ -265,13 +265,13 @@ class _State extends State<AiSubtitleSheet> {
                       child:SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color: const Color(0xFF7C3AED))))
                   : IconButton(
                       icon:const Icon(Icons.auto_fix_high,color: const Color(0xFF7C3AED),size:18),
-                      tooltip:'بهبود زیرنویس',
+                      tooltip:L.improveSubtitle,
                       onPressed:()=>_improveLang(lang),
                       constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
                     ),
                 IconButton(
                   icon:const Icon(Icons.delete_outline,color:Colors.red,size:18),
-                  tooltip:'حذف',
+                  tooltip:L.delete,
                   onPressed:()=>_deleteLang(lang),
                   constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
                 ),
@@ -286,7 +286,7 @@ class _State extends State<AiSubtitleSheet> {
               style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED),
                 minimumSize:const Size(0,32),padding:const EdgeInsets.symmetric(horizontal:14),
                 shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8))),
-              child:const Text('استفاده',style:TextStyle(fontSize:12)),
+              child:const Text(L.use,style:TextStyle(fontSize:12)),
             ),
           ]),
         ]),
@@ -298,7 +298,7 @@ class _State extends State<AiSubtitleSheet> {
       Expanded(child:OutlinedButton.icon(
         onPressed:()=>setState(()=>_mode='new'),
         icon:const Icon(Icons.add,size:16,color: const Color(0xFF7C3AED)),
-        label:const Text('ساخت زبان جدید',style:TextStyle(color: const Color(0xFF7C3AED),fontSize:13)),
+        label:const Text(L.createNewLang,style:TextStyle(color: const Color(0xFF7C3AED),fontSize:13)),
         style:OutlinedButton.styleFrom(side:const BorderSide(color: const Color(0xFF7C3AED)),
           padding:const EdgeInsets.symmetric(vertical:12),
           shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
@@ -307,7 +307,7 @@ class _State extends State<AiSubtitleSheet> {
       OutlinedButton.icon(
         onPressed:_deleteAll,
         icon:const Icon(Icons.delete_sweep,size:16,color:Colors.red),
-        label:const Text('حذف همه',style:TextStyle(color:Colors.red,fontSize:13)),
+        label:const Text(L.deleteAll,style:TextStyle(color:Colors.red,fontSize:13)),
         style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.red),
           padding:const EdgeInsets.symmetric(vertical:12,horizontal:12),
           shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
@@ -318,10 +318,10 @@ class _State extends State<AiSubtitleSheet> {
   // ── حالت ساخت جدید ──
   List<Widget> _buildNew()=>[
     if(_downloaded.isEmpty)
-      _row(icon:Icons.memory, child:const Text('هیچ مدلی دانلود نشده',style:TextStyle(color:Colors.orange,fontSize:13)),
+      _row(icon:Icons.memory, child:const Text(L.noModelDownloaded,style:TextStyle(color:Colors.orange,fontSize:13)),
         trailing:FilledButton.icon(
           onPressed:(){ Navigator.pop(context); Navigator.push(context,MaterialPageRoute(builder:(_)=>const AiModelsScreen())); },
-          icon:const Icon(Icons.download,size:14),label:const Text('دانلود',style:TextStyle(fontSize:12)),
+          icon:const Icon(Icons.download,size:14),label:const Text(L.download,style:TextStyle(fontSize:12)),
           style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED),
             minimumSize:const Size(0,32),padding:const EdgeInsets.symmetric(horizontal:12)),
         ))
@@ -360,7 +360,7 @@ class _State extends State<AiSubtitleSheet> {
       child:Row(children:[
         const Icon(Icons.translate,color: const Color(0xFF7C3AED),size:18),
         const SizedBox(width:10),
-        const Expanded(child:Text('ترجمه به انگلیسی (به‌جای زیرنویس هم‌زبان)',
+        const Expanded(child:Text(L.translateToEn,
           style:TextStyle(color:Colors.white,fontSize:12))),
         Switch(value:_translate,activeColor:const Color(0xFF7C3AED),
           onChanged:(v)=>setState(()=>_translate=v)),
@@ -376,13 +376,13 @@ class _State extends State<AiSubtitleSheet> {
         Row(children:const [
           Icon(Icons.settings_suggest,color: const Color(0xFF7C3AED),size:16),
           SizedBox(width:8),
-          Text('موتور تشخیص گفتار',style:TextStyle(color:Colors.white70,fontSize:12)),
+          Text(L.aiModel,style:TextStyle(color:Colors.white70,fontSize:12)),
         ]),
         const SizedBox(height:8),
         Row(children:[
-          Expanded(child:_engineChip(WhisperEngine.v1,'V1','پایدار')),
+          Expanded(child:_engineChip(WhisperEngine.v1,'V1',L.engineV1)),
           const SizedBox(width:8),
-          Expanded(child:_engineChip(WhisperEngine.v2,'V2','آزمایشی، سریع‌تر')),
+          Expanded(child:_engineChip(WhisperEngine.v2,'V2',L.engineV2)),
         ]),
       ]),
     ),
@@ -394,7 +394,7 @@ class _State extends State<AiSubtitleSheet> {
       child:Row(children:[
         const Icon(Icons.graphic_eq,color: const Color(0xFF7C3AED),size:18),
         const SizedBox(width:10),
-        const Expanded(child:Text('تشخیص سکوت (VAD)',style:TextStyle(color:Colors.white,fontSize:13))),
+        const Expanded(child:Text(L.vadMode,style:TextStyle(color:Colors.white,fontSize:13))),
         Switch(value:_useVad,activeColor:const Color(0xFF7C3AED),
           onChanged:(v)=>setState(()=>_useVad=v)),
       ]),
@@ -409,7 +409,7 @@ class _State extends State<AiSubtitleSheet> {
         child:const Row(children:[
           Icon(Icons.warning_amber,color:Colors.orange,size:16),
           SizedBox(width:8),
-          Expanded(child:Text('این زبان قبلاً ساخته شده — با ساخت مجدد جایگزین می‌شود',
+          Expanded(child:Text(L.createNewLang,
             style:TextStyle(color:Colors.orange,fontSize:11))),
         ]),
       ),
@@ -424,7 +424,7 @@ class _State extends State<AiSubtitleSheet> {
           Row(children:[
             const Icon(Icons.insights,color: const Color(0xFF7C3AED),size:16),
             const SizedBox(width:8),
-            const Text('دقت تخمینی: ',style:TextStyle(color:Colors.white54,fontSize:12)),
+            const Text('${L.accuracy}: ',style:TextStyle(color:Colors.white54,fontSize:12)),
             Text(estimateAccuracy(_selected!,_lang),
               style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
           ]),
@@ -433,7 +433,7 @@ class _State extends State<AiSubtitleSheet> {
             Row(children:[
               const Icon(Icons.timer_outlined,color: const Color(0xFF7C3AED),size:16),
               const SizedBox(width:8),
-              const Text('زمان تخمینی: ',style:TextStyle(color:Colors.white54,fontSize:12)),
+              const Text('${L.sleepTimer}: ',style:TextStyle(color:Colors.white54,fontSize:12)),
               Text(WhisperService.estimateProcessingTime(_videoDurationMs,_selected!,_engine),
                 style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
             ]),
@@ -455,7 +455,7 @@ class _State extends State<AiSubtitleSheet> {
       Expanded(child:FilledButton.icon(
         onPressed:_downloaded.isEmpty ? null : _start,
         icon:const Icon(Icons.subtitles),
-        label:const Text('تولید زیرنویس',style:TextStyle(fontSize:15)),
+        label:const Text(L.aiSubtitle,style:TextStyle(fontSize:15)),
         style:FilledButton.styleFrom(
           backgroundColor:const Color(0xFF7C3AED),
           padding:const EdgeInsets.symmetric(vertical:14),
@@ -464,7 +464,7 @@ class _State extends State<AiSubtitleSheet> {
       )),
     ]),
 
-    if(_status.startsWith('خطا'))Padding(
+    if(_status.startsWith(L.error))Padding(
       padding:const EdgeInsets.only(top:8),
       child:Text(_status,style:const TextStyle(color:Colors.red,fontSize:11),textAlign:TextAlign.center),
     ),
@@ -487,11 +487,11 @@ class _State extends State<AiSubtitleSheet> {
     OutlinedButton.icon(
       onPressed:()async{ await WhisperService.cancelExtraction(); if(mounted) setState((){ _running=false; _mode='new'; }); },
       icon:const Icon(Icons.stop_circle_outlined,color:Colors.red),
-      label:const Text('لغو',style:TextStyle(color:Colors.red)),
+      label:const Text(L.cancel,style:TextStyle(color:Colors.red)),
       style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.red)),
     ),
     const SizedBox(height:6),
-    const Text('اپ هنگ نکرده — در پس‌زمینه پردازش می‌شود',
+    const Text(L.processing,
       style:TextStyle(color:Colors.white38,fontSize:11),textAlign:TextAlign.center),
   ];
 
@@ -499,7 +499,7 @@ class _State extends State<AiSubtitleSheet> {
     const SizedBox(height:4),
     const Icon(Icons.check_circle,color:Colors.green,size:44),
     const SizedBox(height:6),
-    Text('زیرنویس ${kLanguages[_lang]??_lang} آماده شد',
+    Text('${L.subtitleLoaded} (\${kLanguages[_lang]??_lang})',
       style:const TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
     const SizedBox(height:4),
     Text(_srtPath?.split('/').last??'',
@@ -511,7 +511,7 @@ class _State extends State<AiSubtitleSheet> {
       icon:_improving
         ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2,color: const Color(0xFF7C3AED)))
         : const Icon(Icons.auto_fix_high,size:16,color: const Color(0xFF7C3AED)),
-      label:Text(_improving?'در حال بهبود...':'✨ بهبود زیرنویس',
+      label:Text(_improving?L.improving:L.improveSubtitle,
         style:const TextStyle(color: const Color(0xFF7C3AED),fontSize:13)),
       style:OutlinedButton.styleFrom(
         side:const BorderSide(color: const Color(0xFF7C3AED)),
@@ -524,9 +524,9 @@ class _State extends State<AiSubtitleSheet> {
     // ── اشتراک‌گذاری / ویرایش / پیش‌نمایش ──
     Row(children:[
       Expanded(child:OutlinedButton.icon(
-        onPressed:()=>SharePlus.instance.share(ShareParams(files:[XFile(_srtPath!)],text:'زیرنویس Vezoo')),
+        onPressed:()=>SharePlus.instance.share(ShareParams(files:[XFile(_srtPath!)],text:L.vezooSubtitle)),
         icon:const Icon(Icons.share,size:15,color: const Color(0xFF7C3AED)),
-        label:const Text('اشتراک',style:TextStyle(color: const Color(0xFF7C3AED),fontSize:12,fontWeight:FontWeight.bold)),
+        label:const Text(L.share,style:TextStyle(color: const Color(0xFF7C3AED),fontSize:12,fontWeight:FontWeight.bold)),
         style:OutlinedButton.styleFrom(side:const BorderSide(color: const Color(0xFF7C3AED)),
           padding:const EdgeInsets.symmetric(vertical:10),
           shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
@@ -538,7 +538,7 @@ class _State extends State<AiSubtitleSheet> {
           if(mounted)setState((){}); // رفرش بعد از برگشت از ویرایشگر
         },
         icon:const Icon(Icons.edit,size:15,color:Colors.white70),
-        label:const Text('ویرایش',style:TextStyle(color:Colors.white70,fontSize:12)),
+        label:const Text(L.edit,style:TextStyle(color:Colors.white70,fontSize:12)),
         style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24),
           padding:const EdgeInsets.symmetric(vertical:10),
           shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
@@ -548,10 +548,10 @@ class _State extends State<AiSubtitleSheet> {
         Expanded(child:OutlinedButton.icon(
           onPressed:(){
             widget.onPreview!(_srtPath!);
-            showSnack(context, 'روی پلیر بارگذاری شد برای پیش‌نمایش', color: const Color(0xFF7C3AED), seconds: 2);
+            showSnack(context, L.previewLoaded, color: const Color(0xFF7C3AED), seconds: 2);
           },
           icon:const Icon(Icons.visibility,size:15,color:Colors.white70),
-          label:const Text('پیش‌نمایش',style:TextStyle(color:Colors.white70,fontSize:12)),
+          label:const Text(L.preview,style:TextStyle(color:Colors.white70,fontSize:12)),
           style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24),
             padding:const EdgeInsets.symmetric(vertical:10),
             shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
@@ -563,7 +563,7 @@ class _State extends State<AiSubtitleSheet> {
     SizedBox(width:double.infinity,child:FilledButton.icon(
       onPressed:(){ Navigator.pop(context); widget.onDone(_srtPath!); },
       icon:const Icon(Icons.subtitles),
-      label:const Text('بارگذاری زیرنویس'),
+      label:const Text(L.loadSubtitle),
       style:FilledButton.styleFrom(
         backgroundColor:const Color(0xFF7C3AED),
         padding:const EdgeInsets.symmetric(vertical:14),
@@ -606,4 +606,3 @@ class _State extends State<AiSubtitleSheet> {
     ]),
   );
 }
-

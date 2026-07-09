@@ -15,6 +15,7 @@ import 'settings.dart' show ToolsTabBody;
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
 import 'main.dart' show showSnack;
+import 'l10n.dart';
 
 const kBg      = Color(0xFF08080F);
 const kSurface = Color(0xFF0D0D1E);
@@ -110,7 +111,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         _selected.clear();_searching=false;_searchQuery='';_searchCtrl.clear();
         _searchResults=[];_globalSearch=false;});
     }catch(_){
-      if(mounted)showSnack(context, 'دسترسی ندارید');
+      if(mounted)showSnack(context, L.noAccess);
     }
   }
   void _goUp(){final par=p.dirname(_path);if(par!=_path&&par.startsWith('/storage'))_loadDir(par);}
@@ -185,7 +186,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
 
   Future<void> _openVideoByPath(String path)async{
     final f=File(path);
-    if(!f.existsSync()){showSnack(context, 'فایل یافت نشد');return;}
+    if(!f.existsSync()){showSnack(context, L.fileNotFound);return;}
     await _openVideo(f,[f],0);
   }
 
@@ -217,25 +218,25 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   }
 
   Future<void> _copyFile(File f)async{
-    if(Store.savedFolders.isEmpty){showSnack(context, 'ابتدا یک پوشه را ذخیره کنید');return;}
-    final dest=await _pickFolder('کپی به');
+    if(Store.savedFolders.isEmpty){showSnack(context, L.noFolderSaved);return;}
+    final dest=await _pickFolder(L.copyTo);
     if(dest==null)return;
     try{await f.copy(p.join(dest,p.basename(f.path)));
-      if(mounted)showSnack(context, 'کپی شد');}
-    catch(_){if(mounted)showSnack(context, 'خطا');}
+      if(mounted)showSnack(context, L.copied);}
+    catch(_){if(mounted)showSnack(context, L.error);}
   }
 
   Future<void> _moveFile(File f)async{
-    final dest=await _pickFolder('انتقال به');if(dest==null)return;
+    final dest=await _pickFolder(L.transferTo);if(dest==null)return;
     final newPath=p.join(dest,p.basename(f.path));
     try{await f.rename(newPath);}
-    catch(_){try{await f.copy(newPath);await f.delete();}catch(e){if(mounted)showSnack(context, 'خطا');return;}}
+    catch(_){try{await f.copy(newPath);await f.delete();}catch(e){if(mounted)showSnack(context, L.error);return;}}
     _loadDir(_path);
   }
 
   Future<String?> _pickFolder(String title)async{
     final all=[...Store.savedFolders];
-    if(all.isEmpty){showSnack(context, 'ابتدا یک پوشه را ذخیره کنید');return null;}
+    if(all.isEmpty){showSnack(context, L.noFolderSaved);return null;}
     return showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
       title:Text(title),
       content:Column(mainAxisSize:MainAxisSize.min,children:all.map((folder)=>ListTile(
@@ -247,11 +248,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
 
   Future<void> _confirmDelete(List<File> files)async{
     final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text('حذف فایل'),
-      content:Text(files.length==1?'«${p.basename(files.first.path)}» حذف شود؟':'${files.length} فایل حذف شود؟'),
+      title:const Text(L.deleteFile),
+      content:Text(files.length==1?'${L.delete} «\${p.basename(files.first.path)}»?':'\${files.length} ${L.delete}?'),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('لغو')),
-        FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف')),
+        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.cancel)),
+        FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.delete)),
       ],
     ));
     if(ok!=true)return;
@@ -262,17 +263,17 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   Future<void> _renameFile(File f)async{
     final ctrl=TextEditingController(text:p.basenameWithoutExtension(f.path));
     final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text('تغییر نام'),
+      title:const Text(L.rename_),
       content:TextField(controller:ctrl,autofocus:true,
-          decoration:const InputDecoration(hintText:'نام جدید',border:OutlineInputBorder(),contentPadding:EdgeInsets.symmetric(horizontal:12,vertical:8))),
+          decoration:const InputDecoration(hintText:L.newName,border:OutlineInputBorder(),contentPadding:EdgeInsets.symmetric(horizontal:12,vertical:8))),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
-        FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text('تأیید')),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text(L.confirm)),
       ],
     ));
     if(name==null||name.isEmpty)return;
     try{await f.rename(p.join(p.dirname(f.path),'$name${p.extension(f.path)}'));_loadDir(_path);}
-    catch(_){if(mounted)showSnack(context, 'خطا');}
+    catch(_){if(mounted)showSnack(context, L.error);}
   }
 
   Future<void> _showRating(File f)async{
@@ -280,7 +281,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     await showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
       title:Text(p.basename(f.path),style:const TextStyle(fontSize:13)),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
-        const Text('امتیاز شما:',style:TextStyle(color:kTextSec)),const SizedBox(height:12),
+        const Text(L.yourRatingLabel,style:TextStyle(color:kTextSec)),const SizedBox(height:12),
         Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>GestureDetector(
           onTap:()=>ss(()=>rating=i+1),
           child:Padding(padding:const EdgeInsets.all(4),
@@ -288,9 +289,9 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         ))),
       ]),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
-        if(rating>0)TextButton(onPressed:()async{await Store.saveRating(f.path,0);Navigator.pop(ctx);setState((){});},child:const Text('حذف',style:TextStyle(color:kRed))),
-        FilledButton(onPressed:()async{await Store.saveRating(f.path,rating);Navigator.pop(ctx);setState((){});},child:const Text('ذخیره')),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
+        if(rating>0)TextButton(onPressed:()async{await Store.saveRating(f.path,0);Navigator.pop(ctx);setState((){});},child:const Text(L.delete,style:TextStyle(color:kRed))),
+        FilledButton(onPressed:()async{await Store.saveRating(f.path,rating);Navigator.pop(ctx);setState((){});},child:const Text(L.save)),
       ],
     )));
   }
@@ -298,12 +299,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   Future<void> _showNote(File f)async{
     final ctrl=TextEditingController(text:Store.notes[f.path]??'');
     await showDialog(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text('یادداشت'),
+      title:const Text(L.note),
       content:TextField(controller:ctrl,maxLines:5,autofocus:true,
-          decoration:const InputDecoration(hintText:'یادداشت خود را بنویسید...',border:OutlineInputBorder(),contentPadding:EdgeInsets.all(12))),
+          decoration:const InputDecoration(hintText:L.writtenNote,border:OutlineInputBorder(),contentPadding:EdgeInsets.all(12))),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
-        FilledButton(onPressed:()async{await Store.saveNote(f.path,ctrl.text.trim());Navigator.pop(ctx);setState((){});},child:const Text('ذخیره')),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
+        FilledButton(onPressed:()async{await Store.saveNote(f.path,ctrl.text.trim());Navigator.pop(ctx);setState((){});},child:const Text(L.save)),
       ],
     ));
   }
@@ -329,19 +330,19 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         Expanded(child:Text(p.basename(f.path),style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
       ]),
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        _iRow(Icons.folder_outlined,kTextSec,'مسیر',p.dirname(f.path)),
-        _iRow(Icons.video_file_rounded,kCyan,'فرمت',ext.toUpperCase()),
-        _iRow(Icons.data_usage_outlined,kTextSec,'حجم',sizeStr(f)),
-        if(fileSize>0)_iRow(Icons.straighten_rounded,kTextSec,'دقیق','${fileSize} bytes'),
-        if(dur>0)_iRow(Icons.timer_outlined,kCyan,'مدت',fmt(Duration(seconds:dur))),
-        _iRow(Icons.calendar_today_outlined,kTextSec,'تاریخ',modified),
-        _iRow(Icons.info_outline_rounded,kAccent,'کدک احتمالی',codecHint),
+        _iRow(Icons.folder_outlined,kTextSec,L.path,p.dirname(f.path)),
+        _iRow(Icons.video_file_rounded,kCyan,L.format,ext.toUpperCase()),
+        _iRow(Icons.data_usage_outlined,kTextSec,L.sortSize,sizeStr(f)),
+        if(fileSize>0)_iRow(Icons.straighten_rounded,kTextSec,L.precise,'${fileSize} bytes'),
+        if(dur>0)_iRow(Icons.timer_outlined,kCyan,L.duration,fmt(Duration(seconds:dur))),
+        _iRow(Icons.calendar_today_outlined,kTextSec,L.sortDate,modified),
+        _iRow(Icons.info_outline_rounded,kAccent,L.probableCodec,codecHint),
         _iRow(Icons.visibility_outlined,Store.watched.contains(f.path)?kGreen:kTextSec,
-            'وضعیت',Store.watched.contains(f.path)?'دیده شده ✓':'دیده نشده'),
-        if(rating>0)_iRow(Icons.star_rounded,kAmber,'امتیاز','${'★'*rating}${'☆'*(5-rating)}'),
-        if(note.isNotEmpty)_iRow(Icons.notes_rounded,kTextSec,'یادداشت',note),
+            L.status,Store.watched.contains(f.path)?L.watched:L.notWatched),
+        if(rating>0)_iRow(Icons.star_rounded,kAmber,L.rating,'${'★'*rating}${'☆'*(5-rating)}'),
+        if(note.isNotEmpty)_iRow(Icons.notes_rounded,kTextSec,L.note,note),
         if(allSubs.isNotEmpty)...[
-          _iRow(Icons.subtitles_rounded,kGreen,'زیرنویس‌ها','${allSubs.length} فایل'),
+          _iRow(Icons.subtitles_rounded,kGreen,L.subtitle,'\${allSubs.length}'),
           ...allSubs.map((s)=>Padding(
             padding:const EdgeInsets.only(right:24,top:2),
             child:Row(children:[
@@ -350,9 +351,9 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
               Expanded(child:Text(p.basename(s),style:const TextStyle(fontSize:11,color:kTextSec))),
             ]),
           )),
-        ]else _iRow(Icons.subtitles_off_rounded,kTextDim,'زیرنویس','یافت نشد'),
+        ]else _iRow(Icons.subtitles_off_rounded,kTextDim,L.subtitle,L.notFound),
       ])),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
     ));
   }
 
@@ -414,11 +415,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
         decoration:BoxDecoration(color:kSurface.withOpacity(0.85),borderRadius:BorderRadius.circular(28),border:Border.all(color:kBorder.withOpacity(0.7))),
         child:Row(mainAxisSize:MainAxisSize.min,children:[
-          _fabBtn(Icons.history_rounded,'تاریخچه',kTextSec,()=>_openPanel(0)),
-          const SizedBox(width:4),_fabBtn(Icons.bookmark_rounded,'نشانه‌ها',kAmber,()=>_openPanel(1)),
-          const SizedBox(width:4),_fabBtn(Icons.favorite_rounded,'علاقه‌مندی',kPink,()=>_openPanel(2)),
-          const SizedBox(width:4),_fabBtn(Icons.push_pin_rounded,'پوشه‌ها',kGreen,()=>_openPanel(3)),
-          const SizedBox(width:4),_fabBtn(Icons.tune_rounded,'تنظیمات',kTextSec,()=>_openPanel(4)),
+          _fabBtn(Icons.history_rounded,L.history,kTextSec,()=>_openPanel(0)),
+          const SizedBox(width:4),_fabBtn(Icons.bookmark_rounded,L.bookmarks,kAmber,()=>_openPanel(1)),
+          const SizedBox(width:4),_fabBtn(Icons.favorite_rounded,L.favorites,kPink,()=>_openPanel(2)),
+          const SizedBox(width:4),_fabBtn(Icons.push_pin_rounded,L.folders,kGreen,()=>_openPanel(3)),
+          const SizedBox(width:4),_fabBtn(Icons.tune_rounded,L.settings,kTextSec,()=>_openPanel(4)),
         ]),
       ),
     ),
@@ -438,13 +439,13 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
             Expanded(child:TextField(controller:_searchCtrl,autofocus:true,
                 style:const TextStyle(fontSize:14),
                 decoration:InputDecoration(
-                  hintText:_globalSearch?'جستجو در کل حافظه...':'جستجو در این پوشه...',
+                  hintText:_globalSearch?L.searchingGlobal:L.searchHere,
                   border:InputBorder.none,hintStyle:const TextStyle(color:kTextDim,fontSize:13)),
                 onChanged:(v){setState(()=>_searchQuery=v);if(_globalSearch)_runGlobalSearch(v);})),
             if(_searchRunning)const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:1.5,color:kAccent)),
           ])
         :Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-            Text(_path==root?'حافظه داخلی':p.basename(_path),overflow:TextOverflow.ellipsis,
+            Text(_path==root?L.internalStorage:p.basename(_path),overflow:TextOverflow.ellipsis,
                 style:const TextStyle(fontSize:16,fontWeight:FontWeight.w600)),
             if(_path!=root)Text(p.dirname(_path),overflow:TextOverflow.ellipsis,
                 style:const TextStyle(fontSize:10,color:kTextDim,height:1.2)),
@@ -469,7 +470,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
             child:Row(mainAxisSize:MainAxisSize.min,children:[
               Icon(Icons.public_rounded,size:13,color:_globalSearch?Colors.white:kTextSec),
               const SizedBox(width:4),
-              Text('همه‌جا',style:TextStyle(fontSize:11,color:_globalSearch?Colors.white:kTextSec,fontWeight:FontWeight.w600)),
+              Text(L.searchAll,style:TextStyle(fontSize:11,color:_globalSearch?Colors.white:kTextSec,fontWeight:FontWeight.w600)),
             ]),
           ),
         ),
@@ -479,7 +480,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
       // دکمه پخش آنلاین
       if(!_searching)IconButton(
         icon:const Icon(Icons.wifi_tethering_rounded,size:20),
-        tooltip:'پخش آنلاین',
+        tooltip:L.onlineVideo,
         onPressed:()=>OnlinePlayerSheet.show(context)),
       if(!_searching)...[
         if(_path!=root)IconButton(
@@ -488,26 +489,26 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         ),
         PopupMenuButton<String>(
           icon:const Icon(Icons.storage_rounded,size:20),
-          tooltip:'انتخاب حافظه',
+          tooltip:L.selectStorage,
           itemBuilder:(_){
             final items=<PopupMenuEntry<String>>[
-              _pmStr(Icons.phone_android_rounded,'/storage/emulated/0','📱 حافظه داخلی'),
-              _pmStr(Icons.download_rounded,'/storage/emulated/0/Download','⬇ دانلودها'),
-              _pmStr(Icons.movie_rounded,'/storage/emulated/0/Movies','🎬 فیلم‌ها'),
+              _pmStr(Icons.phone_android_rounded,'/storage/emulated/0','📱 \${L.internalStorage}'),
+              _pmStr(Icons.download_rounded,'/storage/emulated/0/Download','⬇ \${L.downloads}'),
+              _pmStr(Icons.movie_rounded,'/storage/emulated/0/Movies','🎬 \${L.movies}'),
             ];
             for(final d in _getStorageDevices()){items.add(_pmStr(Icons.sd_card_rounded,d.path,'💾 ${p.basename(d.path)}'));}
-            items..add(const PopupMenuDivider())..add(_pmStr(Icons.edit_rounded,'__custom__','📂 مسیر دلخواه...'));
+            items..add(const PopupMenuDivider())..add(_pmStr(Icons.edit_rounded,'__custom__','📂 \${L.customPath}'));
             return items;
           },
           onSelected:(v){
             if(v=='__custom__'){
               final ctrl=TextEditingController(text:_path);
               showDialog(context:context,builder:(ctx)=>AlertDialog(
-                title:const Text('مسیر دلخواه'),
+                title:const Text(L.customPath),
                 content:TextField(controller:ctrl,autofocus:true,
                     decoration:const InputDecoration(hintText:'/storage/emulated/0/...',border:OutlineInputBorder())),
-                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
-                  FilledButton(onPressed:(){final pt=ctrl.text.trim();Navigator.pop(ctx);if(pt.isNotEmpty)_loadDir(pt);},child:const Text('برو'))],
+                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
+                  FilledButton(onPressed:(){final pt=ctrl.text.trim();Navigator.pop(ctx);if(pt.isNotEmpty)_loadDir(pt);},child:const Text(L.start))],
               ));
             }else{_loadDir(v);}
           },
@@ -516,10 +517,10 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           icon:const Icon(Icons.sort_rounded,size:20),
           onSelected:(v)=>setState((){if(_sortBy==v)_sortDesc=!_sortDesc;else{_sortBy=v;_sortDesc=false;}}),
           itemBuilder:(_)=>[
-            _pmSort(_SortBy.name,'نام',Icons.sort_by_alpha_rounded),
-            _pmSort(_SortBy.date,'تاریخ',Icons.access_time_rounded),
-            _pmSort(_SortBy.size,'حجم',Icons.data_usage_rounded),
-            _pmSort(_SortBy.type,'نوع',Icons.video_file_rounded),
+            _pmSort(_SortBy.name,L.sortName,Icons.sort_by_alpha_rounded),
+            _pmSort(_SortBy.date,L.sortDate,Icons.access_time_rounded),
+            _pmSort(_SortBy.size,L.sortSize,Icons.data_usage_rounded),
+            _pmSort(_SortBy.type,L.sortType,Icons.video_file_rounded),
           ],
         ),
       ],
@@ -536,9 +537,9 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     automaticallyImplyLeading:false,
     backgroundColor:kAccent.withOpacity(0.15),
     leading:IconButton(icon:const Icon(Icons.close_rounded,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
-    title:Text('${_selected.length} فایل انتخاب شد',style:const TextStyle(fontSize:15)),
+    title:Text('\${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
     actions:[
-      TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18),label:const Text('همه',style:TextStyle(fontSize:13)),
+      TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18),label:const Text(L.allItems,style:TextStyle(fontSize:13)),
           onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path)))),
       IconButton(icon:const Icon(Icons.delete_outline_rounded,color:kRed,size:22),
           onPressed:_selected.isEmpty?null:()=>_confirmDelete(_selected.map((s)=>File(s)).toList())),
@@ -551,10 +552,10 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
       Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder)),
           child:const Icon(Icons.folder_off_rounded,size:48,color:kTextSec)),
       const SizedBox(height:20),
-      const Text('اپ به دسترسی فایل‌ها نیاز دارد.',textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
+      const Text(L.permissionNeeded,textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
       const SizedBox(height:20),
-      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Icons.lock_open_rounded),label:const Text('اجازه دسترسی')),
-      const SizedBox(height:8),TextButton(onPressed:openAppSettings,child:const Text('تنظیمات اپ')),
+      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Icons.lock_open_rounded),label:const Text(L.grantPermission)),
+      const SizedBox(height:8),TextButton(onPressed:openAppSettings,child:const Text(L.appSettings)),
     ])));
 
     return Column(children:[
@@ -564,7 +565,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
             Expanded(child:Text(_path,style:const TextStyle(fontSize:10,color:kTextDim),overflow:TextOverflow.ellipsis)),
             if(_searchRunning)const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.5,color:kAccent)),
             if(_globalSearch&&!_searchRunning&&_searchResults.isNotEmpty)
-              Text('${_searchResults.length} نتیجه',style:const TextStyle(fontSize:10,color:kAccent)),
+              Text('\${_searchResults.length}',style:const TextStyle(fontSize:10,color:kAccent)),
           ])),
       Expanded(child:_buildList()),
     ]);
@@ -574,11 +575,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     final fDirs=_filteredDirs,fVids=_filteredVideos;
     final total=fDirs.length+fVids.length;
     if(total==0&&_searchRunning)return const Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      CircularProgressIndicator(),SizedBox(height:16),Text('در حال جستجوی کل حافظه...',style:TextStyle(color:kTextSec)),
+      CircularProgressIndicator(),SizedBox(height:16),Text(L.searchingGlobal,style:TextStyle(color:kTextSec)),
     ]));
     if(total==0)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Icon(Icons.video_library_outlined,size:48,color:kTextDim),const SizedBox(height:12),
-      const Text('فایلی یافت نشد',style:TextStyle(color:kTextSec)),
+      const Text(L.noFilesFound,style:TextStyle(color:kTextSec)),
     ]));
 
     return RefreshIndicator(
@@ -755,36 +756,36 @@ class _VideoMenuState extends State<VideoMenu>{
       Expanded(child:Text(p.basename(widget.file.path),style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13),maxLines:2)),
     ])),
     const SizedBox(height:8),const Divider(height:1),
-    _mi(Icons.info_outline_rounded,kTextSec,'اطلاعات فایل',widget.onInfo),
-    _mi2(Icons.bookmark_rounded,_bkm?kAmber:kTextSec,_bkm?'حذف نشانه':'نشانه‌گذاری',()async{await Store.toggleBookmark(widget.file.path);setState(()=>_bkm=!_bkm);widget.onDone();}),
-    _mi2(Icons.favorite_rounded,_fav?kPink:kTextSec,_fav?'حذف از علاقه‌مندی':'علاقه‌مندی',()async{await Store.toggleFavorite(widget.file.path);setState(()=>_fav=!_fav);widget.onDone();}),
-    _mi(Icons.star_outline_rounded,kAmber,'امتیازدهی',widget.onRate),
-    _mi(Icons.notes_rounded,kTextSec,'یادداشت',widget.onNote),
+    _mi(Icons.info_outline_rounded,kTextSec,L.fileInfo,widget.onInfo),
+    _mi2(Icons.bookmark_rounded,_bkm?kAmber:kTextSec,_bkm?L.removeBookmark:L.addBookmark,()async{await Store.toggleBookmark(widget.file.path);setState(()=>_bkm=!_bkm);widget.onDone();}),
+    _mi2(Icons.favorite_rounded,_fav?kPink:kTextSec,_fav?L.removeFavorite:L.favorites,()async{await Store.toggleFavorite(widget.file.path);setState(()=>_fav=!_fav);widget.onDone();}),
+    _mi(Icons.star_outline_rounded,kAmber,L.rating,widget.onRate),
+    _mi(Icons.notes_rounded,kTextSec,L.note,widget.onNote),
     const Divider(height:1),
-    _mi(Icons.queue_music_rounded,kCyan,'افزودن به پلی‌لیست',()async{
+    _mi(Icons.queue_music_rounded,kCyan,L.addToPlaylist,()async{
       final playlists=Store.playlists.keys.toList();
       if(playlists.isEmpty){
-        showSnack(context, 'ابتدا یک پلی‌لیست بسازید');
+        showSnack(context, L.noPlaylist);
         return;
       }
       final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-        title:const Text('انتخاب پلی‌لیست'),
+        title:const Text(L.playlist),
         content:Column(mainAxisSize:MainAxisSize.min,children:playlists.map((pl)=>ListTile(
           dense:true,leading:const Icon(Icons.queue_music_rounded,color:kCyan,size:18),
           title:Text(pl,style:const TextStyle(fontSize:13)),
           onTap:()=>Navigator.pop(ctx,pl))).toList()),
-        actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو'))],
+        actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel))],
       ));
       if(name!=null){
         await Store.addToPlaylist(name,widget.file.path);
-        showSnack(context, 'اضافه شد به «$name»');
+        showSnack(context, '\${L.addedTo} "\$name"');
       }
     }),
-    _mi(Icons.copy_rounded,kTextSec,'کپی به پوشه',widget.onCopy),
-    _mi(Icons.drive_file_move_outline,kTextSec,'انتقال',widget.onMove),
-    _mi(Icons.edit_rounded,kTextSec,'تغییر نام',widget.onRename),
-    _mi(Icons.select_all_rounded,kTextSec,'انتخاب گروهی',widget.onSelect),
-    _mi(Icons.delete_outline_rounded,kRed,'حذف',widget.onDelete),
+    _mi(Icons.copy_rounded,kTextSec,L.copyTo,widget.onCopy),
+    _mi(Icons.drive_file_move_outline,kTextSec,L.moveTo,widget.onMove),
+    _mi(Icons.edit_rounded,kTextSec,L.rename_,widget.onRename),
+    _mi(Icons.select_all_rounded,kTextSec,L.selectGroup,widget.onSelect),
+    _mi(Icons.delete_outline_rounded,kRed,L.delete,widget.onDelete),
     const SizedBox(height:8),
   ])));
   Widget _mi(IconData icon,Color iconColor,String title,VoidCallback onTap)=>ListTile(dense:true,
@@ -811,14 +812,14 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     const SizedBox(height:4),
     TabBar(controller:_tab,isScrollable:true,indicatorColor:kAccent,labelColor:kAccent,unselectedLabelColor:kTextSec,
         labelStyle:const TextStyle(fontSize:12,fontWeight:FontWeight.w600),unselectedLabelStyle:const TextStyle(fontSize:12),
-        tabs:const[Tab(icon:Icon(Icons.history_rounded,size:16),text:'تاریخچه'),
-          Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:'نشانه‌ها'),
-          Tab(icon:Icon(Icons.favorite_rounded,size:16),text:'علاقه‌مندی'),
-          Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:'پوشه‌ها'),
-          Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:'پلی‌لیست'),
-          Tab(icon:Icon(Icons.star_rounded,size:16),text:'اسپانسر'),
-          Tab(icon:Icon(Icons.build_rounded,size:16),text:'ابزارها'),
-          Tab(icon:Icon(Icons.settings_rounded,size:16),text:'اپ')]),
+        tabs:const[Tab(icon:Icon(Icons.history_rounded,size:16),text:L.history),
+          Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:L.bookmarks),
+          Tab(icon:Icon(Icons.favorite_rounded,size:16),text:L.favorites),
+          Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:L.folders),
+          Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:L.playlist),
+          Tab(icon:Icon(Icons.star_rounded,size:16),text:L.sponsors),
+          Tab(icon:Icon(Icons.build_rounded,size:16),text:L.tools),
+          Tab(icon:Icon(Icons.settings_rounded,size:16),text:L.app)]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
       _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber,
@@ -834,12 +835,12 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(Store.watchHistory.isNotEmpty)Padding(
       padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
       child:Row(children:[
-        const Expanded(child:Text('آخرین مشاهده‌ها',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
-        TextButton.icon(icon:const Icon(Icons.delete_sweep_rounded,size:15,color:kRed),label:const Text('حذف همه',style:TextStyle(fontSize:12,color:kRed)),
+        const Expanded(child:Text(L.recentViews,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
+        TextButton.icon(icon:const Icon(Icons.delete_sweep_rounded,size:15,color:kRed),label:const Text(L.deleteAll,style:TextStyle(fontSize:12,color:kRed)),
             onPressed:()async{final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-              title:const Text('حذف همه تاریخچه؟'),
-              actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('لغو')),
-                FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))],
+              title:const Text(L.deleteAllHistory),
+              actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.cancel)),
+                FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.delete))],
             ));if(ok==true){await Store.clearHistory();setState((){});}})
       ])),
     Expanded(child:_vList(Store.watchHistory,Icons.history_rounded,kTextSec,
@@ -850,7 +851,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(paths.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
           child:Icon(icon,size:32,color:color.withOpacity(0.4))),
-      const SizedBox(height:12),const Text('هنوز چیزی نیست',style:TextStyle(color:kTextSec)),
+      const SizedBox(height:12),const Text(L.nothingYet,style:TextStyle(color:kTextSec)),
     ]));
     return ListView.builder(itemCount:paths.length,padding:const EdgeInsets.only(bottom:8),itemBuilder:(_,i){
       final path=paths[i];
@@ -874,7 +875,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         onLongPress:(){
           if(isUrl){
             Clipboard.setData(ClipboardData(text:path));
-            showSnack(context, 'لینک کپی شد', color: Color(0xFF7C3AED), seconds: 2);
+            showSnack(context, L.linkCopied, color: Color(0xFF7C3AED), seconds: 2);
           } else if(onLongPress!=null) onLongPress(path);
         });
     });
@@ -885,8 +886,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
           child:const Icon(Icons.push_pin_outlined,size:32,color:kTextDim)),
-      const SizedBox(height:12),const Text('پوشه‌ای ذخیره نشده',style:TextStyle(color:kTextSec)),
-      const SizedBox(height:6),const Text('در مرورگر آیکون 📌 را بزنید',style:TextStyle(fontSize:11,color:kTextDim)),
+      const SizedBox(height:12),const Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
+      const SizedBox(height:6),const Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
     return ListView.builder(itemCount:folders.length,itemBuilder:(_,i){
       final folder=folders[i];final exists=Directory(folder).existsSync();
@@ -906,18 +907,18 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     return Column(children:[
       Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
         child:Row(children:[
-          const Expanded(child:Text('پلی‌لیست‌ها',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
+          const Expanded(child:Text(L.playlist,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
           FilledButton.icon(
             style:FilledButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:10),minimumSize:const Size(0,32)),
-            icon:const Icon(Icons.add_rounded,size:16),label:const Text('جدید',style:TextStyle(fontSize:12)),
+            icon:const Icon(Icons.add_rounded,size:16),label:const Text(L.newItem,style:TextStyle(fontSize:12)),
             onPressed:()async{
               final ctrl=TextEditingController();
               final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-                title:const Text('پلی‌لیست جدید'),
+                title:const Text(L.newPlaylist),
                 content:TextField(controller:ctrl,autofocus:true,
-                    decoration:const InputDecoration(hintText:'نام پلی‌لیست...',border:OutlineInputBorder())),
-                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('لغو')),
-                  FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text('ساخت'))],
+                    decoration:const InputDecoration(hintText:L.playlistName,border:OutlineInputBorder())),
+                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
+                  FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text(L.create))],
               ));
               if(name!=null&&name.isNotEmpty){await Store.createPlaylist(name);setState((){});}
             }),
@@ -926,8 +927,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       if(playlists.isEmpty)Expanded(child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
         Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
             child:const Icon(Icons.queue_music_rounded,size:32,color:kTextDim)),
-        const SizedBox(height:12),const Text('پلی‌لیستی ندارید',style:TextStyle(color:kTextSec)),
-        const SizedBox(height:4),const Text('با دکمه «جدید» بسازید',style:TextStyle(fontSize:11,color:kTextDim)),
+        const SizedBox(height:12),const Text(L.noPlaylists,style:TextStyle(color:kTextSec)),
+        const SizedBox(height:4),const Text(L.createPlaylist,style:TextStyle(fontSize:11,color:kTextDim)),
       ])))
       else Expanded(child:ListView.builder(itemCount:playlists.keys.length,itemBuilder:(_,i){
         final name=playlists.keys.elementAt(i);
@@ -937,20 +938,20 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
               gradient:LinearGradient(colors:[kAccent,kCyan]),borderRadius:BorderRadius.circular(8)),
               child:const Icon(Icons.queue_music_rounded,size:16,color:Colors.white)),
           title:Text(name,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w500)),
-          subtitle:Text('${paths.length} ویدیو',style:const TextStyle(fontSize:11,color:kTextDim)),
+          subtitle:Text('\${paths.length}',style:const TextStyle(fontSize:11,color:kTextDim)),
           trailing:PopupMenuButton<String>(
             icon:const Icon(Icons.more_vert_rounded,size:18,color:kTextSec),
             itemBuilder:(_)=>[
-              const PopupMenuItem(value:'play',child:Text('پخش',style:TextStyle(fontSize:13))),
-              const PopupMenuItem(value:'delete',child:Text('حذف',style:TextStyle(fontSize:13,color:kRed))),
+              const PopupMenuItem(value:'play',child:Text(L.play,style:TextStyle(fontSize:13))),
+              const PopupMenuItem(value:'delete',child:Text(L.delete,style:TextStyle(fontSize:13,color:kRed))),
             ],
             onSelected:(v)async{
               if(v=='delete'){
                 final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-                  title:Text('حذف «$name»؟'),
-                  actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('لغو')),
+                  title:Text('${L.delete} "\$name"?'),
+                  actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.cancel)),
                     FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),
-                        onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))],
+                        onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.delete))],
                 ));
                 if(ok==true){await Store.deletePlaylist(name);setState((){});}
               }else if(v=='play'&&paths.isNotEmpty){
@@ -976,7 +977,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
             decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
             child:const Icon(Icons.star_rounded,size:32,color:kTextDim)),
           const SizedBox(height:12),
-          const Text('هنوز اسپانسری نیست',style:TextStyle(color:kTextSec)),
+          const Text(L.noSponsors,style:TextStyle(color:kTextSec)),
         ]));
         return ListView.builder(
           padding:const EdgeInsets.all(12),
@@ -1014,7 +1015,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                       padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
                       minimumSize:const Size(0,36)),
                     onPressed:()=>ul.launchUrl(Uri.parse(s['link']),mode:ul.LaunchMode.externalApplication),
-                    child:const Text('مشاهده',style:TextStyle(fontSize:12))),
+                    child:const Text(L.view,style:TextStyle(fontSize:12))),
                 ],
               ])),
             );
@@ -1028,7 +1029,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       final cfg=snap.data??{};
       final channel=cfg['telegram_channel']??'';
       final admin=cfg['telegram_admin']??'';
-      final reportText=cfg['report_text']??'گزارش مشکل / پیشنهاد';
+      final reportText=cfg['report_text']??L.reportBug;
       final remoteVer=cfg['app_version']??'';
       final hasUpdate=remoteVer.isNotEmpty&&ApiService.isNewer(remoteVer,ApiService.appVersion);
 
@@ -1042,8 +1043,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                 child:const Icon(Icons.play_circle_rounded,color:kAccent,size:24)),
             const SizedBox(width:12),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              const Text('پلیر زیرنویس',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
-              Text('نسخه ${ApiService.appVersion}${remoteVer.isNotEmpty?" — سرور: $remoteVer":""}',
+              const Text('Vezoo',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
+              Text('v\${ApiService.appVersion}',
                   style:const TextStyle(fontSize:11,color:kTextSec)),
             ])),
             if(snap.connectionState==ConnectionState.waiting)
@@ -1056,7 +1057,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         _appBtn(
           icon:hasUpdate?Icons.system_update_rounded:Icons.check_circle_rounded,
           color:hasUpdate?kAmber:kGreen,
-          label:hasUpdate?'نسخه جدید موجود است — دانلود':'اپ بروز است',
+          label:hasUpdate?L.updateAvailable:L.upToDate,
           onTap:hasUpdate?()async{
             final url=cfg['download_url']??'';
             if(url.isNotEmpty)await ul.launchUrl(Uri.parse(url),mode:ul.LaunchMode.externalApplication);
@@ -1068,7 +1069,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         // زیرنویس AI
         _appBtn(
           icon:Icons.auto_awesome_rounded,color:const Color(0xFF7C3AED),
-          label:'زیرنویس AI (آفلاین) — مدیریت مدل‌ها',
+          label:L.aiModels,
           onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AiModelsScreen())),
         ),
 
@@ -1077,7 +1078,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         // کانال تلگرام
         if(channel.isNotEmpty)_appBtn(
           icon:Icons.telegram_rounded,color:kCyan,
-          label:'کانال تلگرام',
+          label:L.telegramChannel,
           onTap:()=>ul.launchUrl(Uri.parse(channel),mode:ul.LaunchMode.externalApplication)),
 
         const SizedBox(height:8),
@@ -1091,8 +1092,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         const SizedBox(height:16),
         Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
             child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text('ویژگی‌ها',style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
-              Text('• پخش تمام فرمت‌های ویدیو\n• زیرنویس SRT, VTT, ASS, SSA\n• HDR detection\n• زیرنویس دوگانه',
+              Text(L.features,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
+              Text('• MP4/MKV/AVI/...\n• SRT/VTT/ASS/SSA\n• HDR\n• Dual Sub',
                   style:TextStyle(fontSize:12,color:kTextSec,height:1.7)),
             ])),
       ]);
@@ -1117,4 +1118,3 @@ Widget _appBtn({required IconData icon,required Color color,required String labe
     ),
   );
 }
-
