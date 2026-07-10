@@ -1,62 +1,85 @@
-import 'dart:io';
-import 'package:flutter/services.dart';
 
-/// سرویس yt-dlp + deno — stream URL از هر سایت
+import 'package:extractor/extractor.dart';
+
+/// سرویس پخش آنلاین — YouTube, Instagram, TikTok, 1000+ سایت
+/// از extractor package استفاده میکنه که yt-dlp رو با Python داخلی اجرا میکنه
 class YtDlpService {
-  static const _ch = MethodChannel('com.vezoo.player/ytdlp');
+  static final _dl = YoutubeDLFlutter.instance;
+  static bool _initialized = false;
+
+  static Future<void> init() async {
+    if (_initialized) return;
+    await _dl.initialize(enableFFmpeg: false, enableAria2c: false);
+    _initialized = true;
+  }
 
   // ── وضعیت ──
-  static Future<Map<String,String?>> getVersions() async {
-    final r = await _ch.invokeMapMethod<String,String>('getVersions');
-    return r ?? {};
+  static Future<bool> isYtDlpInstalled() async {
+    try {
+      await init();
+      final v = await _dl.getVersion();
+      return v.youtubeDlVersion != null && v.youtubeDlVersion!.isNotEmpty;
+    } catch (_) { return false; }
   }
 
-  static Future<bool> isYtDlpInstalled() async =>
-    await _ch.invokeMethod<bool>('isInstalled', 'ytdlp') ?? false;
+  static Future<bool> isDenoInstalled() async => false; // deno از طریق extractor نیاز نیست
 
-  static Future<bool> isDenoInstalled() async =>
-    await _ch.invokeMethod<bool>('isInstalled', 'deno') ?? false;
-
-  // ── دانلود ──
-  static Stream<Map> downloadProgress() =>
-    const EventChannel('com.vezoo.player/ytdlp_progress')
-      .receiveBroadcastStream()
-      .map((e) => (e as Map).cast<String,dynamic>());
-
-  static Future<void> downloadYtDlp() async =>
-    await _ch.invokeMethod('download', 'ytdlp');
-
-  static Future<void> downloadDeno() async =>
-    await _ch.invokeMethod('download', 'deno');
+  static Future<Map<String,String?>> getVersions() async {
+    try {
+      await init();
+      final v = await _dl.getVersion();
+      return {'ytdlp': v.youtubeDlVersion, 'deno': null};
+    } catch (_) { return {}; }
+  }
 
   // ── آپدیت ──
-  static Future<void> updateYtDlp() async =>
-    await _ch.invokeMethod('update', 'ytdlp');
-
-  static Future<void> updateDeno() async =>
-    await _ch.invokeMethod('update', 'deno');
-
-  // ── حذف ──
-  static Future<void> deleteYtDlp() async =>
-    await _ch.invokeMethod('delete', 'ytdlp');
-
-  static Future<void> deleteDeno() async =>
-    await _ch.invokeMethod('delete', 'deno');
-
-  // ── بکاپ ──
-  static Future<List<String>> backup() async {
-    final r = await _ch.invokeListMethod<String>('backup');
-    return r ?? [];
+  static Future<void> downloadYtDlp() async {
+    await init();
+    await _dl.updateYoutubeDL();
   }
 
-  // ── ایمپورت ──
-  static Future<void> importBin(String path, String type) async =>
-    await _ch.invokeMethod('import', {'path': path, 'type': type});
+  static Future<void> downloadDeno() async {} // نیازی نیست
 
-  // ── stream URL ──
+  static Future<void> updateYtDlp() async => downloadYtDlp();
+  static Future<void> updateDeno() async {}
+
+  // ── حذف (extractor خودش manage میکنه) ──
+  static Future<void> deleteYtDlp() async {}
+  static Future<void> deleteDeno() async {}
+
+  // ── بکاپ ──
+  static Future<List<String>> backup() async => [];
+
+  // ── ایمپورت ──
+  static Future<void> importBin(String path, String type) async {}
+
+  // ── progress stream ──
+  static Stream<Map> downloadProgress() => const Stream.empty();
+
+  // ── stream URL — مهم‌ترین تابع ──
   static Future<String> getStreamUrl(String url) async {
-    final result = await _ch.invokeMethod<String>('streamUrl', url);
-    if (result == null || result.isEmpty) throw Exception('Stream URL not found');
-    return result;
+    await init();
+    final info = await _dl.getVideoInfo(url);
+    // پیدا کردن بهترین format قابل پخش (mp4 یا stream url)
+    if (info.formats != null && info.formats!.isNotEmpty) {
+      // اول دنبال url مستقیم بگرد
+      for (final f in info.formats!.reversed) {
+        final fu = f['url'] as String?;
+        if (fu != null && fu.startsWith('http')) {
+          final ext = (f['ext'] as String? ?? '').toLowerCase();
+          final vcodec = (f['vcodec'] as String? ?? '');
+          // ترجیح: video+audio در یه stream
+          if (vcodec != 'none' && (ext == 'mp4' || ext == 'm4v' || ext == 'webm')) {
+            return fu;
+          }
+        }
+      }
+      // fallback: هر url که داریم
+      for (final f in info.formats!.reversed) {
+        final fu = f['url'] as String?;
+        if (fu != null && fu.startsWith('http')) return fu;
+      }
+    }
+    throw Exception('No stream URL found for this video');
   }
 }
