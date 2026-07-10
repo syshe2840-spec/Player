@@ -68,9 +68,9 @@ class _State extends State<LiveSubSheet> {
               Row(children: [
                 const Icon(Icons.fiber_smart_record, color: Colors.red, size: 20),
                 const SizedBox(width: 8),
-                const Text(L.liveSubtitleSettings, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                Text(L.liveSubtitleSettings, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
                 const Spacer(),
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(L.close)),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.close)),
               ]),
 
               // توضیح
@@ -85,7 +85,7 @@ class _State extends State<LiveSubSheet> {
               ),
 
               if (_models.isEmpty) ...[
-                const Padding(padding: EdgeInsets.all(16), child: Text(L.noModelDownloaded2,
+                Padding(padding: EdgeInsets.all(16), child: Text(L.noModelDownloaded2,
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 13))),
               ] else ...[
 
@@ -155,7 +155,7 @@ class _State extends State<LiveSubSheet> {
                     padding:const EdgeInsets.symmetric(horizontal:10,vertical:4),
                     decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(8)),
                     child:Row(children:[
-                      const Text(L.targetLanguage,style:TextStyle(color:Colors.white60,fontSize:12)),
+                      Text(L.targetLanguage,style:TextStyle(color:Colors.white60,fontSize:12)),
                       const SizedBox(width:8),
                       Expanded(child:DropdownButton<String>(
                         value:_syncLang,isExpanded:true,dropdownColor:const Color(0xFF2A2A35),
@@ -177,7 +177,7 @@ class _State extends State<LiveSubSheet> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text(L.whenBehind, style: TextStyle(color: Colors.white60, fontSize: 12)),
+                    Text(L.whenBehind, style: TextStyle(color: Colors.white60, fontSize: 12)),
                     const SizedBox(height: 8),
                     Row(children: [
                       Expanded(child: _behindChip(L.pauseVideo, LiveBehindAction.pause, Icons.pause_circle_outline)),
@@ -187,7 +187,7 @@ class _State extends State<LiveSubSheet> {
                     if (_behindAction == LiveBehindAction.slowDown) ...[
                       const SizedBox(height: 8),
                       Row(children: [
-                        const Text(L.speedLabel, style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        Text(L.speedLabel, style: TextStyle(color: Colors.white54, fontSize: 12)),
                         ...[0.25, 0.5, 0.75].map((s) => Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: GestureDetector(onTap: () => setState(() => _behindSpeed = s), child: Container(
@@ -216,7 +216,7 @@ class _State extends State<LiveSubSheet> {
                     ));
                   },
                   icon: const Icon(Icons.play_arrow),
-                  label: const Text(L.startProcessing),
+                  label: Text(L.startProcessing),
                   style: FilledButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 14)),
                 )),
               ],

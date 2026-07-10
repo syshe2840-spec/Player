@@ -25,13 +25,13 @@ class _AiHistoryScreenState extends State<AiHistoryScreen> {
   Future<void> _remove(String path) async {
     final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text(L.deleteFromHistory,style:TextStyle(color:Colors.white,fontSize:15)),
-      content:const Text(L.deleteFromHistoryDesc,
+      title:Text(L.deleteFromHistory,style:TextStyle(color:Colors.white,fontSize:15)),
+      content:Text(L.deleteFromHistoryDesc,
         style:TextStyle(color:Colors.white70,fontSize:12)),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text(L.cancel)),
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(L.cancel)),
         FilledButton(onPressed:()=>Navigator.pop(context,true),
-          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text(L.delete)),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:Text(L.delete)),
       ],
     ));
     if(ok==true){ await WhisperService.removeFromHistory(path); await _load(); }
@@ -48,11 +48,11 @@ class _AiHistoryScreenState extends State<AiHistoryScreen> {
     backgroundColor:const Color(0xFF0F0F14),
     appBar:AppBar(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text(L.aiHistory,style:TextStyle(color:Colors.white,fontSize:15)),
+      title:Text(L.aiHistory,style:TextStyle(color:Colors.white,fontSize:15)),
       leading:IconButton(icon:const Icon(Icons.arrow_back,color:Colors.white),onPressed:()=>Navigator.pop(context)),
     ),
     body: _loading
-      ? const Center(child:CircularProgressIndicator(color:Color(0xFF7C3AED)))
+      ? Center(child:CircularProgressIndicator(color:Color(0xFF7C3AED)))
       : _videos.isEmpty
         ? const Center(child:Padding(
             padding:EdgeInsets.all(24),

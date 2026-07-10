@@ -248,11 +248,11 @@ class _PlayerState extends State<PlayerScreen>{
     if(saved.inSeconds>5&&mounted){
       final resume=await showDialog<bool>(
         context:context,barrierDismissible:false,
-        builder:(ctx)=>AlertDialog(backgroundColor:const Color(0xFF1C1C22),title:const Text(L.continuePlaying),
+        builder:(ctx)=>AlertDialog(backgroundColor:const Color(0xFF1C1C22),title:Text(L.continuePlaying),
           content:Text('${L.resumeFrom} (${fmt(saved)})'),
           actions:[
-            TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.fromBeginning)),
-            FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.continue_)),
+            TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.fromBeginning)),
+            FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:Text(L.continue_)),
           ]),
       );
       if(resume==true&&mounted)await player.seek(saved);
@@ -403,22 +403,22 @@ class _PlayerState extends State<PlayerScreen>{
   void _showSleepDialog(){
     int min=30;
     showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),title:const Text(L.sleepTimer),
+      backgroundColor:const Color(0xFF1C1C22),title:Text(L.sleepTimer),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
         Text('\$min \${L.minutes}',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
         Slider(min:1,max:180,divisions:179,value:min.toDouble(),onChanged:(v)=>ss(()=>min=v.round())),
         if(_sleepAt!=null)Text('${L.remaining}: \${_sleepAt!.difference(DateTime.now()).inMinutes} \${L.minutes}',style:const TextStyle(color:Colors.orange)),
       ]),
       actions:[
-        if(_sleepAt!=null)TextButton(onPressed:(){_sleepTimer?.cancel();setState(()=>_sleepAt=null);Navigator.pop(ctx);},child:const Text(L.cancel,style:TextStyle(color:Colors.red))),
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close)),
+        if(_sleepAt!=null)TextButton(onPressed:(){_sleepTimer?.cancel();setState(()=>_sleepAt=null);Navigator.pop(ctx);},child:Text(L.cancel,style:TextStyle(color:Colors.red))),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close)),
         FilledButton(onPressed:(){
           _sleepTimer?.cancel();
           final at=DateTime.now().add(Duration(minutes:min));
           setState(()=>_sleepAt=at);
           _sleepTimer=Timer(Duration(minutes:min),(){player.pause();setState(()=>_sleepAt=null);});
           Navigator.pop(ctx);
-        },child:const Text(L.start)),
+        },child:Text(L.start)),
       ],
     )));
   }
@@ -426,12 +426,12 @@ class _PlayerState extends State<PlayerScreen>{
   // انتخاب تراک زیرنویس embedded (softsub)
   void _showEmbeddedSubPicker(){
     showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
-      title:const Text(L.embeddedSubtitleVideo),
+      title:Text(L.embeddedSubtitleVideo),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
         // toggle کلی
         SwitchListTile(
           dense:true,
-          title:const Text(L.enableEmbeddedSub),
+          title:Text(L.enableEmbeddedSub),
           subtitle:Text(_embeddedSubEnabled?L.internalEmbedded:L.disabled),
           value:_embeddedSubEnabled,
           onChanged:(v){
@@ -440,7 +440,7 @@ class _PlayerState extends State<PlayerScreen>{
           },
         ),
         const Divider(height:1),
-        if(_subtitleTracks.isEmpty)const Padding(
+        if(_subtitleTracks.isEmpty)Padding(
           padding:EdgeInsets.all(12),
           child:Text(L.noEmbeddedSubtitle,
               style:TextStyle(color:Color(0xFF94A3B8)),textAlign:TextAlign.center)),
@@ -457,23 +457,23 @@ class _PlayerState extends State<PlayerScreen>{
                 setState(()=>_embeddedSubEnabled=true);
                 showSnack(context, '${L.select}: \${t.title??t.language??t.id}');
               },
-              child:const Text(L.select,style:TextStyle(fontSize:12)),
+              child:Text(L.select,style:TextStyle(fontSize:12)),
             ),
           );
         }),
         const Divider(height:1),
-        const Padding(padding:EdgeInsets.all(8),
+        Padding(padding:EdgeInsets.all(8),
           child:Text(L.bothAtOnce,
               style:TextStyle(fontSize:11,color:Color(0xFF7C3AED)))),
       ]),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close))],
     )));
   }
 
   void _showAudioPicker(){
     if(_audioTracks.isEmpty){showSnack(context, L.audioTrackNotFound);return;}
     showDialog(context:context,builder:(ctx)=>AlertDialog(
-      backgroundColor:const Color(0xFF1C1C22),title:const Text(L.selectAudioTrack),
+      backgroundColor:const Color(0xFF1C1C22),title:Text(L.selectAudioTrack),
       content:Column(mainAxisSize:MainAxisSize.min,
           children:_audioTracks.map((t)=>ListTile(
             title:Text(t.title??t.language??'Track ${t.id}'),
@@ -499,7 +499,7 @@ class _PlayerState extends State<PlayerScreen>{
           _infoRow(Icons.music_note_rounded,const Color(0xFF94A3B8),L.audioTracks,'\${_audioTracks.length} \${L.audioTracks}'),
         if(_hwDecode)_infoRow(Icons.developer_board_rounded,const Color(0xFF0EA5E9),L.decoder,L.hwActive),
       ]),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close))],
     ));
   }
 
@@ -568,9 +568,9 @@ class _PlayerState extends State<PlayerScreen>{
       if(mounted){
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         showDialog(context:context,builder:(ctx)=>AlertDialog(
-          title:const Text(L.decodeError),
+          title:Text(L.decodeError),
           content:SingleChildScrollView(child:Text(e.toString())),
-          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
+          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close))],
         ));
       }
     }
@@ -1449,7 +1449,7 @@ class _PlayerState extends State<PlayerScreen>{
                   const Icon(Icons.fiber_smart_record,size:18,color:Colors.red),
                   const SizedBox(width:10),
                   Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                    const Text(L.liveRunning),
+                    Text(L.liveRunning),
                     Text('\${LiveSubState.chunksDone}/\${LiveSubState.chunksTotal}',
                       style:const TextStyle(color:Colors.white54,fontSize:11)),
                   ]),
@@ -1502,13 +1502,13 @@ class _PlayerState extends State<PlayerScreen>{
               PopupMenuItem(value:'repeat',child:Text('${L.repeat}: \${_repeatMode==_Repeat.none?"off":_repeatMode==_Repeat.all?"all":"one"}')),
               PopupMenuItem(value:'night',child:Text(_vs.nightOpacity>0?L.disableNightMode:L.nightMode)),
               PopupMenuItem(value:'mute',child:Text(_muted?L.unmute:L.mute)),
-              const PopupMenuItem(value:'embsub',child:Text(L.embeddedSubtitle)),
-              const PopupMenuItem(value:'audio',child:Text(L.audioTracks)),
-              const PopupMenuItem(value:'sleep',child:Text(L.sleepTimer)),
-              const PopupMenuItem(value:'screenshot',child:Text(L.screenshot)),
-              const PopupMenuItem(value:'copy',child:Text(L.copySub)),
-              const PopupMenuItem(value:'info',child:Text(L.videoInfo)),
-              const PopupMenuItem(value:'lock',child:Text(L.lockScreen)),
+              PopupMenuItem(value:'embsub',child:Text(L.embeddedSubtitle)),
+              PopupMenuItem(value:'audio',child:Text(L.audioTracks)),
+              PopupMenuItem(value:'sleep',child:Text(L.sleepTimer)),
+              PopupMenuItem(value:'screenshot',child:Text(L.screenshot)),
+              PopupMenuItem(value:'copy',child:Text(L.copySub)),
+              PopupMenuItem(value:'info',child:Text(L.videoInfo)),
+              PopupMenuItem(value:'lock',child:Text(L.lockScreen)),
             ],
           ),
         ]),
@@ -1632,7 +1632,7 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         Row(children:[
           const Icon(Icons.fiber_smart_record,color:Colors.red,size:18),
           const SizedBox(width:8),
-          const Expanded(child:Text(L.liveRunning,style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
+          Expanded(child:Text(L.liveRunning,style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
           IconButton(icon:const Icon(Icons.close,color:Colors.white54,size:20),
             onPressed:()=>Navigator.pop(ctx),constraints:const BoxConstraints(),padding:const EdgeInsets.all(4)),
         ]),
@@ -1676,13 +1676,13 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
           Expanded(child:OutlinedButton.icon(
             onPressed:widget.onToggleVideo,
             icon:const Icon(Icons.pause,size:16),
-            label:const Text(L.playPause,style:TextStyle(fontSize:12)),
+            label:Text(L.playPause,style:TextStyle(fontSize:12)),
             style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.white24)))),
           const SizedBox(width:8),
           Expanded(child:OutlinedButton.icon(
             onPressed:widget.onSkipChunk,
             icon:const Icon(Icons.skip_next,size:16),
-            label:const Text(L.skipChunk,style:TextStyle(fontSize:12)),
+            label:Text(L.skipChunk,style:TextStyle(fontSize:12)),
             style:OutlinedButton.styleFrom(side:const BorderSide(color:Colors.orange),foregroundColor:Colors.orange))),
         ]),
         const SizedBox(height:8),
@@ -1691,19 +1691,19 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
           onPressed:() async {
             final ok = await showDialog<bool>(context:ctx,builder:(_)=>AlertDialog(
               backgroundColor:const Color(0xFF1C1C22),
-              title:const Text(L.cancelLive,style:TextStyle(color:Colors.white,fontSize:15)),
+              title:Text(L.cancelLive,style:TextStyle(color:Colors.white,fontSize:15)),
               content:Text('\${_fmt(transcribed)} saved',
                 style:const TextStyle(color:Colors.white70,fontSize:12)),
               actions:[
-                TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.continue_)),
+                TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.continue_)),
                 FilledButton(onPressed:()=>Navigator.pop(ctx,true),
-                  style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text(L.cancel)),
+                  style:FilledButton.styleFrom(backgroundColor:Colors.red),child:Text(L.cancel)),
               ],
             ));
             if(ok==true) widget.onStop();
           },
           icon:const Icon(Icons.stop,size:16),
-          label:const Text(L.cancel),
+          label:Text(L.cancel),
           style:FilledButton.styleFrom(backgroundColor:Colors.red,padding:const EdgeInsets.symmetric(vertical:12)),
         )),
       ]),
@@ -1751,7 +1751,7 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
         Row(children:[
           const Icon(Icons.translate,color:Color(0xFF7C3AED),size:18),
           const SizedBox(width:8),
-          const Expanded(child:Text(L.translateOnline,style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
+          Expanded(child:Text(L.translateOnline,style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.bold))),
           IconButton(icon:const Icon(Icons.close,color:Colors.white54,size:20),
             onPressed:()=>Navigator.pop(ctx),constraints:const BoxConstraints(),padding:const EdgeInsets.all(4)),
         ]),
@@ -1765,7 +1765,7 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
             Row(children:[
               const Icon(Icons.translate,color:Color(0xFF7C3AED),size:14),
               const SizedBox(width:6),
-              const Text(L.targetLang,style:TextStyle(color:Colors.white60,fontSize:13)),
+              Text(L.targetLang,style:TextStyle(color:Colors.white60,fontSize:13)),
               Text(lang,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
             ]),
             const SizedBox(height:8),
@@ -1789,7 +1789,7 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
         SizedBox(width:double.infinity,child:FilledButton.icon(
           onPressed:widget.onCancel,
           icon:const Icon(Icons.stop,size:16),
-          label:const Text(L.cancelTranslation),
+          label:Text(L.cancelTranslation),
           style:FilledButton.styleFrom(backgroundColor:Colors.red,padding:const EdgeInsets.symmetric(vertical:12)),
         )),
       ]),

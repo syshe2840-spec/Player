@@ -108,7 +108,7 @@ class _State extends State<LyricsSheet> {
           child: Row(children: [
             const Icon(Icons.music_note, color: Color(0xFF7C3AED), size: 20),
             const SizedBox(width: 8),
-            const Text(L.musicSubLabel, style: TextStyle(color:Colors.white, fontSize:16, fontWeight:FontWeight.bold)),
+            Text(L.musicSubLabel, style: TextStyle(color:Colors.white, fontSize:16, fontWeight:FontWeight.bold)),
             const Spacer(),
             IconButton(icon:const Icon(Icons.close,color:Colors.white38), onPressed:()=>Navigator.pop(ctx)),
           ]),
@@ -136,7 +136,7 @@ class _State extends State<LyricsSheet> {
               style: FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED), padding:const EdgeInsets.symmetric(horizontal:14,vertical:10)),
               child: _loading
                 ? const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
-                : const Text(L.search, style:TextStyle(fontSize:12)),
+                : Text(L.search, style:TextStyle(fontSize:12)),
             ),
           ]),
         ),

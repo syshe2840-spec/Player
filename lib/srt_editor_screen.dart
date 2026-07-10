@@ -60,8 +60,8 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
           decoration: const InputDecoration(hintText: '00:05', hintStyle: TextStyle(color: Colors.white38)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(L.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text(L.apply)),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: Text(L.apply)),
         ],
       ),
     );
@@ -102,12 +102,12 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
       if (didPop) return;
       final leave = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C22),
-        title: const Text(L.unsavedChanges, style: TextStyle(color: Colors.white, fontSize: 15)),
-        content: const Text(L.exitWithoutSave, style: TextStyle(color: Colors.white70)),
+        title: Text(L.unsavedChanges, style: TextStyle(color: Colors.white, fontSize: 15)),
+        content: Text(L.exitWithoutSave, style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text(L.stay)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(L.stay)),
           FilledButton(onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text(L.exitNoSave)),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red), child: Text(L.exitNoSave)),
         ],
       ));
       if (leave == true && context.mounted) Navigator.pop(context);
@@ -127,7 +127,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
         ],
       ),
       body: _entries.isEmpty
-        ? const Center(child: Text(L.noSubtitleEdit, style: TextStyle(color: Colors.white54)))
+        ? Center(child: Text(L.noSubtitleEdit, style: TextStyle(color: Colors.white54)))
         : ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: _entries.length,
@@ -168,7 +168,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
         child: SizedBox(width: double.infinity, child: FilledButton.icon(
           onPressed: _saving ? null : _save,
           icon: const Icon(Icons.save),
-          label: const Text(L.saveChanges),
+          label: Text(L.saveChanges),
           style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 14)),
         )),
       )) : null,

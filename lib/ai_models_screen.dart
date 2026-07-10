@@ -35,13 +35,13 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   Future<void> _clearCache() async {
     final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text(L.clearAudioCache,style:TextStyle(color:Colors.white,fontSize:15)),
+      title:Text(L.clearAudioCache,style:TextStyle(color:Colors.white,fontSize:15)),
       content:Text('${L.clearAudioCache}?',
         style:const TextStyle(color:Colors.white70,fontSize:12)),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text(L.cancel)),
+        TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(L.cancel)),
         FilledButton(onPressed:()=>Navigator.pop(context,true),
-          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text(L.cleanUp)),
+          style:FilledButton.styleFrom(backgroundColor:Colors.red),child:Text(L.cleanUp)),
       ],
     ));
     if(ok!=true) return;
@@ -115,7 +115,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
     backgroundColor:const Color(0xFF0F0F14),
     appBar: AppBar(
       backgroundColor:const Color(0xFF1C1C22),
-      title:const Text(L.aiModelsLabel,style:TextStyle(color:Colors.white,fontSize:16)),
+      title:Text(L.aiModelsLabel,style:TextStyle(color:Colors.white,fontSize:16)),
       leading:IconButton(icon:const Icon(Icons.arrow_back,color:Colors.white),onPressed:()=>Navigator.pop(ctx)),
       actions:[
         IconButton(
@@ -175,7 +175,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
           onPressed:_clearingCache?null:_clearCache,
           child:_clearingCache
             ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2,color:Colors.red))
-            : const Text(L.cleanUp,style:TextStyle(color:Colors.red,fontSize:12)),
+            : Text(L.cleanUp,style:TextStyle(color:Colors.red,fontSize:12)),
         ),
       ]),
     ),
@@ -247,7 +247,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
             Text('${(prog*100).clamp(0,100).toInt()}%',
               style:const TextStyle(color:Colors.white54,fontSize:11)),
             TextButton(onPressed:()=>_cancel(m),
-              child:const Text(L.cancelResume,style:TextStyle(color:Colors.orange,fontSize:11))),
+              child:Text(L.cancelResume,style:TextStyle(color:Colors.orange,fontSize:11))),
           ]),
         ],
 
@@ -265,7 +265,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
             if(dl&&!act) Expanded(child:FilledButton.icon(
               onPressed:()async{ await WhisperService.setActive(m); await _refresh(); },
               icon:const Icon(Icons.check_circle,size:16),
-              label:const Text(L.activate),
+              label:Text(L.activate),
               style:FilledButton.styleFrom(backgroundColor:Colors.green,
                 shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
             )),
@@ -277,13 +277,13 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
                 onPressed:()async{
                   final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(
                     backgroundColor:const Color(0xFF1C1C22),
-                    title:const Text(L.delete,style:TextStyle(color:Colors.white)),
+                    title:Text(L.delete,style:TextStyle(color:Colors.white)),
                     content:Text('\${m.name}?',style:const TextStyle(color:Colors.white70)),
                     actions:[
-                      TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text(L.cancel)),
+                      TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(L.cancel)),
                       FilledButton(onPressed:()=>Navigator.pop(context,true),
                         style:FilledButton.styleFrom(backgroundColor:Colors.red),
-                        child:const Text(L.delete)),
+                        child:Text(L.delete)),
                     ],
                   ));
                   if(ok==true){await WhisperService.deleteModel(m);await _refresh();}

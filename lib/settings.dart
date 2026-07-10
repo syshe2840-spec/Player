@@ -91,7 +91,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     return Column(mainAxisSize:MainAxisSize.min,children:[
       const SizedBox(height:10),
       Center(child:Container(width:40,height:4,decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(2)))),
-      TabBar(controller:_tab,isScrollable:true,tabs:const[
+      TabBar(controller:_tab,isScrollable:true,tabs:[
         Tab(text:L.subtitle,icon:Icon(Icons.subtitles,size:16)),
         Tab(text:L.playback,icon:Icon(Icons.volume_up,size:16)),
         Tab(text:L.subtitle2,icon:Icon(Icons.subtitles_outlined,size:16)),
@@ -106,11 +106,11 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
   // ──────── تب زیرنویس ۱ ────────
   Widget _sub1Tab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text(L.subtitleDisplay),value:_s1v,
+    SwitchListTile(contentPadding:EdgeInsets.zero,title:Text(L.subtitleDisplay),value:_s1v,
         onChanged:(v){setState(()=>_s1v=v);widget.onSub1Visible(v);}),
     SwitchListTile(contentPadding:EdgeInsets.zero,
-        title:const Text(L.showSubToolbar),
-        subtitle:const Text(L.subToolbarDesc),
+        title:Text(L.showSubToolbar),
+        subtitle:Text(L.subToolbarDesc),
         value:_vs.showSubToolbar,
         onChanged:(v)=>_ch(()=>_vs.showSubToolbar=v)),
 
@@ -118,11 +118,11 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     Text('${L.fontSize}: \${_vs.fontSize.round()}'),
     Slider(min:6,max:100,value:_vs.fontSize,onChanged:(v)=>_ch(()=>_vs.fontSize=v)),
 
-    SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text(L.boldLabel),value:_vs.bold,
+    SwitchListTile(contentPadding:EdgeInsets.zero,title:Text(L.boldLabel),value:_vs.bold,
         onChanged:(v)=>_ch(()=>_vs.bold=v)),
 
     // دیلی زیرنویس با عدد
-    const Text(L.subDelay),const SizedBox(height:6),
+    Text(L.subDelay),const SizedBox(height:6),
     Row(children:[
       IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd1-=100);widget.onSubDelayMs(_sd1);_d1Ctrl.text='$_sd1';}),
       Expanded(child:TextField(controller:_d1Ctrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
@@ -138,9 +138,9 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     Text('${L.position}: \${_vs.bottomPadding.round()}px'),
     Slider(min:0,max:900,value:_vs.bottomPadding.clamp(0,900),onChanged:(v)=>_ch(()=>_vs.bottomPadding=v)),
 
-    const SizedBox(height:8),const Text(L.alignment),const SizedBox(height:8),
+    const SizedBox(height:8),Text(L.alignment),const SizedBox(height:8),
     SegmentedButton<int>(
-      segments:const[
+      segments:[
         ButtonSegment(value:1,label:Text(L.right),icon:Icon(Icons.format_align_right,size:16)),
         ButtonSegment(value:2,label:Text(L.center),icon:Icon(Icons.format_align_center,size:16)),
         ButtonSegment(value:0,label:Text(L.left),icon:Icon(Icons.format_align_left,size:16)),
@@ -148,12 +148,12 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       selected:{_vs.textAlign},onSelectionChanged:(s)=>_ch(()=>_vs.textAlign=s.first),
     ),
 
-    const SizedBox(height:12),const Text(L.textColor),const SizedBox(height:8),
+    const SizedBox(height:12),Text(L.textColor),const SizedBox(height:8),
     Wrap(spacing:10,children:_textColors.map((c)=>GestureDetector(onTap:()=>_ch(()=>_vs.textColor=c.value),
       child:Container(width:34,height:34,decoration:BoxDecoration(color:c,shape:BoxShape.circle,
           border:Border.all(color:c.value==_vs.textColor?Colors.white:Colors.transparent,width:3))))).toList()),
 
-    const SizedBox(height:12),const Text(L.bgColor),const SizedBox(height:8),
+    const SizedBox(height:12),Text(L.bgColor),const SizedBox(height:8),
     Wrap(spacing:10,children:_bgColors.map((c){
       final sel=c.value==_vs.bgColor;
       return GestureDetector(onTap:()=>_ch(()=>_vs.bgColor=c.value),child:Container(width:34,height:34,
@@ -164,7 +164,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     Text('${L.transparency}: \${(_vs.bgOpacity*100).round()}%'),
     Slider(min:0,max:1,value:_vs.bgOpacity,onChanged:(v)=>_ch(()=>_vs.bgOpacity=v)),
 
-    const Divider(height:20),const Text(L.font),const SizedBox(height:8),
+    const Divider(height:20),Text(L.font),const SizedBox(height:8),
     // فونت‌های پیش‌فرض
     Wrap(spacing:8,runSpacing:6,children:kDefaultFonts.map(((String label,String family) f)=>ChoiceChip(
       label:Text(f.$1,style:TextStyle(fontFamily:f.$2.isEmpty?null:f.$2)),
@@ -173,7 +173,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     )).toList()),
     const SizedBox(height:8),
     OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickFont();},
-        icon:const Icon(Icons.font_download),label:const Text(L.customFont)),
+        icon:const Icon(Icons.font_download),label:Text(L.customFont)),
 
     const Divider(height:20),
     // border و سایه
@@ -192,18 +192,18 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     ]),
     const Divider(height:20),
     // ابزارهای زیرنویس زنده
-    const Text(L.liveSubtitleTools),const SizedBox(height:8),
+    Text(L.liveSubtitleTools),const SizedBox(height:8),
     Row(children:[
-      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.copy,size:16),label:const Text(L.copy),
+      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.copy,size:16),label:Text(L.copy),
           onPressed:(){Navigator.pop(context);})),
       const SizedBox(width:8),
-      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.translate,size:16),label:const Text(L.translationLabel),
+      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.translate,size:16),label:Text(L.translationLabel),
           onPressed:(){
             Navigator.pop(context);
             showSnack(context, L.translatePaste);
           })),
       const SizedBox(width:8),
-      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.book,size:16),label:const Text(L.dictionary),
+      Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.book,size:16),label:Text(L.dictionary),
           onPressed:(){
             Navigator.pop(context);
             showSnack(context, L.dictionarySearch);
@@ -212,13 +212,13 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
     const Divider(height:20),
     OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickSub1();},
-        icon:const Icon(Icons.file_open),label:const Text(L.chooseSub1)),
+        icon:const Icon(Icons.file_open),label:Text(L.chooseSub1)),
   ]));
 
   // ──────── تب صدا / پخش ────────
   Widget _audioTab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     // دیلی صدا
-    const Text(L.audioDelay),const SizedBox(height:6),
+    Text(L.audioDelay),const SizedBox(height:6),
     Row(children:[
       IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_ad-=100);widget.onAudioDelayMs(_ad);_adCtrl.text='$_ad';}),
       Expanded(child:TextField(controller:_adCtrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
@@ -231,15 +231,15 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
     const Divider(height:24),
     // تقویت صدا
-    const Text(L.volumeBoost),
+    Text(L.volumeBoost),
     Text('${_amp.round()}%',style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
     Slider(min:100,max:300,value:_amp,onChanged:(v){setState(()=>_amp=v);widget.onAmpVolume(v);}),
 
     const Divider(height:24),
     // سرعت
     SwitchListTile(contentPadding:EdgeInsets.zero,
-      title:const Text(L.seekPreview),
-      subtitle:const Text(L.seekPreviewDesc),
+      title:Text(L.seekPreview),
+      subtitle:Text(L.seekPreviewDesc),
       value:_vs.showSeekPreview,
       onChanged:(v)=>_ch(()=>_vs.showSeekPreview=v),
     ),
@@ -265,19 +265,19 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       widget.onChanged2?.call(vs2);
     }
     return SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text(L.subtitle2),value:_s2v,
+      SwitchListTile(contentPadding:EdgeInsets.zero,title:Text(L.subtitle2),value:_s2v,
           onChanged:(v){setState(()=>_s2v=v);widget.onSub2Visible(v);}),
       OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickSub2();},
-          icon:const Icon(Icons.file_open),label:const Text(L.loadSubSub2)),
+          icon:const Icon(Icons.file_open),label:Text(L.loadSubSub2)),
       if(widget.sub2Path!=null)Text('${L.files}: '+p.basename(widget.sub2Path!),style:const TextStyle(fontSize:11,color:Colors.white54)),
       const SizedBox(height:8),
       SwitchListTile(contentPadding:EdgeInsets.zero,
-        title:const Text(L.subDragCopy),
-        subtitle:const Text(L.subDragCopy,style:TextStyle(fontSize:11)),
+        title:Text(L.subDragCopy),
+        subtitle:Text(L.subDragCopy,style:TextStyle(fontSize:11)),
         value:vs2.showSubToolbar,
         onChanged:(v)=>ch2(()=>vs2.showSubToolbar=v)),
       const SizedBox(height:8),
-      const Text(L.fontSize),const SizedBox(height:4),
+      Text(L.fontSize),const SizedBox(height:4),
       Row(children:[
         IconButton(icon:const Icon(Icons.remove),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize-1).clamp(8,80));}),
         Expanded(child:Slider(min:8,max:80,value:vs2.fontSize,onChanged:(v)=>ch2(()=>vs2.fontSize=v))),
@@ -285,18 +285,18 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         IconButton(icon:const Icon(Icons.add),onPressed:(){ch2(()=>vs2.fontSize=(vs2.fontSize+1).clamp(8,80));}),
       ]),
       SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('Bold'),value:vs2.bold,onChanged:(v)=>ch2(()=>vs2.bold=v)),
-      const Text(L.textColor),const SizedBox(height:8),
+      Text(L.textColor),const SizedBox(height:8),
       Wrap(spacing:10,children:[Colors.white,const Color(0xFFFFFF99),const Color(0xFFFFEB3B),const Color(0xFF69F0AE),const Color(0xFF40C4FF),const Color(0xFFFF8A65)].map((c)=>
         GestureDetector(onTap:()=>ch2(()=>vs2.textColor=c.value),
           child:Container(width:34,height:34,decoration:BoxDecoration(color:c,shape:BoxShape.circle,
             border:Border.all(color:c.value==vs2.textColor?Colors.white:Colors.transparent,width:3))))).toList()),
       const SizedBox(height:12),
-      const Text(L.transparency),
+      Text(L.transparency),
       Slider(min:0,max:1,value:vs2.bgOpacity,onChanged:(v)=>ch2(()=>vs2.bgOpacity=v)),
       const SizedBox(height:8),
 
       // ── رنگ پس‌زمینه ──
-      const Text(L.bgColor),const SizedBox(height:8),
+      Text(L.bgColor),const SizedBox(height:8),
       Wrap(spacing:10,children:[Colors.black,const Color(0xFF1A1A2E),const Color(0xFF16213E),Colors.transparent].map((c)=>
         GestureDetector(onTap:()=>ch2(()=>vs2.bgColor=c.value),
           child:Container(width:34,height:34,decoration:BoxDecoration(color:c==Colors.transparent?Colors.white12:c,shape:BoxShape.circle,
@@ -305,7 +305,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       const SizedBox(height:12),
 
       // ── چینش ──
-      const Text(L.alignment),const SizedBox(height:8),
+      Text(L.alignment),const SizedBox(height:8),
       Row(mainAxisAlignment:MainAxisAlignment.start,children:[
         for(final e in [(L.left,0),(L.center,2),(L.right,1)])...[
           GestureDetector(onTap:()=>ch2(()=>vs2.textAlign=e.$2),
@@ -319,7 +319,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
       // ── سایه ──
       Row(children:[
-        const Text(L.shadow,style:TextStyle(fontSize:13)),
+        Text(L.shadow,style:TextStyle(fontSize:13)),
         const SizedBox(width:8),
         Expanded(child:Slider(min:0,max:3,value:vs2.shadowSize,onChanged:(v)=>ch2(()=>vs2.shadowSize=v))),
         Text('${vs2.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
@@ -328,7 +328,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
       // ── انتخاب فونت ──
       const Divider(color:Colors.white12),
-      const Text(L.font,style:TextStyle(fontSize:13)),const SizedBox(height:8),
+      Text(L.font,style:TextStyle(fontSize:13)),const SizedBox(height:8),
       Wrap(spacing:8,runSpacing:6,children:['','Vazirmatn','IRANSansMobile','Roboto','Tahoma'].map((f)=>
         GestureDetector(onTap:()=>ch2(()=>vs2.fontFamily=f),
           child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
@@ -337,7 +337,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       const SizedBox(height:12),
 
       // ── دیلی ──
-      const Text(L.subDelay2),const SizedBox(height:6),
+      Text(L.subDelay2),const SizedBox(height:6),
       Row(children:[
         IconButton(icon:const Icon(Icons.remove),onPressed:(){setState(()=>_sd2-=100);widget.onSubDelay2Ms(_sd2);_d2Ctrl.text='$_sd2';}),
         Expanded(child:TextField(controller:_d2Ctrl,keyboardType:const TextInputType.numberWithOptions(signed:true),
@@ -369,20 +369,20 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     const Divider(height:24,color:Colors.white12),
     // پیش‌نمایش اسکراب (دسترسی سریع)
     SwitchListTile(contentPadding:EdgeInsets.zero,
-      title:const Text(L.seekPreview),
-      subtitle:const Text(L.seekPreviewDesc),
+      title:Text(L.seekPreview),
+      subtitle:Text(L.seekPreviewDesc),
       secondary:const Icon(Icons.video_stable_rounded),
       value:_vs.showSeekPreview,
       onChanged:(v)=>_ch(()=>_vs.showSeekPreview=v),
     ),
     const Divider(height:16),
     FilledButton.icon(onPressed:widget.onSaveForVideo,icon:const Icon(Icons.save),
-        label:const Text(L.saveVideoSettings)),
+        label:Text(L.saveVideoSettings)),
     const SizedBox(height:6),
-    const Text(L.saveVideoSettingsDesc,
+    Text(L.saveVideoSettingsDesc,
         style:TextStyle(fontSize:12,color:Colors.white54)),
     const Divider(height:28),
-    const Text(L.guide,style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
+    Text(L.guide,style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
     _helpRow(L.swipeHorizontal,L.seekVideo),
     _helpRow(L.swipeLeft,L.adjustBrightness),
     _helpRow(L.swipeRight,L.adjustVolume),
@@ -395,15 +395,15 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     const Divider(height:24),
     // کنترل زیرنویس داخلی
     SwitchListTile(contentPadding:EdgeInsets.zero,
-      title:const Text(L.embeddedSubtitle),
-      subtitle:const Text(L.enableEmbeddedSub),
+      title:Text(L.embeddedSubtitle),
+      subtitle:Text(L.enableEmbeddedSub),
       value:_embeddedSub,
       onChanged:(v){setState(()=>_embeddedSub=v);widget.onEmbeddedSubEnabled(v);},
     ),
     const Divider(height:16),
-    const Text(L.decoder,style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
+    Text(L.decoder,style:TextStyle(fontWeight:FontWeight.bold)),const SizedBox(height:8),
     SegmentedButton<bool>(
-      segments:const[
+      segments:[
         ButtonSegment(value:true,label:Text('HW'),icon:Icon(Icons.memory,size:16)),
         ButtonSegment(value:false,label:Text('SW'),icon:Icon(Icons.computer,size:16)),
       ],
@@ -414,7 +414,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     const Text('HW: ${L.hwDecode} | SW: ${L.swDecode}',style:TextStyle(fontSize:11,color:Colors.white54)),
     if(widget.videoWidth!=null&&widget.videoHeight!=null)...[
       const Divider(height:18),
-      const Text(L.resolution,style:TextStyle(fontSize:12,color:Colors.white54)),const SizedBox(height:4),
+      Text(L.resolution,style:TextStyle(fontSize:12,color:Colors.white54)),const SizedBox(height:4),
       Text('${widget.videoWidth}×${widget.videoHeight}',style:const TextStyle(fontSize:14,color:Colors.greenAccent,fontWeight:FontWeight.bold)),
     ],
   ]));
@@ -483,7 +483,7 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
             Text(L.backupImport, style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
           ]),
           const SizedBox(height: 4),
-          const Text(L.backupPath, style: TextStyle(color: Colors.white54, fontSize: 11)),
+          Text(L.backupPath, style: TextStyle(color: Colors.white54, fontSize: 11)),
           if (_status.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11)),
@@ -497,13 +497,13 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
             Expanded(child: FilledButton.icon(
               onPressed: _loading ? null : _backupAll,
               icon: const Icon(Icons.save_alt_rounded, size: 16),
-              label: const Text(L.backup),
+              label: Text(L.backup),
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFF22c55e)))),
             const SizedBox(width: 8),
             Expanded(child: OutlinedButton.icon(
               onPressed: _loading ? null : _importModel,
               icon: const Icon(Icons.upload_file_rounded, size: 16),
-              label: const Text(L.importModel))),
+              label: Text(L.importModel))),
           ]),
         ]),
       ),

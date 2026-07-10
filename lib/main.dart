@@ -197,12 +197,12 @@ class _HomeWrapperState extends State<_HomeWrapper>{
       title:Text(cfg['update_title']??L.update),
       content:Text(cfg['update_message']??L.newVersionAvailable),
       actions:[
-        if(!force)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.later)),
+        if(!force)TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.later)),
         FilledButton(onPressed:()async{
           final url=cfg['download_url']??'';
           if(url.isNotEmpty)await launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication);
           if(mounted&&!force)Navigator.pop(ctx);
-        },child:const Text(L.download)),
+        },child:Text(L.download)),
       ],
     ));
   }
@@ -229,7 +229,7 @@ class _HomeWrapperState extends State<_HomeWrapper>{
           padding:const EdgeInsets.only(top:12),child:Text(ann['message'])),
       ]),
       actions:[
-        if(cancel)TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close)),
+        if(cancel)TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close)),
         if((ann['link']??'').isNotEmpty)FilledButton(
           onPressed:()async{
             await launchUrl(Uri.parse(ann['link']),mode:LaunchMode.externalApplication);

@@ -126,12 +126,12 @@ class _State extends State<OpenSubtitlesSheet> {
           Row(children: [
             const Icon(Icons.cloud_download_outlined, color: Color(0xFF7C3AED), size: 20),
             const SizedBox(width: 8),
-            const Text(L.onlineSubtitleLabel, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(L.onlineSubtitleLabel, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
             const Spacer(),
             if (_phase != _Phase.titles) TextButton(
               onPressed: () => setState(() => _phase = _selectedFeature?.type == 'tvshow' && _phase == _Phase.subs ? _Phase.episode : _Phase.titles),
-              child: const Text(L.back, style: TextStyle(fontSize: 12))),
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(L.close)),
+              child: Text(L.back, style: TextStyle(fontSize: 12))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.close)),
           ]),
           const SizedBox(height: 10),
 
@@ -175,7 +175,7 @@ class _State extends State<OpenSubtitlesSheet> {
             child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
           ),
 
-          if (_loading) const Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(color: Color(0xFF7C3AED)))
+          if (_loading) Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(color: Color(0xFF7C3AED)))
           else if (_phase == _Phase.titles) ..._buildTitles()
           else if (_phase == _Phase.episode) ..._buildEpisodePicker()
           else ..._buildSubs(),
@@ -228,7 +228,7 @@ class _State extends State<OpenSubtitlesSheet> {
     SizedBox(width: double.infinity, child: FilledButton.icon(
       onPressed: _doSubsSearch,
       icon: const Icon(Icons.search, size: 16),
-      label: const Text(L.searchThisEpisode),
+      label: Text(L.searchThisEpisode),
       style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 14)),
     )),
   ];
@@ -247,7 +247,7 @@ class _State extends State<OpenSubtitlesSheet> {
   );
 
   List<Widget> _buildSubs() {
-    if (_subs.isEmpty) return [const Padding(padding: EdgeInsets.all(20),
+    if (_subs.isEmpty) return [Padding(padding: EdgeInsets.all(20),
       child: Text(L.noSubtitleFound, style: TextStyle(color: Colors.white38, fontSize: 12)))];
 
     // زبان‌های موجود — برای دیدن این که چه کشورهایی موجودند

@@ -178,7 +178,7 @@ class _State extends State<OnlinePlayerSheet> {
                 Row(children: [
                   TextButton.icon(onPressed: _paste,
                     icon: const Icon(Icons.content_paste, size: 15),
-                    label: const Text(L.pasteUrl, style: TextStyle(fontSize: 12)),
+                    label: Text(L.pasteUrl, style: TextStyle(fontSize: 12)),
                     style: TextButton.styleFrom(foregroundColor: Colors.white54)),
                   const Spacer(),
                   Padding(padding: const EdgeInsets.only(right: 8),
@@ -227,7 +227,7 @@ class _State extends State<OnlinePlayerSheet> {
               child: Row(children: [
                 const Icon(Icons.history, color: Colors.white38, size: 14),
                 const SizedBox(width: 6),
-                const Text(L.recentUrls, style: TextStyle(color: Colors.white38, fontSize: 12)),
+                Text(L.recentUrls, style: TextStyle(color: Colors.white38, fontSize: 12)),
                 const Spacer(),
                 GestureDetector(
                   onTap: () async {
@@ -235,7 +235,7 @@ class _State extends State<OnlinePlayerSheet> {
                     await p.remove('recent_online_urls');
                     setState(() => _recent = []);
                   },
-                  child: const Text(L.deleteAll, style: TextStyle(color: Colors.red, fontSize: 11)),
+                  child: Text(L.deleteAll, style: TextStyle(color: Colors.red, fontSize: 11)),
                 ),
               ]),
             ),

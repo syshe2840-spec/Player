@@ -146,7 +146,7 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
               Expanded(child: OutlinedButton.icon(
                 onPressed: _running ? null : _addVideos,
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text(L.addVideo, style: TextStyle(fontSize: 12)),
+                label: Text(L.addVideo, style: TextStyle(fontSize: 12)),
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF7C3AED))),
               )),
               const SizedBox(width: 8),
@@ -166,7 +166,7 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
         const Divider(color: Colors.white12, height: 1),
         Expanded(
           child: _queue.isEmpty
-            ? const Center(child: Text(L.noVideoAdded, style: TextStyle(color: Colors.white38, fontSize: 13)))
+            ? Center(child: Text(L.noVideoAdded, style: TextStyle(color: Colors.white38, fontSize: 13)))
             : ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: _queue.length,

@@ -248,11 +248,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
 
   Future<void> _confirmDelete(List<File> files)async{
     final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text(L.deleteFile),
+      title:Text(L.deleteFile),
       content:Text(files.length==1?'${L.delete} «\${p.basename(files.first.path)}»?':'\${files.length} ${L.delete}?'),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.cancel)),
-        FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.delete)),
+        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel)),
+        FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete)),
       ],
     ));
     if(ok!=true)return;
@@ -263,12 +263,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   Future<void> _renameFile(File f)async{
     final ctrl=TextEditingController(text:p.basenameWithoutExtension(f.path));
     final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text(L.rename_),
+      title:Text(L.rename_),
       content:TextField(controller:ctrl,autofocus:true,
           decoration:const InputDecoration(hintText:L.newName,border:OutlineInputBorder(),contentPadding:EdgeInsets.symmetric(horizontal:12,vertical:8))),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
-        FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text(L.confirm)),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:Text(L.confirm)),
       ],
     ));
     if(name==null||name.isEmpty)return;
@@ -281,7 +281,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     await showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
       title:Text(p.basename(f.path),style:const TextStyle(fontSize:13)),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
-        const Text(L.yourRatingLabel,style:TextStyle(color:kTextSec)),const SizedBox(height:12),
+        Text(L.yourRatingLabel,style:TextStyle(color:kTextSec)),const SizedBox(height:12),
         Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>GestureDetector(
           onTap:()=>ss(()=>rating=i+1),
           child:Padding(padding:const EdgeInsets.all(4),
@@ -289,9 +289,9 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         ))),
       ]),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
-        if(rating>0)TextButton(onPressed:()async{await Store.saveRating(f.path,0);Navigator.pop(ctx);setState((){});},child:const Text(L.delete,style:TextStyle(color:kRed))),
-        FilledButton(onPressed:()async{await Store.saveRating(f.path,rating);Navigator.pop(ctx);setState((){});},child:const Text(L.save)),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
+        if(rating>0)TextButton(onPressed:()async{await Store.saveRating(f.path,0);Navigator.pop(ctx);setState((){});},child:Text(L.delete,style:TextStyle(color:kRed))),
+        FilledButton(onPressed:()async{await Store.saveRating(f.path,rating);Navigator.pop(ctx);setState((){});},child:Text(L.save)),
       ],
     )));
   }
@@ -299,12 +299,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   Future<void> _showNote(File f)async{
     final ctrl=TextEditingController(text:Store.notes[f.path]??'');
     await showDialog(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text(L.note),
+      title:Text(L.note),
       content:TextField(controller:ctrl,maxLines:5,autofocus:true,
           decoration:const InputDecoration(hintText:L.writtenNote,border:OutlineInputBorder(),contentPadding:EdgeInsets.all(12))),
       actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
-        FilledButton(onPressed:()async{await Store.saveNote(f.path,ctrl.text.trim());Navigator.pop(ctx);setState((){});},child:const Text(L.save)),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
+        FilledButton(onPressed:()async{await Store.saveNote(f.path,ctrl.text.trim());Navigator.pop(ctx);setState((){});},child:Text(L.save)),
       ],
     ));
   }
@@ -353,7 +353,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           )),
         ]else _iRow(Icons.subtitles_off_rounded,kTextDim,L.subtitle,L.notFound),
       ])),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.close))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close))],
     ));
   }
 
@@ -504,11 +504,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
             if(v=='__custom__'){
               final ctrl=TextEditingController(text:_path);
               showDialog(context:context,builder:(ctx)=>AlertDialog(
-                title:const Text(L.customPath),
+                title:Text(L.customPath),
                 content:TextField(controller:ctrl,autofocus:true,
                     decoration:const InputDecoration(hintText:'/storage/emulated/0/...',border:OutlineInputBorder())),
-                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
-                  FilledButton(onPressed:(){final pt=ctrl.text.trim();Navigator.pop(ctx);if(pt.isNotEmpty)_loadDir(pt);},child:const Text(L.start))],
+                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
+                  FilledButton(onPressed:(){final pt=ctrl.text.trim();Navigator.pop(ctx);if(pt.isNotEmpty)_loadDir(pt);},child:Text(L.start))],
               ));
             }else{_loadDir(v);}
           },
@@ -539,7 +539,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     leading:IconButton(icon:const Icon(Icons.close_rounded,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
     title:Text('\${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
     actions:[
-      TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18),label:const Text(L.allItems,style:TextStyle(fontSize:13)),
+      TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18),label:Text(L.allItems,style:TextStyle(fontSize:13)),
           onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path)))),
       IconButton(icon:const Icon(Icons.delete_outline_rounded,color:kRed,size:22),
           onPressed:_selected.isEmpty?null:()=>_confirmDelete(_selected.map((s)=>File(s)).toList())),
@@ -547,15 +547,15 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   );
 
   Widget _buildBody(){
-    if(_checking)return const Center(child:CircularProgressIndicator());
+    if(_checking)return Center(child:CircularProgressIndicator());
     if(!_granted)return Center(child:Padding(padding:const EdgeInsets.all(32),child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder)),
           child:const Icon(Icons.folder_off_rounded,size:48,color:kTextSec)),
       const SizedBox(height:20),
-      const Text(L.permissionNeeded,textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
+      Text(L.permissionNeeded,textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
       const SizedBox(height:20),
-      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Icons.lock_open_rounded),label:const Text(L.grantPermission)),
-      const SizedBox(height:8),TextButton(onPressed:openAppSettings,child:const Text(L.appSettings)),
+      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Icons.lock_open_rounded),label:Text(L.grantPermission)),
+      const SizedBox(height:8),TextButton(onPressed:openAppSettings,child:Text(L.appSettings)),
     ])));
 
     return Column(children:[
@@ -574,12 +574,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   Widget _buildList(){
     final fDirs=_filteredDirs,fVids=_filteredVideos;
     final total=fDirs.length+fVids.length;
-    if(total==0&&_searchRunning)return const Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+    if(total==0&&_searchRunning)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       CircularProgressIndicator(),SizedBox(height:16),Text(L.searchingGlobal,style:TextStyle(color:kTextSec)),
     ]));
     if(total==0)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Icon(Icons.video_library_outlined,size:48,color:kTextDim),const SizedBox(height:12),
-      const Text(L.noFilesFound,style:TextStyle(color:kTextSec)),
+      Text(L.noFilesFound,style:TextStyle(color:kTextSec)),
     ]));
 
     return RefreshIndicator(
@@ -769,12 +769,12 @@ class _VideoMenuState extends State<VideoMenu>{
         return;
       }
       final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-        title:const Text(L.playlist),
+        title:Text(L.playlist),
         content:Column(mainAxisSize:MainAxisSize.min,children:playlists.map((pl)=>ListTile(
           dense:true,leading:const Icon(Icons.queue_music_rounded,color:kCyan,size:18),
           title:Text(pl,style:const TextStyle(fontSize:13)),
           onTap:()=>Navigator.pop(ctx,pl))).toList()),
-        actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel))],
+        actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel))],
       ));
       if(name!=null){
         await Store.addToPlaylist(name,widget.file.path);
@@ -812,7 +812,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     const SizedBox(height:4),
     TabBar(controller:_tab,isScrollable:true,indicatorColor:kAccent,labelColor:kAccent,unselectedLabelColor:kTextSec,
         labelStyle:const TextStyle(fontSize:12,fontWeight:FontWeight.w600),unselectedLabelStyle:const TextStyle(fontSize:12),
-        tabs:const[Tab(icon:Icon(Icons.history_rounded,size:16),text:L.history),
+        tabs:[Tab(icon:Icon(Icons.history_rounded,size:16),text:L.history),
           Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:L.bookmarks),
           Tab(icon:Icon(Icons.favorite_rounded,size:16),text:L.favorites),
           Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:L.folders),
@@ -835,12 +835,12 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(Store.watchHistory.isNotEmpty)Padding(
       padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
       child:Row(children:[
-        const Expanded(child:Text(L.recentViews,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
-        TextButton.icon(icon:const Icon(Icons.delete_sweep_rounded,size:15,color:kRed),label:const Text(L.deleteAll,style:TextStyle(fontSize:12,color:kRed)),
+        Expanded(child:Text(L.recentViews,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
+        TextButton.icon(icon:const Icon(Icons.delete_sweep_rounded,size:15,color:kRed),label:Text(L.deleteAll,style:TextStyle(fontSize:12,color:kRed)),
             onPressed:()async{final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-              title:const Text(L.deleteAllHistory),
-              actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.cancel)),
-                FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.delete))],
+              title:Text(L.deleteAllHistory),
+              actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel)),
+                FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete))],
             ));if(ok==true){await Store.clearHistory();setState((){});}})
       ])),
     Expanded(child:_vList(Store.watchHistory,Icons.history_rounded,kTextSec,
@@ -851,7 +851,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(paths.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
           child:Icon(icon,size:32,color:color.withOpacity(0.4))),
-      const SizedBox(height:12),const Text(L.nothingYet,style:TextStyle(color:kTextSec)),
+      const SizedBox(height:12),Text(L.nothingYet,style:TextStyle(color:kTextSec)),
     ]));
     return ListView.builder(itemCount:paths.length,padding:const EdgeInsets.only(bottom:8),itemBuilder:(_,i){
       final path=paths[i];
@@ -886,8 +886,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
           child:const Icon(Icons.push_pin_outlined,size:32,color:kTextDim)),
-      const SizedBox(height:12),const Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
-      const SizedBox(height:6),const Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
+      const SizedBox(height:12),Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
+      const SizedBox(height:6),Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
     return ListView.builder(itemCount:folders.length,itemBuilder:(_,i){
       final folder=folders[i];final exists=Directory(folder).existsSync();
@@ -907,18 +907,18 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     return Column(children:[
       Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
         child:Row(children:[
-          const Expanded(child:Text(L.playlist,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
+          Expanded(child:Text(L.playlist,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
           FilledButton.icon(
             style:FilledButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:10),minimumSize:const Size(0,32)),
-            icon:const Icon(Icons.add_rounded,size:16),label:const Text(L.newItem,style:TextStyle(fontSize:12)),
+            icon:const Icon(Icons.add_rounded,size:16),label:Text(L.newItem,style:TextStyle(fontSize:12)),
             onPressed:()async{
               final ctrl=TextEditingController();
               final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
-                title:const Text(L.newPlaylist),
+                title:Text(L.newPlaylist),
                 content:TextField(controller:ctrl,autofocus:true,
                     decoration:const InputDecoration(hintText:L.playlistName,border:OutlineInputBorder())),
-                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text(L.cancel)),
-                  FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:const Text(L.create))],
+                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
+                  FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:Text(L.create))],
               ));
               if(name!=null&&name.isNotEmpty){await Store.createPlaylist(name);setState((){});}
             }),
@@ -927,8 +927,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       if(playlists.isEmpty)Expanded(child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
         Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
             child:const Icon(Icons.queue_music_rounded,size:32,color:kTextDim)),
-        const SizedBox(height:12),const Text(L.noPlaylists,style:TextStyle(color:kTextSec)),
-        const SizedBox(height:4),const Text(L.createPlaylist,style:TextStyle(fontSize:11,color:kTextDim)),
+        const SizedBox(height:12),Text(L.noPlaylists,style:TextStyle(color:kTextSec)),
+        const SizedBox(height:4),Text(L.createPlaylist,style:TextStyle(fontSize:11,color:kTextDim)),
       ])))
       else Expanded(child:ListView.builder(itemCount:playlists.keys.length,itemBuilder:(_,i){
         final name=playlists.keys.elementAt(i);
@@ -942,16 +942,16 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           trailing:PopupMenuButton<String>(
             icon:const Icon(Icons.more_vert_rounded,size:18,color:kTextSec),
             itemBuilder:(_)=>[
-              const PopupMenuItem(value:'play',child:Text(L.play,style:TextStyle(fontSize:13))),
-              const PopupMenuItem(value:'delete',child:Text(L.delete,style:TextStyle(fontSize:13,color:kRed))),
+              PopupMenuItem(value:'play',child:Text(L.play,style:TextStyle(fontSize:13))),
+              PopupMenuItem(value:'delete',child:Text(L.delete,style:TextStyle(fontSize:13,color:kRed))),
             ],
             onSelected:(v)async{
               if(v=='delete'){
                 final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
                   title:Text('${L.delete} "\$name"?'),
-                  actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text(L.cancel)),
+                  actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel)),
                     FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),
-                        onPressed:()=>Navigator.pop(ctx,true),child:const Text(L.delete))],
+                        onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete))],
                 ));
                 if(ok==true){await Store.deletePlaylist(name);setState((){});}
               }else if(v=='play'&&paths.isNotEmpty){
@@ -970,14 +970,14 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       future:ApiService.getSponsors(),
       builder:(ctx,snap){
         if(snap.connectionState==ConnectionState.waiting)
-          return const Center(child:CircularProgressIndicator());
+          return Center(child:CircularProgressIndicator());
         final list=snap.data??[];
         if(list.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
           Container(padding:const EdgeInsets.all(16),
             decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
             child:const Icon(Icons.star_rounded,size:32,color:kTextDim)),
           const SizedBox(height:12),
-          const Text(L.noSponsors,style:TextStyle(color:kTextSec)),
+          Text(L.noSponsors,style:TextStyle(color:kTextSec)),
         ]));
         return ListView.builder(
           padding:const EdgeInsets.all(12),
@@ -1015,7 +1015,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                       padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
                       minimumSize:const Size(0,36)),
                     onPressed:()=>ul.launchUrl(Uri.parse(s['link']),mode:ul.LaunchMode.externalApplication),
-                    child:const Text(L.view,style:TextStyle(fontSize:12))),
+                    child:Text(L.view,style:TextStyle(fontSize:12))),
                 ],
               ])),
             );

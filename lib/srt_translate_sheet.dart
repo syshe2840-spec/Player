@@ -88,12 +88,12 @@ class _State extends State<SrtTranslateSheet> {
           Row(children: [
             const Icon(Icons.translate, color: Color(0xFF7C3AED), size: 20),
             const SizedBox(width: 8),
-            const Text(L.translateSub, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(L.translateSub, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
             const Spacer(),
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(L.close)),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.close)),
           ]),
           const SizedBox(height: 4),
-          const Text(L.cloudflareAiNote,
+          Text(L.cloudflareAiNote,
             style: TextStyle(color: Colors.white54, fontSize: 11)),
           const SizedBox(height: 16),
 
@@ -102,7 +102,7 @@ class _State extends State<SrtTranslateSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
             child: Row(children: [
-              const Text(L.targetLang, style: TextStyle(color: Colors.white60, fontSize: 13)),
+              Text(L.targetLang, style: TextStyle(color: Colors.white60, fontSize: 13)),
               const SizedBox(width: 8),
               Expanded(child: DropdownButton<String>(
                 value: _targetLang, isExpanded: true, dropdownColor: const Color(0xFF2A2A35),
@@ -117,7 +117,7 @@ class _State extends State<SrtTranslateSheet> {
 
           // ── انتخاب Sub1 / Sub2 / هر دو ──
           Row(children:[
-            const Text(L.applyTo, style: TextStyle(color: Colors.white60, fontSize: 12)),
+            Text(L.applyTo, style: TextStyle(color: Colors.white60, fontSize: 12)),
             const SizedBox(width: 10),
             _chip('Sub 1', 0),
             const SizedBox(width: 6),
@@ -130,7 +130,7 @@ class _State extends State<SrtTranslateSheet> {
           SizedBox(width: double.infinity, child: FilledButton.icon(
             onPressed: _start,
             icon: const Icon(Icons.translate),
-            label: const Text(L.startTranslate),
+            label: Text(L.startTranslate),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF7C3AED),
               padding: const EdgeInsets.symmetric(vertical: 14)),
