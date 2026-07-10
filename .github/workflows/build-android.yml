@@ -1,4 +1,3 @@
-
 name: ساخت اپ اندروید
 
 on:
@@ -110,8 +109,6 @@ jobs:
           if [ ! -f "$APP" ]; then APP=android/app/build.gradle; fi
           sed -i 's/flutter\.compileSdkVersion/36/g' "$APP" || true
           sed -i -E 's/compileSdk[[:space:]]*=[[:space:]]*[0-9]+/compileSdk = 36/g' "$APP" || true
-          sed -i 's/flutter\.targetSdkVersion/28/g' "$APP" || true
-          # غیرفعال کردن Lint check برای targetSdk قدیمی
           if [ -f android/build.gradle.kts ]; then
             printf '\nsubprojects {\n    val forceSdk = {\n        val ext = extensions.findByName("android")\n        if (ext != null) {\n            try {\n                ext.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType).invoke(ext, 36)\n            } catch (e: Exception) {\n                println("skip " + project.name)\n            }\n        }\n    }\n    if (state.executed) { forceSdk() } else { afterEvaluate { forceSdk() } }\n}\n' >> android/build.gradle.kts
           else
@@ -215,3 +212,4 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
