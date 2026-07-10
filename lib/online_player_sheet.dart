@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'player.dart';
+import 'ytdlp_service.dart';
 import 'main.dart' show showSnack;
 import 'l10n.dart';
 
@@ -103,12 +104,24 @@ class _State extends State<OnlinePlayerSheet> {
       return;
     }
     setState(() { _loading = true; _error = null; });
+    // اگه لینک مستقیم نیست، yt-dlp استفاده کن
+    String playUrl = url;
+    final isDirectLink = ['.mp4','.mkv','.avi','.m3u8','.mpd','.ts','.webm']
+      .any((e) => url.toLowerCase().contains(e));
+    if (!isDirectLink) {
+      try {
+        playUrl = await YtDlpService.getStreamUrl(url);
+      } catch (e) {
+        if (mounted) setState(() { _loading = false; _error = 'Error: $e'; });
+        return;
+      }
+    }
     await _saveRecent(url);
     if (!mounted) return;
     Navigator.pop(context);
     await Navigator.push(context, MaterialPageRoute(
       builder: (_) => PlayerScreen(
-        playlist: [File(url)],
+        playlist: [File(playUrl)],
         playlistIndex: 0,
         isOnlineUrl: true,
       ),

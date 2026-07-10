@@ -1177,4 +1177,3 @@ class _LangPickerState extends State<_LangPicker> {
     );
   }
 }
-

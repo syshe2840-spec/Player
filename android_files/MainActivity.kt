@@ -105,6 +105,79 @@ class MainActivity : FlutterActivity() {
         createNotifChannel()
         requestNotifPermission()
 
+        // ── yt-dlp + deno channel ──
+        val ytdlpProgressSink = arrayOfNulls<io.flutter.plugin.common.EventChannel.EventSink>(1)
+        io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp_progress")
+            .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
+                override fun onListen(a: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) { ytdlpProgressSink[0] = sink }
+                override fun onCancel(a: Any?) { ytdlpProgressSink[0] = null }
+            })
+
+        MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp").setMethodCallHandler { call, result ->
+            executor.execute {
+                try {
+                    when (call.method) {
+                        "isInstalled" -> {
+                            val type = call.arguments as String
+                            handler.post { result.success(getBinFile(type).exists()) }
+                        }
+                        "getVersions" -> {
+                            val ytVer = runBin("ytdlp", listOf("--version"))?.trim()
+                            val denoVer = runBin("deno", listOf("--version"))?.lines()?.firstOrNull()?.replace("deno ", "")?.trim()
+                            handler.post { result.success(mapOf("ytdlp" to ytVer, "deno" to denoVer)) }
+                        }
+                        "download", "update" -> {
+                            val type = call.arguments as String
+                            downloadBin(type) { pct, msg ->
+                                handler.post { ytdlpProgressSink[0]?.success(mapOf("type" to type, "pct" to pct, "msg" to msg)) }
+                            }
+                            handler.post { result.success(null) }
+                        }
+                        "delete" -> {
+                            val type = call.arguments as String
+                            getBinFile(type).delete()
+                            handler.post { result.success(null) }
+                        }
+                        "backup" -> {
+                            val dest = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                                android.os.Environment.DIRECTORY_DOWNLOADS), "Vezoo/Backup")
+                            dest.mkdirs()
+                            val copied = mutableListOf<String>()
+                            for (type in listOf("ytdlp", "deno")) {
+                                val f = getBinFile(type)
+                                if (f.exists()) { f.copyTo(java.io.File(dest, type), overwrite = true); copied.add(type) }
+                            }
+                            handler.post { result.success(copied) }
+                        }
+                        "import" -> {
+                            val path = call.argument<String>("path") ?: return@execute
+                            val type = call.argument<String>("type") ?: return@execute
+                            val dest = getBinFile(type)
+                            java.io.File(path).copyTo(dest, overwrite = true)
+                            dest.setExecutable(true, false)
+                            handler.post { result.success(dest.absolutePath) }
+                        }
+                        "streamUrl" -> {
+                            val url = call.arguments as String
+                            val out = runBin("ytdlp", listOf(
+                                "--no-playlist", "-g", "--no-warnings",
+                                "--extractor-args", "youtube:client=android",
+                                url
+                            ))
+                            val streamUrl = out?.lines()?.firstOrNull { it.startsWith("http") }
+                            handler.post {
+                                if (streamUrl != null) result.success(streamUrl)
+                                else result.error("NO_STREAM", "No stream URL found", null)
+                            }
+                        }
+                        else -> handler.post { result.notImplemented() }
+                    }
+                } catch (e: Exception) {
+                    handler.post { result.error("YTDLP_ERROR", e.message, null) }
+                }
+            }
+        }
+
         // ── Thumbnail ──
         MethodChannel(fe.dartExecutor.binaryMessenger, THUMB_CH).setMethodCallHandler { call, result ->
             if (call.method != "getThumbnail") { result.notImplemented(); return@setMethodCallHandler }
@@ -708,6 +781,76 @@ class MainActivity : FlutterActivity() {
     override fun onUserLeaveHint() { super.onUserLeaveHint(); if (playing && playerActive && Build.VERSION.SDK_INT >= 26) try { enterPip() } catch (_: Exception) {} }
     override fun onStart() { super.onStart(); if (playing) showNotif() }
     override fun onDestroy() { try { unregisterReceiver(receiver) } catch (_: Exception) {}; nm().cancel(NOTIF_ID); super.onDestroy() }
+
+    // ── yt-dlp / deno helpers ──
+    private fun getBinFile(type: String): java.io.File {
+        val name = if (type == "ytdlp") "yt-dlp" else "deno"
+        return java.io.File(filesDir, "bins/$name")
+    }
+
+    private fun runBin(type: String, args: List<String>): String? {
+        val bin = getBinFile(type)
+        if (!bin.exists()) return null
+        bin.setExecutable(true, false)
+        val cmd = mutableListOf(bin.absolutePath) + args
+        val proc = ProcessBuilder(cmd)
+            .redirectErrorStream(true)
+            .start()
+        val out = proc.inputStream.bufferedReader().readText()
+        proc.waitFor()
+        return out.ifBlank { null }
+    }
+
+    private fun downloadBin(type: String, onProgress: (Int, String) -> Unit) {
+        val url = when (type) {
+            "ytdlp" -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_android_aarch64"
+            "deno" -> "https://github.com/denoland/deno/releases/latest/download/deno-aarch64-unknown-linux-gnu.zip"
+            else -> throw Exception("Unknown type: $type")
+        }
+        val dest = getBinFile(type)
+        dest.parentFile?.mkdirs()
+        onProgress(0, "Connecting...")
+        val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        conn.instanceFollowRedirects = true
+        conn.connect()
+        val total = conn.contentLengthLong
+        val isZip = url.endsWith(".zip")
+        val tmp = java.io.File(dest.parent, "${dest.name}.tmp")
+        conn.inputStream.use { inp ->
+            tmp.outputStream().use { out ->
+                val buf = ByteArray(65536)
+                var downloaded = 0L
+                var n: Int
+                while (inp.read(buf).also { n = it } != -1) {
+                    out.write(buf, 0, n)
+                    downloaded += n
+                    if (total > 0) onProgress(((downloaded * 100) / total).toInt(), "Downloading...")
+                }
+            }
+        }
+        if (isZip) {
+            // extract binary from zip
+            onProgress(95, "Extracting...")
+            val zis = java.util.zip.ZipInputStream(tmp.inputStream())
+            var entry = zis.nextEntry
+            var extracted = false
+            while (entry != null) {
+                if (!entry.isDirectory) {
+                    dest.outputStream().use { out -> zis.copyTo(out) }
+                    extracted = true
+                    break
+                }
+                entry = zis.nextEntry
+            }
+            zis.close()
+            tmp.delete()
+            if (!extracted) throw Exception("Binary not found in zip")
+        } else {
+            tmp.renameTo(dest)
+        }
+        dest.setExecutable(true, false)
+        onProgress(100, "Done")
+    }
 
     private fun genThumb(path: String, timeUs: Long): ByteArray? {
         val r = MediaMetadataRetriever()

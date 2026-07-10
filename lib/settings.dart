@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'whisper_service.dart' show WhisperService;
+import 'ytdlp_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
 import 'main.dart' show showSnack;
@@ -456,20 +457,66 @@ class ToolsTabBody extends StatefulWidget {
 class ToolsTabBodyState extends State<ToolsTabBody> {
   bool _loading = false;
   String _status = '';
+  Map<String,String?> _versions = {};
+  bool _ytInstalled = false;
+  bool _denoInstalled = false;
+  int _dlPct = 0;
+
+  @override
+  void initState() { super.initState(); _refresh(); }
+
+  Future<void> _refresh() async {
+    try {
+      final v = await YtDlpService.getVersions();
+      final yt = await YtDlpService.isYtDlpInstalled();
+      final de = await YtDlpService.isDenoInstalled();
+      if (mounted) setState(() { _versions = v; _ytInstalled = yt; _denoInstalled = de; });
+    } catch (_) {}
+  }
+
+  Future<void> _downloadBin(String type) async {
+    setState(() { _loading = true; _status = 'Downloading $type...'; _dlPct = 0; });
+    final sub = YtDlpService.downloadProgress().listen((e) {
+      if (mounted) setState(() { _dlPct = (e['pct'] as int? ?? 0); _status = '${e['msg']}'; });
+    });
+    try {
+      if (type == 'ytdlp') await YtDlpService.downloadYtDlp();
+      else await YtDlpService.downloadDeno();
+      setState(() { _status = 'SUCCESS: $type installed'; });
+    } catch (e) { setState(() { _status = 'Error: $e'; }); }
+    finally { sub.cancel(); setState(() { _loading = false; }); await _refresh(); }
+  }
+
+  Future<void> _deleteBin(String type) async {
+    setState(() { _loading = true; });
+    try {
+      if (type == 'ytdlp') await YtDlpService.deleteYtDlp();
+      else await YtDlpService.deleteDeno();
+      setState(() { _status = '$type deleted'; });
+    } catch (e) { setState(() { _status = 'Error: $e'; }); }
+    finally { setState(() { _loading = false; }); await _refresh(); }
+  }
+
+  Future<void> _importBin(String type) async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (res == null || res.files.single.path == null) return;
+    setState(() { _loading = true; _status = 'Importing...'; });
+    try {
+      await YtDlpService.importBin(res.files.single.path!, type);
+      setState(() { _status = 'SUCCESS: $type imported'; });
+    } catch (e) { setState(() { _status = 'Error: $e'; }); }
+    finally { setState(() { _loading = false; }); await _refresh(); }
+  }
 
   Future<void> _backupAll() async {
-    const destDir = '/storage/emulated/0/Download/Vezoo/Backup';
     setState(() { _loading = true; _status = L.backingUp; });
     try {
-      final copied = await const MethodChannel('com.vezoo.player/whisper')
-        .invokeMethod<List>('backupModels', {'destDir': destDir});
-      if (mounted) setState(() {
-        _loading = false;
-        _status = '✓ ${L.backup}: Download/Vezoo/Backup/';
-      });
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _status = L.errorMsg(e); });
-    }
+      await const MethodChannel('com.vezoo.player/whisper')
+        .invokeMethod<List>('backupModels', {'destDir': '/storage/emulated/0/Download/Vezoo/Backup'});
+      await YtDlpService.backup();
+      setState(() { _status = 'SUCCESS: ${L.backup}'; });
+    } catch (e) { setState(() { _status = L.errorMsg(e); }); }
+    finally { setState(() { _loading = false; }); }
   }
 
   Future<void> _importModel() async {
@@ -477,41 +524,72 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     if (res == null || res.files.single.path == null) return;
     setState(() { _loading = true; _status = L.importing; });
     try {
-      final path = res.files.single.path!;
-      final fname = path.split('/').last;
       final modelsRoot = await WhisperService.getModelsRoot();
       await Directory(modelsRoot).create(recursive: true);
       final savedPath = await const MethodChannel('com.vezoo.player/whisper')
-        .invokeMethod<String>('importModel', {'path': path, 'modelsDir': modelsRoot});
-      if (mounted) setState(() { _loading = false; _status = '✓ ${L.saved}: $savedPath'; });
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _status = L.errorMsg(e); });
-    }
+        .invokeMethod<String>('importModel', {'path': res.files.single.path!, 'modelsDir': modelsRoot});
+      setState(() { _status = 'SUCCESS: $savedPath'; });
+    } catch (e) { setState(() { _status = L.errorMsg(e); }); }
+    finally { setState(() { _loading = false; }); }
+  }
+
+  Widget _binCard(String type, bool installed, String? version) {
+    final name = type == 'ytdlp' ? 'yt-dlp' : 'Deno';
+    final color = type == 'ytdlp' ? const Color(0xFFFF6B35) : const Color(0xFF4CAF50);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(name, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold)),
+          const Spacer(),
+          Text(installed ? (version ?? 'installed') : 'not installed',
+            style: TextStyle(fontSize: 11, color: installed ? color : Colors.white38)),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          if (!installed) Expanded(child: FilledButton(
+            onPressed: _loading ? null : () => _downloadBin(type),
+            style: FilledButton.styleFrom(backgroundColor: color),
+            child: const Text('Download', style: TextStyle(fontSize: 12)))),
+          if (installed) Expanded(child: OutlinedButton(
+            onPressed: _loading ? null : () => _downloadBin(type),
+            child: const Text('Update', style: TextStyle(fontSize: 12)))),
+          const SizedBox(width: 6),
+          OutlinedButton(onPressed: _loading ? null : () => _importBin(type),
+            child: const Text('Import', style: TextStyle(fontSize: 12))),
+          if (installed) ...[ const SizedBox(width: 6),
+            IconButton(icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+              onPressed: _loading ? null : () => _deleteBin(type),
+              constraints: const BoxConstraints(), padding: EdgeInsets.zero)],
+        ]),
+      ]),
+    );
   }
 
   @override
   Widget build(BuildContext ctx) => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _binCard('ytdlp', _ytInstalled, _versions['ytdlp']),
+      _binCard('deno', _denoInstalled, _versions['deno']),
+      if (_loading) LinearProgressIndicator(
+        value: _dlPct > 0 ? _dlPct / 100 : null,
+        color: const Color(0xFF7C3AED), backgroundColor: Colors.white12),
+      if (_status.isNotEmpty) Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11))),
+      const SizedBox(height: 8),
       Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(Icons.backup_rounded, color: Color(0xFF22c55e), size: 18),
-            SizedBox(width: 8),
-            Text(L.backupImport, style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            const Icon(Icons.psychology_rounded, color: Color(0xFF22c55e), size: 18),
+            const SizedBox(width: 8),
+            Text(L.backupImport, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
           ]),
-          const SizedBox(height: 4),
-          Text(L.backupPath, style: TextStyle(color: Colors.white54, fontSize: 11)),
-          if (_status.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-          ],
-          if (_loading) ...[
-            const SizedBox(height: 8),
-            const LinearProgressIndicator(color: Color(0xFF7C3AED), backgroundColor: Colors.white12),
-          ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(children: [
             Expanded(child: FilledButton.icon(
               onPressed: _loading ? null : _backupAll,
@@ -529,4 +607,3 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     ]),
   );
 }
-

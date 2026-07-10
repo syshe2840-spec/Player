@@ -1,34 +1,62 @@
+import 'dart:io';
 import 'package:flutter/services.dart';
 
-/// سرویس yt-dlp — فقط نصب، بکاپ، ایمپورت
-/// پخش آنلاین: فقط لینک مستقیم MP4/M3U8 پشتیبانی میشه
+/// سرویس yt-dlp + deno — stream URL از هر سایت
 class YtDlpService {
-  static const _ch = MethodChannel('com.vezoo.player/whisper');
-  static const _progressCh = EventChannel('com.vezoo.player/ytdlp_progress');
+  static const _ch = MethodChannel('com.vezoo.player/ytdlp');
 
-  static bool? _installed;
-
-  static void resetCache() => _installed = null;
-
-  static Stream<int> get progressStream =>
-    _progressCh.receiveBroadcastStream().map((e) => (e as int?) ?? 0);
-
-  static Future<bool> isInstalled() async {
-    _installed ??= await _ch.invokeMethod<bool>('ytdlpIsInstalled') ?? false;
-    return _installed!;
+  // ── وضعیت ──
+  static Future<Map<String,String?>> getVersions() async {
+    final r = await _ch.invokeMapMethod<String,String>('getVersions');
+    return r ?? {};
   }
 
-  static Future<void> download({void Function(String)? onStatus}) async {
-    onStatus?.call('دانلود yt-dlp...');
-    await _ch.invokeMethod('ytdlpDownload');
-    _installed = true;
-    onStatus?.call('✓ نصب شد');
+  static Future<bool> isYtDlpInstalled() async =>
+    await _ch.invokeMethod<bool>('isInstalled', 'ytdlp') ?? false;
+
+  static Future<bool> isDenoInstalled() async =>
+    await _ch.invokeMethod<bool>('isInstalled', 'deno') ?? false;
+
+  // ── دانلود ──
+  static Stream<Map> downloadProgress() =>
+    const EventChannel('com.vezoo.player/ytdlp_progress')
+      .receiveBroadcastStream()
+      .map((e) => (e as Map).cast<String,dynamic>());
+
+  static Future<void> downloadYtDlp() async =>
+    await _ch.invokeMethod('download', 'ytdlp');
+
+  static Future<void> downloadDeno() async =>
+    await _ch.invokeMethod('download', 'deno');
+
+  // ── آپدیت ──
+  static Future<void> updateYtDlp() async =>
+    await _ch.invokeMethod('update', 'ytdlp');
+
+  static Future<void> updateDeno() async =>
+    await _ch.invokeMethod('update', 'deno');
+
+  // ── حذف ──
+  static Future<void> deleteYtDlp() async =>
+    await _ch.invokeMethod('delete', 'ytdlp');
+
+  static Future<void> deleteDeno() async =>
+    await _ch.invokeMethod('delete', 'deno');
+
+  // ── بکاپ ──
+  static Future<List<String>> backup() async {
+    final r = await _ch.invokeListMethod<String>('backup');
+    return r ?? [];
   }
 
-  static Future<String?> getVersion() async {
-    try {
-      return await _ch.invokeMethod<String>('ytdlpGetVersion');
-    } catch (_) { return null; }
+  // ── ایمپورت ──
+  static Future<void> importBin(String path, String type) async =>
+    await _ch.invokeMethod('import', {'path': path, 'type': type});
+
+  // ── stream URL ──
+  static Future<String> getStreamUrl(String url) async {
+    final result = await _ch.invokeMethod<String>('streamUrl', url);
+    if (result == null || result.isEmpty) throw Exception('Stream URL not found');
+    return result;
   }
 }
-

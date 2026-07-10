@@ -449,4 +449,3 @@ class L {
   static String get subtitleLoaded2 => _t({'en':'Subtitle loaded','fa':'زیرنویس بارگذاری شد','ar':'تم تحميل الترجمة','ru':'Субтитры загружены','zh':'字幕已加载','ja':'字幕読み込み完了','hi':'सबटाइटल लोड','id':'Subtitle loaded'});
 
 }
-
