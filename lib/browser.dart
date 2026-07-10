@@ -1046,9 +1046,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       });
   }
 
-  Widget _settingsTab()=>Column(children:[
-    Padding(padding:const EdgeInsets.fromLTRB(12,12,12,0),child:_LangSelector()),
-    Expanded(child:FutureBuilder<Map<String,dynamic>?>(
+  Widget _settingsTab()=>FutureBuilder<Map<String,dynamic>?>(
     future:ApiService.getConfig(),
     builder:(ctx,snap){
       final cfg=snap.data??{};
@@ -1116,6 +1114,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           onTap:()=>ul.launchUrl(Uri.parse(admin),mode:ul.LaunchMode.externalApplication)),
 
         const SizedBox(height:16),
+        _LangSelector(),
         Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text(L.features,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
@@ -1123,9 +1122,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                   style:TextStyle(fontSize:12,color:kTextSec,height:1.7)),
             ])),
       ]);
-    }),
-  ),
-  ]);
+    });
 }
 
 Widget _appBtn({required IconData icon,required Color color,required String label,VoidCallback? onTap}){
