@@ -1,7 +1,9 @@
+
 name: player
 description: پلیر ویدیو با زیرنویس رمزگذاری‌شده
 publish_to: 'none'
 version: 1.0.3+4
+
 environment:
   sdk: '>=3.3.0 <4.0.0'
 
@@ -38,6 +40,7 @@ dependencies:
   whisper_ggml_plus: ^1.1.0
   path_provider: ^2.1.2
   share_plus: ^11.0.0
+  extractor: ^0.3.0
 
 dev_dependencies:
   flutter_test:
@@ -45,4 +48,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
