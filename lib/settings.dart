@@ -261,7 +261,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
           color:_vs.speed==s?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
           borderRadius:BorderRadius.circular(8),
           border:Border.all(color:_vs.speed==s?const Color(0xFF7C3AED):const Color(0xFF3A3A4A))),
-        child:Text('\${s}x',style:TextStyle(color:_vs.speed==s?Colors.white:const Color(0xFFB0B0C0),fontSize:12))),
+        child:Text('${s}x',style:TextStyle(color:_vs.speed==s?Colors.white:const Color(0xFFB0B0C0),fontSize:12))),
     )).toList()),
 
     const Divider(height:24),
@@ -365,6 +365,27 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   }
   // ──────── تب سایر ────────
   Widget _otherTab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    // ── انتخاب زبان ──
+    Text(L.language, style:const TextStyle(color:Colors.white70,fontSize:13)),
+    const SizedBox(height:10),
+    Wrap(spacing:8,runSpacing:8,children:[
+      for(final lang in kSupportedLangs)
+        GestureDetector(
+          onTap:()async{await L.set(lang);if(mounted)setState((){});},
+          child:Container(
+            padding:const EdgeInsets.symmetric(horizontal:14,vertical:8),
+            decoration:BoxDecoration(
+              color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF23233A),
+              borderRadius:BorderRadius.circular(20),
+              border:Border.all(
+                color:L.current==lang?const Color(0xFF7C3AED):Colors.white24,
+                width:1.5)),
+            child:Text(kLangNames[lang]!,style:TextStyle(
+              color:L.current==lang?Colors.white:Colors.white70,
+              fontSize:13,fontWeight:L.current==lang?FontWeight.w600:FontWeight.normal))),
+        ),
+    ]),
+    const Divider(height:24,color:Colors.white12),
     // پیش‌نمایش اسکراب (دسترسی سریع)
     SwitchListTile(contentPadding:EdgeInsets.zero,
       title:Text(L.seekPreview),
@@ -508,3 +529,4 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     ]),
   );
 }
+
