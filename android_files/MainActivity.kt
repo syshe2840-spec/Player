@@ -788,6 +788,15 @@ class MainActivity : FlutterActivity() {
         return java.io.File(filesDir, "bins/$name")
     }
 
+    private fun getYtDlpUrl(): String {
+        val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
+        return when {
+            abi.contains("arm64") -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"
+            abi.contains("armeabi") -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_armv7l"
+            else -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"
+        }
+    }
+
     private fun runBin(type: String, args: List<String>): String? {
         val bin = getBinFile(type)
         if (!bin.exists()) return null
@@ -803,7 +812,7 @@ class MainActivity : FlutterActivity() {
 
     private fun downloadBin(type: String, onProgress: (Int, String) -> Unit) {
         val url = when (type) {
-            "ytdlp" -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_android_aarch64"
+            "ytdlp" -> getYtDlpUrl()
             "deno" -> "https://github.com/denoland/deno/releases/latest/download/deno-aarch64-unknown-linux-gnu.zip"
             else -> throw Exception("Unknown type: $type")
         }

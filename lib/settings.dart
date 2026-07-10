@@ -482,9 +482,13 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     try {
       if (type == 'ytdlp') await YtDlpService.downloadYtDlp();
       else await YtDlpService.downloadDeno();
-      setState(() { _status = 'SUCCESS: $type installed'; });
+      setState(() { _status = '✓ $type installed'; });
     } catch (e) { setState(() { _status = 'Error: $e'; }); }
-    finally { sub.cancel(); setState(() { _loading = false; }); await _refresh(); }
+    finally {
+      sub.cancel();
+      setState(() { _loading = false; });
+      await _refresh(); // آپدیت state دکمه‌ها
+    }
   }
 
   Future<void> _deleteBin(String type) async {
