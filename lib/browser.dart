@@ -14,7 +14,7 @@ import 'online_player_sheet.dart';
 import 'settings.dart' show ToolsTabBody;
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
-import 'main.dart' show showSnack, myAppKey, MyAppState;
+import 'main.dart' show showSnack;
 import 'l10n.dart';
 
 const kBg      = Color(0xFF08080F);
@@ -1122,7 +1122,6 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                   onSelected:(_)async{
                     await L.set(lang);
                     ss((){});
-                    myAppKey.currentState?.setState((){});
                   },
                 ),
             ])),
