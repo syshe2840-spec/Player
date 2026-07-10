@@ -8,7 +8,7 @@ class YtDlpService {
   static Future<void> init() async {
     if (_initialized) return;
     try {
-      final result = await _dl.initialize(enableFFmpeg: false, enableAria2c: false);
+      final result = await _dl.initialize(enableFFmpeg: true, enableAria2c: false);
       if (result.success) {
         _initialized = true;
       } else {
@@ -20,10 +20,14 @@ class YtDlpService {
     }
   }
 
+  static Future<void> _ensureInit() async {
+    if (!_initialized) await init();
+  }
+
   // ── وضعیت ──
   static Future<bool> isYtDlpInstalled() async {
     try {
-      await init();
+      await _ensureInit();
       final v = await _dl.getVersion();
       return v.youtubeDlVersion != null && v.youtubeDlVersion!.isNotEmpty;
     } catch (_) { return false; }
@@ -33,7 +37,7 @@ class YtDlpService {
 
   static Future<Map<String,String?>> getVersions() async {
     try {
-      await init();
+      await _ensureInit();
       final v = await _dl.getVersion();
       return {'ytdlp': v.youtubeDlVersion, 'deno': null};
     } catch (_) { return {}; }
@@ -41,7 +45,7 @@ class YtDlpService {
 
   // ── آپدیت ──
   static Future<void> downloadYtDlp() async {
-    await init();
+    await _ensureInit();
     await _dl.updateYoutubeDL(channel: UpdateChannel.stable);
   }
 
@@ -56,7 +60,7 @@ class YtDlpService {
 
   // ── stream URL ──
   static Future<String> getStreamUrl(String url) async {
-    await init();
+    await _ensureInit();
     final info = await _dl.getVideoInfo(url);
 
     final formats = info.formats;
