@@ -6,6 +6,7 @@ const kSupportedLangs = ['en','fa','ar','ru','zh','ja','hi','id'];
 const kLangNames = {
   'en':'English','fa':'فارسی','ar':'العربية',
   'ru':'Русский','zh':'中文','ja':'日本語','hi':'हिन्दी',
+  'id':'Indonesia',
 };
 TextDirection langDir(String lang) =>
   (lang=='fa'||lang=='ar') ? TextDirection.rtl : TextDirection.ltr;
@@ -448,3 +449,4 @@ class L {
   static String get subtitleLoaded2 => _t({'en':'Subtitle loaded','fa':'زیرنویس بارگذاری شد','ar':'تم تحميل الترجمة','ru':'Субтитры загружены','zh':'字幕已加载','ja':'字幕読み込み完了','hi':'सबटाइटल लोड','id':'Subtitle loaded'});
 
 }
+
