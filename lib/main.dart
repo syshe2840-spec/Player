@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'browser.dart';
 import 'store.dart';
 import 'l10n.dart';
+import 'ytdlp_service.dart';
 import 'api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -41,6 +42,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await L.load(); // بارگذاری زبان ذخیره‌شده
+  // init extractor (yt-dlp) در startup
+  try { await YtDlpService.init(); } catch (_) {}
   await Store.load();
   await ApiService.init();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -241,3 +244,4 @@ class _HomeWrapperState extends State<_HomeWrapper>{
 
   @override Widget build(BuildContext ctx)=>const BrowserScreen();
 }
+
