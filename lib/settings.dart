@@ -8,7 +8,7 @@ import 'store.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
-import 'main.dart' show showSnack, myAppKey;
+import 'main.dart' show showSnack, myAppKey, MyAppState;
 
 class PlayerSettings extends StatefulWidget {
   final VideoSettings vs;

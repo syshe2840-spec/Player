@@ -51,14 +51,14 @@ void main() async {
   runApp(MyApp(key: myAppKey));
 }
 
-final GlobalKey<_MyAppState> myAppKey = GlobalKey<_MyAppState>();
+final GlobalKey<MyAppState> myAppKey = GlobalKey<MyAppState>();
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
   @override State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

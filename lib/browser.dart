@@ -14,7 +14,7 @@ import 'online_player_sheet.dart';
 import 'settings.dart' show ToolsTabBody;
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
-import 'main.dart' show showSnack, myAppKey;
+import 'main.dart' show showSnack, myAppKey, MyAppState;
 import 'l10n.dart';
 
 const kBg      = Color(0xFF08080F);
@@ -968,10 +968,21 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                 if(ok==true){await Store.deletePlaylist(name);setState((){});}
               }else if(v=='play'&&paths.isNotEmpty){
                 final files=paths.map((p)=>File(p)).where((f)=>f.existsSync()).toList();
-                if(files.isNotEmpty)widget.onVideoTap(files.first.path);
+                if(files.isNotEmpty){
+                  Navigator.push(context,MaterialPageRoute(builder:(_)=>PlayerScreen(
+                    playlist:files, playlistIndex:0,
+                    subtitlePath:matchSubtitle(files.first.path),
+                  )));
+                }
               }
             }),
-          onTap:paths.isEmpty?null:(){widget.onVideoTap(paths.first);},
+          onTap:paths.isEmpty?null:(){
+            final files=paths.map((p)=>File(p)).where((f)=>f.existsSync()).toList();
+            if(files.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>PlayerScreen(
+              playlist:files, playlistIndex:0,
+              subtitlePath:matchSubtitle(files.first.path),
+            )));
+          },
         );
       })),
     ]);
