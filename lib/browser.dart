@@ -1159,36 +1159,4 @@ Widget _appBtn({required IconData icon,required Color color,required String labe
   );
 }
 
-class _LangSelectorState extends State<_LangSelector> {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding:const EdgeInsets.only(bottom:12),
-      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Padding(padding:const EdgeInsets.only(bottom:8),
-          child:Text(L.language,style:const TextStyle(color:Colors.white70,fontSize:12))),
-        Wrap(spacing:6,runSpacing:6,
-          children:kSupportedLangs.map((lang)=>Material(
-            color:Colors.transparent,
-            child:InkWell(
-              borderRadius:BorderRadius.circular(20),
-              onTap:()async{await L.set(lang);setState((){});},
-              child:AnimatedContainer(
-                duration:const Duration(milliseconds:150),
-                padding:const EdgeInsets.symmetric(horizontal:14,vertical:7),
-                decoration:BoxDecoration(
-                  color:L.current==lang?const Color(0xFF7C3AED):Colors.white10,
-                  borderRadius:BorderRadius.circular(20),
-                  border:Border.all(
-                    color:L.current==lang?const Color(0xFF7C3AED):Colors.white24,
-                    width:1.5)),
-                child:Text(kLangNames[lang]!,style:TextStyle(
-                  color:L.current==lang?Colors.white:Colors.white70,
-                  fontSize:12,fontWeight:L.current==lang?FontWeight.w600:FontWeight.normal))),
-            ),
-          )).toList()),
-      ]),
-    );
-  }
-}
 
