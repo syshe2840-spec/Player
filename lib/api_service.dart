@@ -49,10 +49,10 @@ class ApiService {
       req.headers.set('Accept', 'application/json');
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
-      if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}: \$body');
+      if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}: $body');
       return json.decode(body);
     } catch (e) {
-      throw Exception('\$e');
+      throw Exception('$e');
     } finally {
       client.close();
     }

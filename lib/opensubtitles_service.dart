@@ -112,7 +112,7 @@ class OpenSubtitlesService {
       return 'Daily download limit reached — try again later';
     }
     if (status == 400) return 'Invalid search — change query';
-    return 'Error (\$status): \$msg';
+    return 'Error ($status): $msg';
   }
 
   static Future<dynamic> _get(String path, Map<String, String> params) async {

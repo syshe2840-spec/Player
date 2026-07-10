@@ -91,7 +91,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
       await _refresh();
       if(mounted) showSnack(context, '✓ ${m.name} ${L.downloaded}');
     } catch(e){
-      if(mounted) showSnack(context, '${L.cancelResume}\n\$e');
+      if(mounted) showSnack(context, '${L.cancelResume}\n$e');
     } finally {
       if(mounted) setState(()=>_busy[key]=false);
     }
@@ -168,7 +168,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
         const SizedBox(width:8),
         Expanded(child:Text(
           _cacheCount>0
-            ? '${L.cacheAudio}: \$_cacheCount (${L.downloading} ${_cacheMb.toStringAsFixed(1)}MB)'
+            ? '${L.cacheAudio}: $_cacheCount (${L.downloading} ${_cacheMb.toStringAsFixed(1)}MB)'
             : L.noAudioCache,
           style:const TextStyle(color:Colors.white70,fontSize:12))),
         if(_cacheCount>0) TextButton(

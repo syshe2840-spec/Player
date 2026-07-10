@@ -218,7 +218,7 @@ class _HomeWrapperState extends State<_HomeWrapper>{
     final annId=ann['id']?.toString()??'0';
     final maxShows=(ann['max_shows']??1) as int;
     final prefs=await SharedPreferences.getInstance();
-    final showKey='ann_shown_\$annId';
+    final showKey='ann_shown_$annId';
     final shownCount=prefs.getInt(showKey)??0;
     if(maxShows>0&&shownCount>=maxShows)return; // به حد رسیده
     await prefs.setInt(showKey,shownCount+1); // یه بار دیگه نشون داده شد

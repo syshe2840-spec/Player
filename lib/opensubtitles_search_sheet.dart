@@ -104,7 +104,7 @@ class _State extends State<OpenSubtitlesSheet> {
           case 2: widget.onDone(path); widget.onDoneSecondary?.call(path); break;
         }
         final msg = remaining != null
-          ? '${L.subtitleDownloaded} — \$remaining ${L.downloadCount} ${L.remaining}'
+          ? '${L.subtitleDownloaded} — $remaining ${L.downloadCount} ${L.remaining}'
           : _subTarget == 1 ? L.sub2Applied : L.subtitleDownloaded;
         // بعد از دانلود: پیشنهاد ترجمه
         showSnack(context, msg, actionLabel: L.translationLabel, onAction: () => SrtTranslateSheet.show(context, path, (translated) { widget.onDone(translated); }));

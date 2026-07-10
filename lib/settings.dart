@@ -468,7 +468,7 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
       await Directory(modelsRoot).create(recursive: true);
       final savedPath = await const MethodChannel('com.vezoo.player/whisper')
         .invokeMethod<String>('importModel', {'path': path, 'modelsDir': modelsRoot});
-      if (mounted) setState(() { _loading = false; _status = '✓ ${L.saved}: \$savedPath'; });
+      if (mounted) setState(() { _loading = false; _status = '✓ ${L.saved}: $savedPath'; });
     } catch (e) {
       if (mounted) setState(() { _loading = false; _status = L.errorMsg(e); });
     }

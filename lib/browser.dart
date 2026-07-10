@@ -539,6 +539,18 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     leading:IconButton(icon:const Icon(Icons.close_rounded,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
     title:Text('${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
     actions:[
+      if(_selected.isNotEmpty)IconButton(
+        icon:const Icon(Icons.play_circle_rounded,color:kAccent,size:26),
+        tooltip:L.play,
+        onPressed:(){
+          final sorted=_filteredVideos.where((v)=>_selected.contains(v.path)).toList();
+          if(sorted.isEmpty)return;
+          setState((){_selectMode=false;_selected.clear();});
+          Navigator.push(context,MaterialPageRoute(builder:(_)=>PlayerScreen(
+            playlist:sorted.map((v)=>File(v.path)).toList(),
+            playlistIndex:0,
+          )));
+        }),
       TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18),label:Text(L.allItems,style:TextStyle(fontSize:13)),
           onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path)))),
       IconButton(icon:const Icon(Icons.delete_outline_rounded,color:kRed,size:22),
@@ -778,7 +790,7 @@ class _VideoMenuState extends State<VideoMenu>{
       ));
       if(name!=null){
         await Store.addToPlaylist(name,widget.file.path);
-        showSnack(context, '${L.addedTo} "\$name"');
+        showSnack(context, '${L.addedTo} "$name"');
       }
     }),
     _mi(Icons.copy_rounded,kTextSec,L.copyTo,widget.onCopy),
@@ -948,7 +960,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
             onSelected:(v)async{
               if(v=='delete'){
                 final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-                  title:Text('${L.delete} "\$name"?'),
+                  title:Text('${L.delete} "$name"?'),
                   actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel)),
                     FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),
                         onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete))],

@@ -175,7 +175,7 @@ class WhisperService {
           variant: 'custom',
           sizeMb: (file.lengthSync() / (1024 * 1024)).round(),
           speedStars: 3, accStars: 4,
-          desc: 'import • \$fname',
+          desc: 'import • $fname',
           customPath: file.path,
         ));
       }

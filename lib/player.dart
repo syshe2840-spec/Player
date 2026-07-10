@@ -382,7 +382,7 @@ class _PlayerState extends State<PlayerScreen>{
       final ts=DateTime.now().millisecondsSinceEpoch;
       final path='/storage/emulated/0/Pictures/screenshot_$ts.png';
       await File(path).writeAsBytes(byteData.buffer.asUint8List());
-      if(mounted)showSnack(context, '${L.screenshotSaved}: Pictures/screenshot_\$ts.png');
+      if(mounted)showSnack(context, '${L.screenshotSaved}: Pictures/screenshot_$ts.png');
     }catch(_){if(mounted)showSnack(context, L.screenshotError);}
   }
 
@@ -405,7 +405,7 @@ class _PlayerState extends State<PlayerScreen>{
     showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),title:Text(L.sleepTimer),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
-        Text('\$min ${L.minutes}',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
+        Text('$min ${L.minutes}',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
         Slider(min:1,max:180,divisions:179,value:min.toDouble(),onChanged:(v)=>ss(()=>min=v.round())),
         if(_sleepAt!=null)Text('${L.remaining}: ${_sleepAt!.difference(DateTime.now()).inMinutes} ${L.minutes}',style:const TextStyle(color:Colors.orange)),
       ]),
@@ -605,7 +605,7 @@ class _PlayerState extends State<PlayerScreen>{
         showSnack(context, L.pipNotSupported);
       }
     }catch(e){
-      if(mounted)showSnack(context, 'PiP: \$e');
+      if(mounted)showSnack(context, 'PiP: $e');
     }
   }
 
