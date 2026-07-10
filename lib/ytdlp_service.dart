@@ -7,8 +7,17 @@ class YtDlpService {
 
   static Future<void> init() async {
     if (_initialized) return;
-    await _dl.initialize(enableFFmpeg: false, enableAria2c: false);
-    _initialized = true;
+    try {
+      final result = await _dl.initialize(enableFFmpeg: false, enableAria2c: false);
+      if (result.success) {
+        _initialized = true;
+      } else {
+        throw Exception(result.errorMessage ?? 'Init failed');
+      }
+    } catch (e) {
+      _initialized = false;
+      rethrow;
+    }
   }
 
   // ── وضعیت ──
