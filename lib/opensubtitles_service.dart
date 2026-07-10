@@ -199,7 +199,7 @@ class OpenSubtitlesService {
     try {
       final req2 = await client2.getUrl(Uri.parse(link));
       final res2 = await req2.close();
-      if (res2.statusCode != 200) throw Exception('Download failed (\${res2.statusCode})');
+      if (res2.statusCode != 200) throw Exception('Download failed (${res2.statusCode})');
       content = await res2.transform(utf8.decoder).join();
     } finally {
       client2.close();

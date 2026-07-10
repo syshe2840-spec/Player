@@ -8,7 +8,7 @@ import 'store.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
-import 'main.dart' show showSnack;
+import 'main.dart' show showSnack, myAppKey;
 
 class PlayerSettings extends StatefulWidget {
   final VideoSettings vs;
@@ -115,7 +115,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         onChanged:(v)=>_ch(()=>_vs.showSubToolbar=v)),
 
     // اندازه فونت
-    Text('${L.fontSize}: \${_vs.fontSize.round()}'),
+    Text('${L.fontSize}: ${_vs.fontSize.round()}'),
     Slider(min:6,max:100,value:_vs.fontSize,onChanged:(v)=>_ch(()=>_vs.fontSize=v)),
 
     SwitchListTile(contentPadding:EdgeInsets.zero,title:Text(L.boldLabel),value:_vs.bold,
@@ -135,7 +135,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
         onChanged:(v){setState(()=>_sd1=v.round());widget.onSubDelayMs(_sd1);_d1Ctrl.text='$_sd1';}),
 
     // موقعیت
-    Text('${L.position}: \${_vs.bottomPadding.round()}px'),
+    Text('${L.position}: ${_vs.bottomPadding.round()}px'),
     Slider(min:0,max:900,value:_vs.bottomPadding.clamp(0,900),onChanged:(v)=>_ch(()=>_vs.bottomPadding=v)),
 
     const SizedBox(height:8),Text(L.alignment),const SizedBox(height:8),
@@ -161,7 +161,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
             border:Border.all(color:sel?Colors.white:Colors.white24,width:sel?3:1)),
         child:c==Colors.transparent?const Center(child:Icon(Icons.block,size:18,color:Colors.white38)):null));
     }).toList()),
-    Text('${L.transparency}: \${(_vs.bgOpacity*100).round()}%'),
+    Text('${L.transparency}: ${(_vs.bgOpacity*100).round()}%'),
     Slider(min:0,max:1,value:_vs.bgOpacity,onChanged:(v)=>_ch(()=>_vs.bgOpacity=v)),
 
     const Divider(height:20),Text(L.font),const SizedBox(height:8),
@@ -185,7 +185,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       ])),
       const SizedBox(width:8),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('${L.shadow}: \${_vs.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
+        Text('${L.shadow}: ${_vs.shadowSize.toStringAsFixed(1)}',style:const TextStyle(fontSize:12)),
         Slider(min:0,max:5,divisions:10,value:_vs.shadowSize,
           onChanged:(v)=>_ch(()=>_vs.shadowSize=v)),
       ])),
@@ -244,7 +244,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
       onChanged:(v)=>_ch(()=>_vs.showSeekPreview=v),
     ),
     const Divider(height:12),
-    Text('${L.speed}: \${_speed%1==0?_speed.toInt():_speed}x'),
+    Text('${L.speed}: ${_speed%1==0?_speed.toInt():_speed}x'),
     Slider(min:0.25,max:10,divisions:39,value:_speed,
         onChanged:(v){final s=(v*4).round()/4;setState(()=>_speed=s);widget.onSpeed(s);_ch(()=>_vs.speed=s);}),
     Wrap(spacing:6,children:[0.5,1.0,1.5,2.0,3.0,5.0,10.0].map((s)=>ChoiceChip(
@@ -253,7 +253,7 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
     const Divider(height:24),
     // حالت شب
-    Text('${L.nightMode}: \${(_vs.nightOpacity*100).round()}%'),
+    Text('${L.nightMode}: ${(_vs.nightOpacity*100).round()}%'),
     Slider(min:0,max:1,value:_vs.nightOpacity,activeColor:Colors.orange,onChanged:(v)=>_ch(()=>_vs.nightOpacity=v)),
   ]));
 
@@ -362,7 +362,11 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
           selected: L.current==lang,
           onSelected:(_)async{
             await L.set(lang);
-            if(mounted)setState((){});
+            if(mounted){
+              setState((){});
+              // rebuild کل اپ
+              myAppKey.currentState?.setState((){});
+            }
           },
         ),
     ]),

@@ -82,14 +82,14 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
   Future<void> _download(WhisperModelDef m) async {
     final key = m.id;
     setState((){ _busy[key]=true; _prog[key]=0; });
-    if(mounted) showSnack(context, '${L.downloading} \${m.name} (\${m.sizeMb}MB)', seconds: 3);
+    if(mounted) showSnack(context, '${L.downloading} ${m.name} (${m.sizeMb}MB)', seconds: 3);
     try {
       await for(final p in WhisperService.downloadModel(m)){
         if(!mounted) break;
         setState(()=> _prog[key]=p);
       }
       await _refresh();
-      if(mounted) showSnack(context, '✓ \${m.name} ${L.downloaded}');
+      if(mounted) showSnack(context, '✓ ${m.name} ${L.downloaded}');
     } catch(e){
       if(mounted) showSnack(context, '${L.cancelResume}\n\$e');
     } finally {
@@ -151,7 +151,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
         const SizedBox(width:8),
         Expanded(child:Text(
           _ramMb!=null
-            ? '${L.recommended}: ~\${(_ramMb!/1024).toStringAsFixed(1)}GB'
+            ? '${L.recommended}: ~${(_ramMb!/1024).toStringAsFixed(1)}GB'
             : L.canDownloadMultiple,
           style:const TextStyle(color:Colors.white70,fontSize:12))),
       ]),
@@ -168,7 +168,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
         const SizedBox(width:8),
         Expanded(child:Text(
           _cacheCount>0
-            ? '${L.cacheAudio}: \$_cacheCount (${L.downloading} \${_cacheMb.toStringAsFixed(1)}MB)'
+            ? '${L.cacheAudio}: \$_cacheCount (${L.downloading} ${_cacheMb.toStringAsFixed(1)}MB)'
             : L.noAudioCache,
           style:const TextStyle(color:Colors.white70,fontSize:12))),
         if(_cacheCount>0) TextButton(
@@ -257,7 +257,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
             if(!dl) Expanded(child:FilledButton.icon(
               onPressed:()=>_download(m),
               icon:const Icon(Icons.download,size:16),
-              label:Text('${L.download} (~\${m.sizeMb>=1000 ? "\${(m.sizeMb/1000).toStringAsFixed(1)}GB" : "\${m.sizeMb}MB"})',
+              label:Text('${L.download} (~${m.sizeMb>=1000 ? "${(m.sizeMb/1000).toStringAsFixed(1)}GB" : "${m.sizeMb}MB"})',
                 style:const TextStyle(fontSize:12)),
               style:FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED),
                 shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
@@ -278,7 +278,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
                   final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(
                     backgroundColor:const Color(0xFF1C1C22),
                     title:Text(L.delete,style:TextStyle(color:Colors.white)),
-                    content:Text('\${m.name}?',style:const TextStyle(color:Colors.white70)),
+                    content:Text('${m.name}?',style:const TextStyle(color:Colors.white70)),
                     actions:[
                       TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(L.cancel)),
                       FilledButton(onPressed:()=>Navigator.pop(context,true),

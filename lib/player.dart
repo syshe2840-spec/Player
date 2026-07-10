@@ -405,9 +405,9 @@ class _PlayerState extends State<PlayerScreen>{
     showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),title:Text(L.sleepTimer),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
-        Text('\$min \${L.minutes}',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
+        Text('\$min ${L.minutes}',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
         Slider(min:1,max:180,divisions:179,value:min.toDouble(),onChanged:(v)=>ss(()=>min=v.round())),
-        if(_sleepAt!=null)Text('${L.remaining}: \${_sleepAt!.difference(DateTime.now()).inMinutes} \${L.minutes}',style:const TextStyle(color:Colors.orange)),
+        if(_sleepAt!=null)Text('${L.remaining}: ${_sleepAt!.difference(DateTime.now()).inMinutes} ${L.minutes}',style:const TextStyle(color:Colors.orange)),
       ]),
       actions:[
         if(_sleepAt!=null)TextButton(onPressed:(){_sleepTimer?.cancel();setState(()=>_sleepAt=null);Navigator.pop(ctx);},child:Text(L.cancel,style:TextStyle(color:Colors.red))),
@@ -455,7 +455,7 @@ class _PlayerState extends State<PlayerScreen>{
               onPressed:(){
                 player.setSubtitleTrack(t);
                 setState(()=>_embeddedSubEnabled=true);
-                showSnack(context, '${L.select}: \${t.title??t.language??t.id}');
+                showSnack(context, '${L.select}: ${t.title??t.language??t.id}');
               },
               child:Text(L.select,style:TextStyle(fontSize:12)),
             ),
@@ -496,7 +496,7 @@ class _PlayerState extends State<PlayerScreen>{
         _infoRow(Icons.timer_outlined,const Color(0xFF94A3B8),L.duration,fmt(_duration)),
         _infoRow(Icons.memory_rounded,const Color(0xFF94A3B8),L.decoder,_hwDecode?L.hwDecode:L.swDecode),
         if(_audioTracks.isNotEmpty)
-          _infoRow(Icons.music_note_rounded,const Color(0xFF94A3B8),L.audioTracks,'\${_audioTracks.length} \${L.audioTracks}'),
+          _infoRow(Icons.music_note_rounded,const Color(0xFF94A3B8),L.audioTracks,'${_audioTracks.length} ${L.audioTracks}'),
         if(_hwDecode)_infoRow(Icons.developer_board_rounded,const Color(0xFF0EA5E9),L.decoder,L.hwActive),
       ]),
       actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close))],
@@ -556,7 +556,7 @@ class _PlayerState extends State<PlayerScreen>{
 
   Future<void> _playVez(String path)async{
     if(!mounted)return;
-    showSnack(context, '${L.decoding} \${path.split("/").last}', seconds: 120);
+    showSnack(context, '${L.decoding} ${path.split("/").last}', seconds: 120);
     try{
       final temp=await VezService.decryptToTemp(path);
       _vezTempPath=temp;
@@ -953,7 +953,7 @@ class _PlayerState extends State<PlayerScreen>{
   }
   void _cycleFit(){setState(()=>_fit=_fit==BoxFit.contain?BoxFit.cover:_fit==BoxFit.cover?BoxFit.fill:BoxFit.contain);_showOverlay(_fit==BoxFit.contain?L.normal:_fit==BoxFit.cover?L.fill:L.stretch);}
   void _cycleRepeat(){setState(()=>_repeatMode=_repeatMode==_Repeat.none?_Repeat.all:_repeatMode==_Repeat.all?_Repeat.one:_Repeat.none);_showOverlay(_repeatMode==_Repeat.none?L.repeatOff:_repeatMode==_Repeat.all?L.repeatAll:L.repeatOne);}
-  void _cycleRotation(){setState(()=>_rotationDeg=(_rotationDeg+90)%360);_showOverlay('${L.rotate}: \${_rotationDeg.toInt()}°');}
+  void _cycleRotation(){setState(()=>_rotationDeg=(_rotationDeg+90)%360);_showOverlay('${L.rotate}: ${_rotationDeg.toInt()}°');}
 
   @override
   Widget build(BuildContext context){
@@ -1260,10 +1260,10 @@ class _PlayerState extends State<PlayerScreen>{
                         const SizedBox(width: 5),
                         Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(
-                            LiveSubState.chunksTotal == 0 ? L.translationProgress : '\${LiveSubState.chunksDone}/\${LiveSubState.chunksTotal}  •  \${_liveStopwatch.elapsed.inSeconds}s',
+                            LiveSubState.chunksTotal == 0 ? L.translationProgress : '${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}  •  ${_liveStopwatch.elapsed.inSeconds}s',
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                           if(_liveTotalEstSec > 0)
-                            Text('~\${(_liveTotalEstSec/60).toStringAsFixed(1)} \${L.minutes}',
+                            Text('~${(_liveTotalEstSec/60).toStringAsFixed(1)} ${L.minutes}',
                               style: const TextStyle(color: Colors.white60, fontSize: 9)),
                         ]),
                       ]),
@@ -1319,7 +1319,7 @@ class _PlayerState extends State<PlayerScreen>{
               padding:const EdgeInsets.symmetric(horizontal:4),
               child:Row(mainAxisSize:MainAxisSize.min,children:[
                 const Icon(Icons.bedtime,size:16,color:Colors.orange),const SizedBox(width:2),
-                Text('\${_sleepAt!.difference(DateTime.now()).inMinutes}\${L.minutes}',style:const TextStyle(color:Colors.orange,fontSize:12)),
+                Text('${_sleepAt!.difference(DateTime.now()).inMinutes}${L.minutes}',style:const TextStyle(color:Colors.orange,fontSize:12)),
               ]))),
           IconButton(icon:Icon(bkm?Icons.bookmark:Icons.bookmark_border,color:bkm?Colors.amber:Colors.white),
               onPressed:()async{await Store.toggleBookmark(_curPath);setState((){});}),
@@ -1342,7 +1342,7 @@ class _PlayerState extends State<PlayerScreen>{
                   Icon(Icons.subtitles_outlined,size:12,
                       color:_embeddedSubEnabled?Colors.white:const Color(0xFF7C3AED)),
                   const SizedBox(width:3),
-                  Text('\${_subtitleTracks.length} ${L.embeddedSubtitle}',
+                  Text('${_subtitleTracks.length} ${L.embeddedSubtitle}',
                       style:TextStyle(fontSize:10,fontWeight:FontWeight.w600,
                           color:_embeddedSubEnabled?Colors.white:const Color(0xFF7C3AED))),
                 ]),
@@ -1450,7 +1450,7 @@ class _PlayerState extends State<PlayerScreen>{
                   const SizedBox(width:10),
                   Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                     Text(L.liveRunning),
-                    Text('\${LiveSubState.chunksDone}/\${LiveSubState.chunksTotal}',
+                    Text('${LiveSubState.chunksDone}/${LiveSubState.chunksTotal}',
                       style:const TextStyle(color:Colors.white54,fontSize:11)),
                   ]),
                 ]))
@@ -1497,9 +1497,9 @@ class _PlayerState extends State<PlayerScreen>{
               }
             },
             itemBuilder:(_)=>[
-              PopupMenuItem(value:'fit',child:Text('${L.ratio}: \${_fit==BoxFit.contain?L.fit:_fit==BoxFit.cover?L.fill:L.stretch}')),
-              PopupMenuItem(value:'rotate',child:Text('${L.rotate}: \${_rotationDeg.toInt()}°')),
-              PopupMenuItem(value:'repeat',child:Text('${L.repeat}: \${_repeatMode==_Repeat.none?"off":_repeatMode==_Repeat.all?"all":"one"}')),
+              PopupMenuItem(value:'fit',child:Text('${L.ratio}: ${_fit==BoxFit.contain?L.fit:_fit==BoxFit.cover?L.fill:L.stretch}')),
+              PopupMenuItem(value:'rotate',child:Text('${L.rotate}: ${_rotationDeg.toInt()}°')),
+              PopupMenuItem(value:'repeat',child:Text('${L.repeat}: ${_repeatMode==_Repeat.none?"off":_repeatMode==_Repeat.all?"all":"one"}')),
               PopupMenuItem(value:'night',child:Text(_vs.nightOpacity>0?L.disableNightMode:L.nightMode)),
               PopupMenuItem(value:'mute',child:Text(_muted?L.unmute:L.mute)),
               PopupMenuItem(value:'embsub',child:Text(L.embeddedSubtitle)),
@@ -1641,7 +1641,7 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
         const SizedBox(height:12),
 
         // ── زمان این تکه (ریست میشه) ──
-        _row('⏱', '\${_fmt(LiveSubState.chunkElapsedSec)}/~\${_fmt(chunkSec)}'),
+        _row('⏱', '${_fmt(LiveSubState.chunkElapsedSec)}/~${_fmt(chunkSec)}'),
         const SizedBox(height:4),
         LinearProgressIndicator(
           value: chunkSec > 0 ? (LiveSubState.chunkElapsedSec / chunkSec).clamp(0.0,1.0) : 0,
@@ -1658,7 +1658,7 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
 
         _row('📊', '\$done/\$total'),
         const SizedBox(height:4),
-        _row('🔊', '\${_fmt(transcribed)}/\${_fmt(totalSec)}'),
+        _row('🔊', '${_fmt(transcribed)}/${_fmt(totalSec)}'),
         const SizedBox(height:4),
         _row('⏳', '~${_fmt(remaining)}'),
         const SizedBox(height:4),
@@ -1692,7 +1692,7 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
             final ok = await showDialog<bool>(context:ctx,builder:(_)=>AlertDialog(
               backgroundColor:const Color(0xFF1C1C22),
               title:Text(L.cancelLive,style:TextStyle(color:Colors.white,fontSize:15)),
-              content:Text('\${_fmt(transcribed)} saved',
+              content:Text('${_fmt(transcribed)} saved',
                 style:const TextStyle(color:Colors.white70,fontSize:12)),
               actions:[
                 TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.continue_)),

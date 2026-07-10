@@ -69,7 +69,7 @@ class _State extends State<SrtTranslateSheet> {
       },
       onError: (err) {
         // نشون دادن خطا از طریق notification
-        WhisperService.updateProgressNotification('⚠ \${L.errorMsg(err)}', 0);
+        WhisperService.updateProgressNotification('⚠ ${L.errorMsg(err)}', 0);
       },
     );
 

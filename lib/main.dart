@@ -48,11 +48,17 @@ void main() async {
     systemNavigationBarColor: Color(0xFF08080F),
     statusBarIconBrightness: Brightness.light,
   ));
-  runApp(const MyApp());
+  runApp(MyApp(key: myAppKey));
 }
 
-class MyApp extends StatelessWidget {
+final GlobalKey<_MyAppState> myAppKey = GlobalKey<_MyAppState>();
+
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+  @override State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

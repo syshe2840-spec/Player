@@ -231,7 +231,7 @@ class SrtTranslationService {
       final batchLines = allTextLines.sublist(start, end);
 
       final progress = 0.2 + (b / totalBatches) * 0.65;
-      onStatus?.call('Translating \${b+1}/\$totalBatches...', progress);
+      onStatus?.call('Translating ${b+1}/\$totalBatches...', progress);
       SrtTranslationServiceStatus.setBatch(b + 1, totalBatches);
 
       final body = jsonEncode({
@@ -258,7 +258,7 @@ class SrtTranslationService {
               'Daily translation limit reached. Try again tomorrow.'
             );
           }
-          throw Exception('Server error (\${res.statusCode}): \$responseBody');
+          throw Exception('Server error (${res.statusCode}): \$responseBody');
         }
       } finally {
         client.close();

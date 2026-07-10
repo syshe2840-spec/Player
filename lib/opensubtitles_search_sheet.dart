@@ -277,7 +277,7 @@ class _State extends State<OpenSubtitlesSheet> {
               if (s.hd) Container(padding: const EdgeInsets.symmetric(horizontal: 4), decoration: BoxDecoration(color: Colors.green.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
                 child: const Text('HD', style: TextStyle(color: Colors.green, fontSize: 9))),
               const SizedBox(width: 6),
-              Text('\${s.downloadCount} \${L.downloadCount}', style: const TextStyle(color: Colors.white38, fontSize: 10)),
+              Text('${s.downloadCount} ${L.downloadCount}', style: const TextStyle(color: Colors.white38, fontSize: 10)),
             ]),
           ])),
           IconButton(icon: const Icon(Icons.download, color: Color(0xFF7C3AED)), onPressed: () => _download(s)),

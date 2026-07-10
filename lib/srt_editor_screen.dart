@@ -116,7 +116,7 @@ class _SrtEditorScreenState extends State<SrtEditorScreen> {
       backgroundColor: const Color(0xFF0F0F14),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1C22),
-        title: Text('${L.editSrtTitle} (\${_entries.length})', style: const TextStyle(color: Colors.white, fontSize: 14)),
+        title: Text('${L.editSrtTitle} (${_entries.length})', style: const TextStyle(color: Colors.white, fontSize: 14)),
         actions: [
           if (_dirty) IconButton(
             icon: _saving

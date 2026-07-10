@@ -454,9 +454,9 @@ class WhisperService {
     };
     final engineFactor = engine == WhisperEngine.v2 ? 0.85 : 1.0; // V2 معمولاً کمی سریع‌تر
     final estSec = (videoSec * modelFactor * engineFactor).round();
-    if (estSec < 60) return '\${estSec}s';
+    if (estSec < 60) return '${estSec}s';
     final mins = (estSec / 60).round();
-    return '\${mins} min';
+    return '${mins} min';
   }
 
   // ══════════════════════════════════════════════════════════
@@ -544,7 +544,7 @@ class WhisperService {
     final mPath = model.filePath(root);
 
     if (!File(mPath).existsSync()) {
-      throw Exception('\${model.name}: \${L.fileNotFound}');
+      throw Exception('${model.name}: ${L.fileNotFound}');
     }
 
     final sw = Stopwatch()..start();
@@ -563,7 +563,7 @@ class WhisperService {
     }
 
     // ۲. Transcribe
-    onStatus('V1: \${model.name}', 0.3);
+    onStatus('V1: ${model.name}', 0.3);
     final whisper = Whisper(model: model.base);
     final result = await whisper.transcribe(
       transcribeRequest: TranscribeRequest(
@@ -610,7 +610,7 @@ class WhisperService {
     final root = await _modelsRoot();
     final mPath = model.filePath(root);
     if (!File(mPath).existsSync()) {
-      throw Exception('\${model.name}: \${L.fileNotFound}');
+      throw Exception('${model.name}: ${L.fileNotFound}');
     }
 
     final sw = Stopwatch()..start();
@@ -631,7 +631,7 @@ class WhisperService {
     int? ctx;
     try {
       // ۲. بارگذاری مدل در whisper.cpp بومی
-      onStatus('V2 load: \${model.name}', 0.25);
+      onStatus('V2 load: ${model.name}', 0.25);
       final ctxResult = await _ch.invokeMethod<dynamic>('v2InitContext', {'modelPath': mPath});
       logStage('Load Model');
       if (ctxResult == null) throw Exception('Model loading failed');
@@ -1010,7 +1010,7 @@ Future<String> transcribeLive({
   File(srtFile).writeAsStringSync('', encoding: utf8);
 
   final mPath = await WhisperService.modelFilePath(config.model);
-  if (!File(mPath).existsSync()) throw Exception('\${L.error}: model not found');
+  if (!File(mPath).existsSync()) throw Exception('${L.error}: model not found');
 
   final ctxResult = await ch.invokeMethod<dynamic>('v2InitContext', {'modelPath': mPath});
   if (ctxResult == null) throw Exception('Model loading failed');

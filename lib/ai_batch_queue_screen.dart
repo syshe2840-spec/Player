@@ -118,7 +118,7 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
       backgroundColor: const Color(0xFF0F0F14),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1C22),
-        title: Text('${L.batchQueue} (\${_queue.length})', style: const TextStyle(color: Colors.white, fontSize: 14)),
+        title: Text('${L.batchQueue} (${_queue.length})', style: const TextStyle(color: Colors.white, fontSize: 14)),
         leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: _running ? null : () => Navigator.pop(context)),
       ),
@@ -159,7 +159,7 @@ class _AiBatchQueueScreenState extends State<AiBatchQueueScreen> {
             ]),
             if (_running) Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text('\${doneCount}/\${_queue.length}', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              child: Text('${doneCount}/${_queue.length}', style: const TextStyle(color: Colors.white54, fontSize: 11)),
             ),
           ]),
         ),

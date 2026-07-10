@@ -249,7 +249,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   Future<void> _confirmDelete(List<File> files)async{
     final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
       title:Text(L.deleteFile),
-      content:Text(files.length==1?'${L.delete} «\${p.basename(files.first.path)}»?':'\${files.length} ${L.delete}?'),
+      content:Text(files.length==1?'${L.delete} «${p.basename(files.first.path)}»?':'${files.length} ${L.delete}?'),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel)),
         FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete)),
@@ -342,7 +342,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         if(rating>0)_iRow(Icons.star_rounded,kAmber,L.rating,'${'★'*rating}${'☆'*(5-rating)}'),
         if(note.isNotEmpty)_iRow(Icons.notes_rounded,kTextSec,L.note,note),
         if(allSubs.isNotEmpty)...[
-          _iRow(Icons.subtitles_rounded,kGreen,L.subtitle,'\${allSubs.length}'),
+          _iRow(Icons.subtitles_rounded,kGreen,L.subtitle,'${allSubs.length}'),
           ...allSubs.map((s)=>Padding(
             padding:const EdgeInsets.only(right:24,top:2),
             child:Row(children:[
@@ -492,12 +492,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           tooltip:L.selectStorage,
           itemBuilder:(_){
             final items=<PopupMenuEntry<String>>[
-              _pmStr(Icons.phone_android_rounded,'/storage/emulated/0','📱 \${L.internalStorage}'),
-              _pmStr(Icons.download_rounded,'/storage/emulated/0/Download','⬇ \${L.downloads}'),
-              _pmStr(Icons.movie_rounded,'/storage/emulated/0/Movies','🎬 \${L.movies}'),
+              _pmStr(Icons.phone_android_rounded,'/storage/emulated/0','📱 ${L.internalStorage}'),
+              _pmStr(Icons.download_rounded,'/storage/emulated/0/Download','⬇ ${L.downloads}'),
+              _pmStr(Icons.movie_rounded,'/storage/emulated/0/Movies','🎬 ${L.movies}'),
             ];
             for(final d in _getStorageDevices()){items.add(_pmStr(Icons.sd_card_rounded,d.path,'💾 ${p.basename(d.path)}'));}
-            items..add(const PopupMenuDivider())..add(_pmStr(Icons.edit_rounded,'__custom__','📂 \${L.customPath}'));
+            items..add(const PopupMenuDivider())..add(_pmStr(Icons.edit_rounded,'__custom__','📂 ${L.customPath}'));
             return items;
           },
           onSelected:(v){
@@ -537,7 +537,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     automaticallyImplyLeading:false,
     backgroundColor:kAccent.withOpacity(0.15),
     leading:IconButton(icon:const Icon(Icons.close_rounded,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
-    title:Text('\${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
+    title:Text('${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
     actions:[
       TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18),label:Text(L.allItems,style:TextStyle(fontSize:13)),
           onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path)))),
@@ -565,7 +565,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
             Expanded(child:Text(_path,style:const TextStyle(fontSize:10,color:kTextDim),overflow:TextOverflow.ellipsis)),
             if(_searchRunning)const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.5,color:kAccent)),
             if(_globalSearch&&!_searchRunning&&_searchResults.isNotEmpty)
-              Text('\${_searchResults.length}',style:const TextStyle(fontSize:10,color:kAccent)),
+              Text('${_searchResults.length}',style:const TextStyle(fontSize:10,color:kAccent)),
           ])),
       Expanded(child:_buildList()),
     ]);
@@ -778,7 +778,7 @@ class _VideoMenuState extends State<VideoMenu>{
       ));
       if(name!=null){
         await Store.addToPlaylist(name,widget.file.path);
-        showSnack(context, '\${L.addedTo} "\$name"');
+        showSnack(context, '${L.addedTo} "\$name"');
       }
     }),
     _mi(Icons.copy_rounded,kTextSec,L.copyTo,widget.onCopy),
@@ -938,7 +938,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
               gradient:LinearGradient(colors:[kAccent,kCyan]),borderRadius:BorderRadius.circular(8)),
               child:const Icon(Icons.queue_music_rounded,size:16,color:Colors.white)),
           title:Text(name,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w500)),
-          subtitle:Text('\${paths.length}',style:const TextStyle(fontSize:11,color:kTextDim)),
+          subtitle:Text('${paths.length}',style:const TextStyle(fontSize:11,color:kTextDim)),
           trailing:PopupMenuButton<String>(
             icon:const Icon(Icons.more_vert_rounded,size:18,color:kTextSec),
             itemBuilder:(_)=>[
@@ -1044,7 +1044,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
             const SizedBox(width:12),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               const Text('Vezoo',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
-              Text('v\${ApiService.appVersion}',
+              Text('v${ApiService.appVersion}',
                   style:const TextStyle(fontSize:11,color:kTextSec)),
             ])),
             if(snap.connectionState==ConnectionState.waiting)

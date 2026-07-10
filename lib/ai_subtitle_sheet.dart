@@ -71,7 +71,7 @@ class _State extends State<AiSubtitleSheet> {
     if(_selected==null) return;
     setState((){ _running=true; _mode='running'; _progress=0; _status=L.startingLabel; });
     // notification: fire-and-forget — هرگز await نمی‌شود تا UI رو بلاک نکند
-    WhisperService.showProgressNotification('${L.aiSubtitle}: \${widget.videoPath.split("/").last}');
+    WhisperService.showProgressNotification('${L.aiSubtitle}: ${widget.videoPath.split("/").last}');
     try {
       final path = await WhisperService.transcribe(
         videoPath: widget.videoPath,
@@ -123,7 +123,7 @@ class _State extends State<AiSubtitleSheet> {
     final ok = await showDialog<bool>(context:context, builder:(_)=>AlertDialog(
       backgroundColor:const Color(0xFF1C1C22),
       title:Text(L.deleteSubtitle,style:TextStyle(color:Colors.white,fontSize:15)),
-      content:Text('\${kLanguages[lang]??lang}?',style:const TextStyle(color:Colors.white70)),
+      content:Text('${kLanguages[lang]??lang}?',style:const TextStyle(color:Colors.white70)),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(context,false),child:Text(L.cancel)),
         FilledButton(onPressed:()=>Navigator.pop(context,true),
@@ -499,7 +499,7 @@ class _State extends State<AiSubtitleSheet> {
     const SizedBox(height:4),
     const Icon(Icons.check_circle,color:Colors.green,size:44),
     const SizedBox(height:6),
-    Text('${L.subtitleLoaded} (\${kLanguages[_lang]??_lang})',
+    Text('${L.subtitleLoaded} (${kLanguages[_lang]??_lang})',
       style:const TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
     const SizedBox(height:4),
     Text(_srtPath?.split('/').last??'',
