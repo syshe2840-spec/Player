@@ -119,7 +119,7 @@ class MainActivity : FlutterActivity() {
                     when (call.method) {
                         "isInstalled" -> {
                             val type = call.arguments as String
-                            handler.post { result.success(getBinFile(type).exists()) }
+                            handler.post { result.success(isBinInstalled(type)) }
                         }
                         "getVersions" -> {
                             val ytVer = runBin("ytdlp", listOf("--version"))?.trim()
