@@ -1114,7 +1114,22 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           onTap:()=>ul.launchUrl(Uri.parse(admin),mode:ul.LaunchMode.externalApplication)),
 
         const SizedBox(height:16),
-        _LangSelector(),
+        // ── انتخاب زبان ──
+        Padding(padding:const EdgeInsets.only(bottom:4),
+          child:Text(L.language,style:const TextStyle(color:Colors.white70,fontSize:12))),
+        Wrap(spacing:6,runSpacing:6,children:kSupportedLangs.map((lang)=>GestureDetector(
+          onTap:()async{await L.set(lang);setState((){});},
+          child:Container(
+            padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+            decoration:BoxDecoration(
+              color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF23233A),
+              borderRadius:BorderRadius.circular(20),
+              border:Border.all(color:L.current==lang?const Color(0xFF7C3AED):Colors.white24)),
+            child:Text(kLangNames[lang]!,style:TextStyle(
+              color:L.current==lang?Colors.white:Colors.white70,
+              fontSize:12,fontWeight:L.current==lang?FontWeight.w600:FontWeight.normal))),
+        )).toList()),
+        const SizedBox(height:16),
         Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text(L.features,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
@@ -1144,10 +1159,6 @@ Widget _appBtn({required IconData icon,required Color color,required String labe
   );
 }
 
-class _LangSelector extends StatefulWidget {
-  const _LangSelector();
-  @override State<_LangSelector> createState() => _LangSelectorState();
-}
 class _LangSelectorState extends State<_LangSelector> {
   @override
   Widget build(BuildContext context) {
@@ -1180,3 +1191,4 @@ class _LangSelectorState extends State<_LangSelector> {
     );
   }
 }
+
