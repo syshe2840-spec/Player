@@ -1107,31 +1107,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         const SizedBox(height:8),
 
         // انتخاب زبان
-        Container(
-          margin:const EdgeInsets.only(bottom:12),
-          padding:const EdgeInsets.all(14),
-          decoration:BoxDecoration(color:const Color(0xFF1C1C28),borderRadius:BorderRadius.circular(12),border:Border.all(color:const Color(0xFF2A2A3A))),
-          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(L.language,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w600,fontSize:13)),
-            const SizedBox(height:10),
-            StatefulBuilder(builder:(ctx,ss)=>Wrap(spacing:6,runSpacing:6,children:[
-              for(final lang in kSupportedLangs)
-                GestureDetector(
-                  onTap:()async{await L.set(lang);ss((){});},
-                  child:Container(
-                    padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
-                    decoration:BoxDecoration(
-                      color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
-                      borderRadius:BorderRadius.circular(8),
-                      border:Border.all(color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF3A3A4A)),
-                    ),
-                    child:Text(kLangNames[lang]!,style:TextStyle(
-                      color:L.current==lang?Colors.white:Colors.white60,
-                      fontSize:12,fontWeight:L.current==lang?FontWeight.w600:FontWeight.normal)),
-                  ),
-                ),
-            ])),
-          ])),
+        _LangSelector(),
 
         // گزارش مشکل / پیشنهاد
         if(admin.isNotEmpty)_appBtn(
@@ -1167,4 +1143,45 @@ Widget _appBtn({required IconData icon,required Color color,required String labe
       ]),
     ),
   );
+}
+
+class _LangSelector extends StatefulWidget {
+  const _LangSelector();
+  @override State<_LangSelector> createState() => _LangSelectorState();
+}
+class _LangSelectorState extends State<_LangSelector> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin:const EdgeInsets.only(bottom:12),
+      padding:const EdgeInsets.all(14),
+      decoration:BoxDecoration(
+        color:const Color(0xFF1C1C28),
+        borderRadius:BorderRadius.circular(12),
+        border:Border.all(color:const Color(0xFF2A2A3A))),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(L.language,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w600,fontSize:13)),
+        const SizedBox(height:10),
+        Wrap(spacing:6,runSpacing:6,children:[
+          for(final lang in kSupportedLangs)
+            GestureDetector(
+              onTap:()async{
+                await L.set(lang);
+                setState((){});
+              },
+              child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),
+                decoration:BoxDecoration(
+                  color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
+                  borderRadius:BorderRadius.circular(8),
+                  border:Border.all(color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF3A3A4A))),
+                child:Text(kLangNames[lang]!,style:TextStyle(
+                  color:L.current==lang?Colors.white:const Color(0xFFB0B0C0),
+                  fontSize:12,fontWeight:L.current==lang?FontWeight.w700:FontWeight.normal)),
+              ),
+            ),
+        ]),
+      ]),
+    );
+  }
 }
