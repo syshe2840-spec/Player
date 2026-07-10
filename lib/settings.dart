@@ -466,12 +466,13 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   void initState() { super.initState(); _refresh(); }
 
   Future<void> _refresh() async {
-    try {
-      final v = await YtDlpService.getVersions();
-      final yt = await YtDlpService.isYtDlpInstalled();
-      final de = await YtDlpService.isDenoInstalled();
-      if (mounted) setState(() { _versions = v; _ytInstalled = yt; _denoInstalled = de; });
-    } catch (_) {}
+    // هر call مستقل — خطای یکی بقیه رو خراب نمیکنه
+    Map<String,String?> v = {};
+    bool yt = false, de = false;
+    try { v = await YtDlpService.getVersions(); } catch (_) {}
+    try { yt = await YtDlpService.isYtDlpInstalled(); } catch (_) {}
+    try { de = await YtDlpService.isDenoInstalled(); } catch (_) {}
+    if (mounted) setState(() { _versions = v; _ytInstalled = yt; _denoInstalled = de; });
   }
 
   Future<void> _downloadBin(String type) async {
@@ -611,3 +612,4 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     ]),
   );
 }
+
