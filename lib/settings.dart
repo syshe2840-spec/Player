@@ -365,24 +365,6 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
   }
   // ──────── تب سایر ────────
   Widget _otherTab()=>SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    // ── انتخاب زبان ──
-    Text(L.language, style:const TextStyle(color:Colors.white70,fontSize:13)),
-    const SizedBox(height:8),
-    Wrap(spacing:8,runSpacing:6,children:[
-      for(final lang in kSupportedLangs)
-        GestureDetector(
-          onTap:()async{await L.set(lang);if(mounted)setState((){});},
-          child:Container(
-            padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
-            decoration:BoxDecoration(
-              color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
-              borderRadius:BorderRadius.circular(8),
-              border:Border.all(color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF3A3A4A))),
-            child:Text(kLangNames[lang]!,style:TextStyle(
-              color:L.current==lang?Colors.white:const Color(0xFFB0B0C0),fontSize:12))),
-        ),
-    ]),
-    const Divider(height:24,color:Colors.white12),
     // پیش‌نمایش اسکراب (دسترسی سریع)
     SwitchListTile(contentPadding:EdgeInsets.zero,
       title:Text(L.seekPreview),
