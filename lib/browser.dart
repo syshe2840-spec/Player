@@ -265,7 +265,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
       title:Text(L.rename_),
       content:TextField(controller:ctrl,autofocus:true,
-          decoration:const InputDecoration(hintText:L.newName,border:OutlineInputBorder(),contentPadding:EdgeInsets.symmetric(horizontal:12,vertical:8))),
+          decoration:InputDecoration(hintText:L.newName,border:OutlineInputBorder(),contentPadding:EdgeInsets.symmetric(horizontal:12,vertical:8))),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
         FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:Text(L.confirm)),
@@ -301,7 +301,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     await showDialog(context:context,builder:(ctx)=>AlertDialog(
       title:Text(L.note),
       content:TextField(controller:ctrl,maxLines:5,autofocus:true,
-          decoration:const InputDecoration(hintText:L.writtenNote,border:OutlineInputBorder(),contentPadding:EdgeInsets.all(12))),
+          decoration:InputDecoration(hintText:L.writtenNote,border:OutlineInputBorder(),contentPadding:EdgeInsets.all(12))),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
         FilledButton(onPressed:()async{await Store.saveNote(f.path,ctrl.text.trim());Navigator.pop(ctx);setState((){});},child:Text(L.save)),
@@ -506,7 +506,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
               showDialog(context:context,builder:(ctx)=>AlertDialog(
                 title:Text(L.customPath),
                 content:TextField(controller:ctrl,autofocus:true,
-                    decoration:const InputDecoration(hintText:'/storage/emulated/0/...',border:OutlineInputBorder())),
+                    decoration:InputDecoration(hintText:'/storage/emulated/0/...',border:OutlineInputBorder())),
                 actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
                   FilledButton(onPressed:(){final pt=ctrl.text.trim();Navigator.pop(ctx);if(pt.isNotEmpty)_loadDir(pt);},child:Text(L.start))],
               ));
@@ -916,7 +916,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
               final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
                 title:Text(L.newPlaylist),
                 content:TextField(controller:ctrl,autofocus:true,
-                    decoration:const InputDecoration(hintText:L.playlistName,border:OutlineInputBorder())),
+                    decoration:InputDecoration(hintText:L.playlistName,border:OutlineInputBorder())),
                 actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel)),
                   FilledButton(onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:Text(L.create))],
               ));

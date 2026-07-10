@@ -424,7 +424,7 @@ class _State extends State<AiSubtitleSheet> {
           Row(children:[
             const Icon(Icons.insights,color: const Color(0xFF7C3AED),size:16),
             const SizedBox(width:8),
-            const Text('${L.accuracy}: ',style:TextStyle(color:Colors.white54,fontSize:12)),
+            Text('${L.accuracy}: ',style:TextStyle(color:Colors.white54,fontSize:12)),
             Text(estimateAccuracy(_selected!,_lang),
               style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
           ]),
@@ -433,7 +433,7 @@ class _State extends State<AiSubtitleSheet> {
             Row(children:[
               const Icon(Icons.timer_outlined,color: const Color(0xFF7C3AED),size:16),
               const SizedBox(width:8),
-              const Text('${L.sleepTimer}: ',style:TextStyle(color:Colors.white54,fontSize:12)),
+              Text('${L.sleepTimer}: ',style:TextStyle(color:Colors.white54,fontSize:12)),
               Text(WhisperService.estimateProcessingTime(_videoDurationMs,_selected!,_engine),
                 style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.bold)),
             ]),
