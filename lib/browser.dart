@@ -1046,7 +1046,9 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       });
   }
 
-  Widget _settingsTab()=>FutureBuilder<Map<String,dynamic>?>(
+  Widget _settingsTab()=>Column(children:[
+    _LangSelector(),
+    Expanded(child:FutureBuilder<Map<String,dynamic>?>(
     future:ApiService.getConfig(),
     builder:(ctx,snap){
       final cfg=snap.data??{};
@@ -1106,8 +1108,6 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         const SizedBox(height:8),
 
-        // انتخاب زبان
-        _LangSelector(),
 
         // گزارش مشکل / پیشنهاد
         if(admin.isNotEmpty)_appBtn(
@@ -1123,7 +1123,9 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                   style:TextStyle(fontSize:12,color:kTextSec,height:1.7)),
             ])),
       ]);
-    });
+    }),
+  ),
+  ]);
 }
 
 Widget _appBtn({required IconData icon,required Color color,required String label,VoidCallback? onTap}){
