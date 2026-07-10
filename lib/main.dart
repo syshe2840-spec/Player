@@ -157,7 +157,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       builder: (ctx, child) =>
-          Directionality(textDirection: TextDirection.rtl, child: child!),
+          Directionality(textDirection: langDir(L.current), child: child!),
       home: const _HomeWrapper(),
     );
   }
