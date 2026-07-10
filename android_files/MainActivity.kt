@@ -281,7 +281,7 @@ class MainActivity : FlutterActivity() {
                 }
                 "showAiProgress" -> {
                     val title = call.argument<String>("title") ?: "زیرنویس AI"
-                    showAiProgressNotif(title, 0, "شروع...")
+                    showAiProgressNotif(title, 0, "Starting...")
                     result.success(null)
                 }
                 "updateAiProgress" -> {
@@ -679,17 +679,17 @@ class MainActivity : FlutterActivity() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(percent < 100)
             .setOnlyAlertOnce(true)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "لغو", pi(A_AI_CANCEL, 5))
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", pi(A_AI_CANCEL, 5))
             .build())
     }
     private fun pi(action: String, code: Int) = PendingIntent.getBroadcast(this, code, Intent(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     private fun showNotif() {
         nm().notify(NOTIF_ID, NotificationCompat.Builder(this, NOTIF_CH_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle(title).setContentText(if (playing) "در حال پخش" else "متوقف")
+            .setContentTitle(title).setContentText(if (playing) "Playing" else "Paused")
             .setPriority(NotificationCompat.PRIORITY_LOW).setOngoing(playing)
-            .addAction(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "توقف" else "پخش", pi(if (playing) A_PAUSE else A_PLAY, 1))
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "بستن", pi(A_CLOSE, 2)).build())
+            .addAction(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "Pause" else "Play", pi(if (playing) A_PAUSE else A_PLAY, 1))
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", pi(A_CLOSE, 2)).build())
     }
     private fun enterPip() {
         if (Build.VERSION.SDK_INT < 26) return
@@ -699,8 +699,8 @@ class MainActivity : FlutterActivity() {
     private fun buildActions(): List<android.app.RemoteAction> {
         if (Build.VERSION.SDK_INT < 26) return emptyList()
         return listOf(
-            android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play), if (playing) "توقف" else "پخش", "", pi(if (playing) A_PAUSE else A_PLAY, 3)),
-            android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel), "بستن", "", pi(A_CLOSE, 4))
+            android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play), if (playing) "Pause" else "Play", "", pi(if (playing) A_PAUSE else A_PLAY, 3)),
+            android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel), "Close", "", pi(A_CLOSE, 4))
         )
     }
     private fun updatePipParams() { if (Build.VERSION.SDK_INT >= 26) setPictureInPictureParams(PictureInPictureParams.Builder().setActions(buildActions()).build()) }

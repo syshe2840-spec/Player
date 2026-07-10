@@ -1332,20 +1332,14 @@ class _PlayerState extends State<PlayerScreen>{
               onTap:_showEmbeddedSubPicker,
               child:Container(
                 margin:const EdgeInsets.symmetric(horizontal:2,vertical:10),
-                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                padding:const EdgeInsets.all(4),
                 decoration:BoxDecoration(
                   color:_embeddedSubEnabled?const Color(0xFF7C3AED):const Color(0xFF7C3AED).withOpacity(0.15),
                   borderRadius:BorderRadius.circular(6),
                   border:Border.all(color:const Color(0xFF7C3AED).withOpacity(_embeddedSubEnabled?0:0.4)),
                 ),
-                child:Row(mainAxisSize:MainAxisSize.min,children:[
-                  Icon(Icons.subtitles_outlined,size:12,
-                      color:_embeddedSubEnabled?Colors.white:const Color(0xFF7C3AED)),
-                  const SizedBox(width:3),
-                  Text('${_subtitleTracks.length} ${L.embeddedSubtitle}',
-                      style:TextStyle(fontSize:10,fontWeight:FontWeight.w600,
-                          color:_embeddedSubEnabled?Colors.white:const Color(0xFF7C3AED))),
-                ]),
+                child:Icon(Icons.subtitles_outlined,size:16,
+                    color:_embeddedSubEnabled?Colors.white:const Color(0xFF7C3AED)),
               ),
             ),
           PopupMenuButton<String>(
@@ -1656,7 +1650,7 @@ class _LivePanelSheetState extends State<_LivePanelSheet> {
           backgroundColor:Colors.white12, color:Colors.red),
         const SizedBox(height:12),
 
-        _row('📊', '\$done/\$total'),
+        _row('📊', '${done}/${total}'),
         const SizedBox(height:4),
         _row('🔊', '${_fmt(transcribed)}/${_fmt(totalSec)}'),
         const SizedBox(height:4),
@@ -1771,7 +1765,7 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
             const SizedBox(height:8),
             _row('⏱', _fmt(elapsed)),
             const SizedBox(height:4),
-            _row('📊', '\$done/\$total'),
+            _row('📊', '${done}/${total}'),
             const SizedBox(height:4),
             if(remaining>0) _row('⏳','~${_fmt(remaining)}'),
             const SizedBox(height:6),

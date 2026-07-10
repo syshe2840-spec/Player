@@ -14,7 +14,7 @@ import 'online_player_sheet.dart';
 import 'settings.dart' show ToolsTabBody;
 import 'package:url_launcher/url_launcher.dart' as ul;
 import 'player.dart';
-import 'main.dart' show showSnack;
+import 'main.dart' show showSnack, myAppKey;
 import 'l10n.dart';
 
 const kBg      = Color(0xFF08080F);
@@ -1082,6 +1082,28 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           onTap:()=>ul.launchUrl(Uri.parse(channel),mode:ul.LaunchMode.externalApplication)),
 
         const SizedBox(height:8),
+
+        // انتخاب زبان
+        Container(
+          margin:const EdgeInsets.only(bottom:12),
+          padding:const EdgeInsets.all(14),
+          decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(L.language,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13)),
+            const SizedBox(height:10),
+            StatefulBuilder(builder:(ctx,ss)=>Wrap(spacing:8,runSpacing:6,children:[
+              for(final lang in kSupportedLangs)
+                ChoiceChip(
+                  label:Text(kLangNames[lang]!,style:const TextStyle(fontSize:12)),
+                  selected:L.current==lang,
+                  onSelected:(_)async{
+                    await L.set(lang);
+                    ss((){});
+                    myAppKey.currentState?.setState((){});
+                  },
+                ),
+            ])),
+          ])),
 
         // گزارش مشکل / پیشنهاد
         if(admin.isNotEmpty)_appBtn(
