@@ -1110,19 +1110,25 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         Container(
           margin:const EdgeInsets.only(bottom:12),
           padding:const EdgeInsets.all(14),
-          decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
+          decoration:BoxDecoration(color:const Color(0xFF1C1C28),borderRadius:BorderRadius.circular(12),border:Border.all(color:const Color(0xFF2A2A3A))),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(L.language,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13)),
+            Text(L.language,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w600,fontSize:13)),
             const SizedBox(height:10),
-            StatefulBuilder(builder:(ctx,ss)=>Wrap(spacing:8,runSpacing:6,children:[
+            StatefulBuilder(builder:(ctx,ss)=>Wrap(spacing:6,runSpacing:6,children:[
               for(final lang in kSupportedLangs)
-                ChoiceChip(
-                  label:Text(kLangNames[lang]!,style:const TextStyle(fontSize:12)),
-                  selected:L.current==lang,
-                  onSelected:(_)async{
-                    await L.set(lang);
-                    ss((){});
-                  },
+                GestureDetector(
+                  onTap:()async{await L.set(lang);ss((){});},
+                  child:Container(
+                    padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+                    decoration:BoxDecoration(
+                      color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
+                      borderRadius:BorderRadius.circular(8),
+                      border:Border.all(color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF3A3A4A)),
+                    ),
+                    child:Text(kLangNames[lang]!,style:TextStyle(
+                      color:L.current==lang?Colors.white:Colors.white60,
+                      fontSize:12,fontWeight:L.current==lang?FontWeight.w600:FontWeight.normal)),
+                  ),
                 ),
             ])),
           ])),
