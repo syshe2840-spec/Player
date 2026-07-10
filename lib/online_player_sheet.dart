@@ -133,7 +133,7 @@ class _State extends State<OnlinePlayerSheet> {
                 decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
                 child: const Icon(Icons.play_circle_outline, color: Color(0xFF7C3AED), size: 24)),
               const SizedBox(width: 12),
-              const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(L.onlineVideo, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 Text('MP4 · MKV · HLS · DASH', style: TextStyle(color: Colors.white38, fontSize: 11)),
               ]),
@@ -189,7 +189,7 @@ class _State extends State<OnlinePlayerSheet> {
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                       child: _loading
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                         : const Row(mainAxisSize: MainAxisSize.min, children: [
                             Icon(Icons.play_arrow, size: 18), SizedBox(width: 4), Text(L.play),
                           ]),

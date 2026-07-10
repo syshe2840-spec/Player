@@ -174,7 +174,7 @@ class _AiModelsScreenState extends State<AiModelsScreen> {
         if(_cacheCount>0) TextButton(
           onPressed:_clearingCache?null:_clearCache,
           child:_clearingCache
-            ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2,color:Colors.red))
+            ? SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2,color:Colors.red))
             : Text(L.cleanUp,style:TextStyle(color:Colors.red,fontSize:12)),
         ),
       ]),

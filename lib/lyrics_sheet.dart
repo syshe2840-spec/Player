@@ -135,7 +135,7 @@ class _State extends State<LyricsSheet> {
               onPressed: _loading ? null : _search,
               style: FilledButton.styleFrom(backgroundColor:const Color(0xFF7C3AED), padding:const EdgeInsets.symmetric(horizontal:14,vertical:10)),
               child: _loading
-                ? const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
+                ? SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
                 : Text(L.search, style:TextStyle(fontSize:12)),
             ),
           ]),

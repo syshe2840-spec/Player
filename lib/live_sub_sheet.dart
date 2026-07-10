@@ -61,7 +61,7 @@ class _State extends State<LiveSubSheet> {
       child: SingleChildScrollView(
         padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
         child: _loading
-          ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED))))
+          ? SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED))))
           : Column(mainAxisSize: MainAxisSize.min, children: [
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 14),

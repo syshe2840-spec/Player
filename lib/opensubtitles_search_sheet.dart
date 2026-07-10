@@ -185,7 +185,7 @@ class _State extends State<OpenSubtitlesSheet> {
   );
 
   List<Widget> _buildTitles() {
-    if (_titles.isEmpty) return [const Padding(padding: EdgeInsets.all(20),
+    if (_titles.isEmpty) return [Padding(padding: EdgeInsets.all(20),
       child: Text(L.notFoundTry, style: TextStyle(color: Colors.white38, fontSize: 12)))];
     return _titles.map((f) => Container(
       margin: const EdgeInsets.only(bottom: 8),

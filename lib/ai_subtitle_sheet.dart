@@ -71,7 +71,7 @@ class _State extends State<AiSubtitleSheet> {
     if(_selected==null) return;
     setState((){ _running=true; _mode='running'; _progress=0; _status=L.startingLabel; });
     // notification: fire-and-forget — هرگز await نمی‌شود تا UI رو بلاک نکند
-    WhisperService.showProgressNotification('${L.aiSubtitle}: \${widget.videoPath.split('/').last}');
+    WhisperService.showProgressNotification('${L.aiSubtitle}: \${widget.videoPath.split("/").last}');
     try {
       final path = await WhisperService.transcribe(
         videoPath: widget.videoPath,
@@ -166,7 +166,7 @@ class _State extends State<AiSubtitleSheet> {
         const SizedBox(height:16),
         Text(L.aiSubtitleOffline, style: TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold)),
         const SizedBox(height:8),
-        const Text(
+        Text(
           L.onlineOnlyLocal,
           textAlign: TextAlign.center,
           style: TextStyle(color:Colors.white60, fontSize:13, height:1.6)),
@@ -184,7 +184,7 @@ class _State extends State<AiSubtitleSheet> {
       child:SingleChildScrollView(
         padding:EdgeInsets.only(left:16,right:16,top:16,bottom:MediaQuery.of(ctx).viewInsets.bottom+16),
         child:_loading
-          ? const SizedBox(height:120,child:Center(child:CircularProgressIndicator(color: const Color(0xFF7C3AED))))
+          ? SizedBox(height:120,child:Center(child:CircularProgressIndicator(color: const Color(0xFF7C3AED))))
           : Column(mainAxisSize:MainAxisSize.min,children:[
             Container(width:40,height:4,decoration:BoxDecoration(
               color:Colors.white24,borderRadius:BorderRadius.circular(2))),
@@ -261,7 +261,7 @@ class _State extends State<AiSubtitleSheet> {
                   constraints:const BoxConstraints(),padding:const EdgeInsets.all(6),
                 ),
                 improving
-                  ? const Padding(padding:EdgeInsets.all(8),
+                  ? Padding(padding:EdgeInsets.all(8),
                       child:SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color: const Color(0xFF7C3AED))))
                   : IconButton(
                       icon:const Icon(Icons.auto_fix_high,color: const Color(0xFF7C3AED),size:18),
@@ -373,7 +373,7 @@ class _State extends State<AiSubtitleSheet> {
       padding:const EdgeInsets.all(10),
       decoration:BoxDecoration(color:const Color(0xFF2A2A35),borderRadius:BorderRadius.circular(12)),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Row(children:const [
+        Row(children:[
           Icon(Icons.settings_suggest,color: const Color(0xFF7C3AED),size:16),
           SizedBox(width:8),
           Text(L.aiModel,style:TextStyle(color:Colors.white70,fontSize:12)),
@@ -406,7 +406,7 @@ class _State extends State<AiSubtitleSheet> {
         margin:const EdgeInsets.only(bottom:10),
         padding:const EdgeInsets.all(10),
         decoration:BoxDecoration(color:Colors.orange.withOpacity(0.15),borderRadius:BorderRadius.circular(10)),
-        child:const Row(children:[
+        child:Row(children:[
           Icon(Icons.warning_amber,color:Colors.orange,size:16),
           SizedBox(width:8),
           Expanded(child:Text(L.createNewLang,

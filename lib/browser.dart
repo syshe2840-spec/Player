@@ -1091,7 +1091,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         const SizedBox(height:16),
         Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
-            child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text(L.features,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
               Text('• MP4/MKV/AVI/...\n• SRT/VTT/ASS/SSA\n• HDR\n• Dual Sub',
                   style:TextStyle(fontSize:12,color:kTextSec,height:1.7)),

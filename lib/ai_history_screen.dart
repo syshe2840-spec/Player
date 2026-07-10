@@ -54,7 +54,7 @@ class _AiHistoryScreenState extends State<AiHistoryScreen> {
     body: _loading
       ? Center(child:CircularProgressIndicator(color:Color(0xFF7C3AED)))
       : _videos.isEmpty
-        ? const Center(child:Padding(
+        ? Center(child:Padding(
             padding:EdgeInsets.all(24),
             child:Text(L.noAiHistoryYet,
               style:TextStyle(color:Colors.white38,fontSize:13),textAlign:TextAlign.center)))

@@ -440,7 +440,7 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
 
   Future<void> _backupAll() async {
     const destDir = '/storage/emulated/0/Download/Vezoo/Backup';
-    setState(() { _loading = true; _status = L.backing_up; });
+    setState(() { _loading = true; _status = L.backingUp; });
     try {
       final copied = await const MethodChannel('com.vezoo.player/whisper')
         .invokeMethod<List>('backupModels', {'destDir': destDir});
@@ -477,7 +477,7 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
       Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Row(children: [
+          Row(children: [
             Icon(Icons.backup_rounded, color: Color(0xFF22c55e), size: 18),
             SizedBox(width: 8),
             Text(L.backupImport, style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),

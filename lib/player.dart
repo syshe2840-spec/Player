@@ -449,7 +449,7 @@ class _PlayerState extends State<PlayerScreen>{
           return ListTile(dense:true,
             leading:const Icon(Icons.subtitles,size:18,color:Color(0xFF94A3B8)),
             title:Text(t.title??t.language??'Track ${t.id}'),
-            subtitle:Text('${L.language}: ${t.language??""}'—'}',style:const TextStyle(fontSize:11)),
+            subtitle:Text('${L.language}: ${t.language??""}',style:const TextStyle(fontSize:11)),
             trailing:FilledButton(
               style:FilledButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:12),minimumSize:const Size(60,30)),
               onPressed:(){
@@ -1455,23 +1455,23 @@ class _PlayerState extends State<PlayerScreen>{
                   ]),
                 ]))
               else
-                const PopupMenuItem(value:'live',child:Row(children:[
+                PopupMenuItem(value:'live',child:Row(children:[
                   Icon(Icons.fiber_smart_record,size:18,color:Colors.red),SizedBox(width:10),Text(L.liveSubtitleSettings),
                 ])),
-              const PopupMenuItem(value:'ai',child:Row(children:[
+              PopupMenuItem(value:'ai',child:Row(children:[
                 Icon(Icons.auto_awesome,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text(L.aiSubtitleOffline),
               ])),
-              const PopupMenuItem(value:'online',child:Row(children:[
+              PopupMenuItem(value:'online',child:Row(children:[
                 Icon(Icons.cloud_download_outlined,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text(L.onlineSubtitleLabel),
               ])),
               if(_sub1Path!=null)
-                const PopupMenuItem(value:'translate',child:Row(children:[
+                PopupMenuItem(value:'translate',child:Row(children:[
                   Icon(Icons.translate,size:18,color:Color(0xFF7C3AED)),SizedBox(width:10),Text(L.translateSub),
                 ])),
-                const PopupMenuItem(value:'lyrics',child:Row(children:[
+                PopupMenuItem(value:'lyrics',child:Row(children:[
                   Icon(Icons.music_note_rounded,size:18,color:Color(0xFFEC4899)),SizedBox(width:10),Text(L.musicSubtitle),
                 ])),
-              const PopupMenuItem(value:'settings',child:Row(children:[
+              PopupMenuItem(value:'settings',child:Row(children:[
                 Icon(Icons.tune,size:18,color:Colors.white70),SizedBox(width:10),Text(L.subtitleSettings),
               ])),
             ],
