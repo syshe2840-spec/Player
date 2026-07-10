@@ -1,8 +1,6 @@
-
 import 'package:extractor/extractor.dart';
 
 /// سرویس پخش آنلاین — YouTube, Instagram, TikTok, 1000+ سایت
-/// از extractor package استفاده میکنه که yt-dlp رو با Python داخلی اجرا میکنه
 class YtDlpService {
   static final _dl = YoutubeDLFlutter.instance;
   static bool _initialized = false;
@@ -22,7 +20,7 @@ class YtDlpService {
     } catch (_) { return false; }
   }
 
-  static Future<bool> isDenoInstalled() async => false; // deno از طریق extractor نیاز نیست
+  static Future<bool> isDenoInstalled() async => false;
 
   static Future<Map<String,String?>> getVersions() async {
     try {
@@ -35,51 +33,54 @@ class YtDlpService {
   // ── آپدیت ──
   static Future<void> downloadYtDlp() async {
     await init();
-    await _dl.updateYoutubeDL();
+    await _dl.updateYoutubeDL(channel: UpdateChannel.stable);
   }
 
-  static Future<void> downloadDeno() async {} // نیازی نیست
-
+  static Future<void> downloadDeno() async {}
   static Future<void> updateYtDlp() async => downloadYtDlp();
   static Future<void> updateDeno() async {}
-
-  // ── حذف (extractor خودش manage میکنه) ──
   static Future<void> deleteYtDlp() async {}
   static Future<void> deleteDeno() async {}
-
-  // ── بکاپ ──
   static Future<List<String>> backup() async => [];
-
-  // ── ایمپورت ──
   static Future<void> importBin(String path, String type) async {}
-
-  // ── progress stream ──
   static Stream<Map> downloadProgress() => const Stream.empty();
 
-  // ── stream URL — مهم‌ترین تابع ──
+  // ── stream URL ──
   static Future<String> getStreamUrl(String url) async {
     await init();
     final info = await _dl.getVideoInfo(url);
-    // پیدا کردن بهترین format قابل پخش (mp4 یا stream url)
-    if (info.formats != null && info.formats!.isNotEmpty) {
-      // اول دنبال url مستقیم بگرد
-      for (final f in info.formats!.reversed) {
-        final fu = f['url'] as String?;
-        if (fu != null && fu.startsWith('http')) {
-          final ext = (f['ext'] as String? ?? '').toLowerCase();
-          final vcodec = (f['vcodec'] as String? ?? '');
-          // ترجیح: video+audio در یه stream
-          if (vcodec != 'none' && (ext == 'mp4' || ext == 'm4v' || ext == 'webm')) {
-            return fu;
-          }
+
+    final formats = info.formats;
+    if (formats != null && formats.isNotEmpty) {
+      // اول: video+audio در یه stream (mp4/webm)
+      for (final f in formats.reversed) {
+        final fu = f?.url;
+        if (fu == null || !fu.startsWith('http')) continue;
+        final ext = f?.ext?.toLowerCase() ?? '';
+        final vcodec = f?.vcodec ?? '';
+        final acodec = f?.acodec ?? '';
+        if (vcodec != 'none' && acodec != 'none' &&
+            (ext == 'mp4' || ext == 'webm' || ext == 'm4v')) {
+          return fu;
         }
       }
-      // fallback: هر url که داریم
-      for (final f in info.formats!.reversed) {
-        final fu = f['url'] as String?;
+      // fallback: هر url با video
+      for (final f in formats.reversed) {
+        final fu = f?.url;
+        if (fu != null && fu.startsWith('http') && (f?.vcodec ?? '') != 'none') {
+          return fu;
+        }
+      }
+      // آخرین fallback: هر url
+      for (final f in formats.reversed) {
+        final fu = f?.url;
         if (fu != null && fu.startsWith('http')) return fu;
       }
     }
-    throw Exception('No stream URL found for this video');
+
+    // اگه formats نبود، از url مستقیم info استفاده کن
+    if (info.url != null && info.url!.startsWith('http')) return info.url!;
+    throw Exception('No stream URL found');
   }
 }
+
