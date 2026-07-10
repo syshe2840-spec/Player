@@ -799,15 +799,41 @@ class MainActivity : FlutterActivity() {
 
     private fun runBin(type: String, args: List<String>): String? {
         val bin = getBinFile(type)
-        if (!bin.exists()) return null
+        if (!bin.exists() || bin.length() == 0L) return null
         bin.setExecutable(true, false)
-        val cmd = mutableListOf(bin.absolutePath) + args
-        val proc = ProcessBuilder(cmd)
+        val env = mutableMapOf(
+            "HOME" to filesDir.absolutePath,
+            "PATH" to "/system/bin:/system/xbin",
+            "TMPDIR" to cacheDir.absolutePath
+        )
+        // روش ۱: اجرای مستقیم
+        try {
+            val proc = ProcessBuilder(mutableListOf(bin.absolutePath) + args)
+                .redirectErrorStream(true)
+                .apply { environment().putAll(env) }
+                .start()
+            val out = proc.inputStream.bufferedReader().readText()
+            proc.waitFor()
+            if (proc.exitValue() != 126 && proc.exitValue() != 13) return out.ifBlank { null }
+        } catch (e: Exception) {
+            if (!e.message.orEmpty().contains("Permission denied") &&
+                !e.message.orEmpty().contains("error=13")) throw e
+        }
+        // روش ۲: linker64 (bypass W^X برای Android 10+)
+        val linker = listOf("/system/bin/linker64", "/system/bin/linker")
+            .firstOrNull { java.io.File(it).exists() } ?: throw Exception("No linker found")
+        val proc = ProcessBuilder(mutableListOf(linker, bin.absolutePath) + args)
             .redirectErrorStream(true)
+            .apply { environment().putAll(env) }
             .start()
         val out = proc.inputStream.bufferedReader().readText()
         proc.waitFor()
         return out.ifBlank { null }
+    }
+
+    private fun isBinInstalled(type: String): Boolean {
+        val f = getBinFile(type)
+        return f.exists() && f.length() > 1024L // حداقل ۱KB
     }
 
     private fun downloadBin(type: String, onProgress: (Int, String) -> Unit) {
@@ -875,3 +901,4 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
