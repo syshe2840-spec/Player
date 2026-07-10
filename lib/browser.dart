@@ -1,4 +1,3 @@
-
 // lib/browser.dart — مرورگر فایل حرفه‌ای
 import 'dart:async';
 import 'dart:io';
@@ -1114,8 +1113,9 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           label:reportText,
           onTap:()=>ul.launchUrl(Uri.parse(admin),mode:ul.LaunchMode.externalApplication)),
 
+        const SizedBox(height: 12),
+        const _LangPicker(),
         const SizedBox(height:16),
-        _LangSelector(),
         Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder)),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text(L.features,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13)),SizedBox(height:8),
@@ -1145,43 +1145,36 @@ Widget _appBtn({required IconData icon,required Color color,required String labe
   );
 }
 
-class _LangSelector extends StatefulWidget {
-  const _LangSelector();
-  @override State<_LangSelector> createState() => _LangSelectorState();
+
+class _LangPicker extends StatefulWidget {
+  const _LangPicker();
+  @override State<_LangPicker> createState() => _LangPickerState();
 }
-class _LangSelectorState extends State<_LangSelector> {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin:const EdgeInsets.only(bottom:12),
-      padding:const EdgeInsets.all(14),
-      decoration:BoxDecoration(
-        color:const Color(0xFF1C1C28),
-        borderRadius:BorderRadius.circular(12),
-        border:Border.all(color:const Color(0xFF2A2A3A))),
-      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(L.language,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w600,fontSize:13)),
-        const SizedBox(height:10),
-        Wrap(spacing:6,runSpacing:6,children:[
-          for(final lang in kSupportedLangs)
-            GestureDetector(
-              onTap:()async{
-                await L.set(lang);
-                setState((){});
-              },
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),
-                decoration:BoxDecoration(
-                  color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
-                  borderRadius:BorderRadius.circular(8),
-                  border:Border.all(color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF3A3A4A))),
-                child:Text(kLangNames[lang]!,style:TextStyle(
-                  color:L.current==lang?Colors.white:const Color(0xFFB0B0C0),
-                  fontSize:12,fontWeight:L.current==lang?FontWeight.w700:FontWeight.normal)),
-              ),
-            ),
-        ]),
+class _LangPickerState extends State<_LangPicker> {
+  @override Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(L.language, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, runSpacing: 6, children: kSupportedLangs.map((lang) =>
+          GestureDetector(
+            onTap: () async { await L.set(lang); if (mounted) setState(() {}); },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: L.current == lang ? const Color(0xFF7C3AED) : const Color(0xFF23233A),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: L.current == lang ? const Color(0xFF7C3AED) : Colors.white30)),
+              child: Text(kLangNames[lang]!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: L.current == lang ? Colors.white : Colors.white60,
+                  fontWeight: L.current == lang ? FontWeight.w600 : FontWeight.normal))),
+        )).toList()),
       ]),
     );
   }
 }
+
