@@ -55,7 +55,7 @@ final GlobalKey<MyAppState> myAppKey = GlobalKey<MyAppState>();
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
-  @override State<MyApp> createState() => _MyAppState();
+  @override State<MyApp> createState() => MyAppState();
 }
 
 class MyAppState extends State<MyApp> {
