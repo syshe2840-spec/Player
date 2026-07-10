@@ -166,10 +166,16 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
 
     const Divider(height:20),Text(L.font),const SizedBox(height:8),
     // فونت‌های پیش‌فرض
-    Wrap(spacing:8,runSpacing:6,children:kDefaultFonts.map(((String label,String family) f)=>ChoiceChip(
-      label:Text(f.$1,style:TextStyle(fontFamily:f.$2.isEmpty?null:f.$2)),
-      selected:_vs.fontFamily==f.$2,
-      onSelected:(_)=>_ch(()=>_vs.fontFamily=f.$2),
+    Wrap(spacing:6,runSpacing:6,children:kDefaultFonts.map(((String label,String family) f)=>GestureDetector(
+      onTap:()=>_ch(()=>_vs.fontFamily=f.$2),
+      child:Container(
+        padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
+        decoration:BoxDecoration(
+          color:_vs.fontFamily==f.$2?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
+          borderRadius:BorderRadius.circular(8),
+          border:Border.all(color:_vs.fontFamily==f.$2?const Color(0xFF7C3AED):const Color(0xFF3A3A4A))),
+        child:Text(f.$1,style:TextStyle(fontFamily:f.$2.isEmpty?null:f.$2,
+          color:_vs.fontFamily==f.$2?Colors.white:const Color(0xFFB0B0C0),fontSize:12))),
     )).toList()),
     const SizedBox(height:8),
     OutlinedButton.icon(onPressed:(){Navigator.pop(context);widget.onPickFont();},
@@ -247,9 +253,16 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     Text('${L.speed}: ${_speed%1==0?_speed.toInt():_speed}x'),
     Slider(min:0.25,max:10,divisions:39,value:_speed,
         onChanged:(v){final s=(v*4).round()/4;setState(()=>_speed=s);widget.onSpeed(s);_ch(()=>_vs.speed=s);}),
-    Wrap(spacing:6,children:[0.5,1.0,1.5,2.0,3.0,5.0,10.0].map((s)=>ChoiceChip(
-      label:Text('${s%1==0?s.toInt():s}x'),selected:_speed==s,
-      onSelected:(_){setState(()=>_speed=s);widget.onSpeed(s);_ch(()=>_vs.speed=s);})).toList()),
+    Wrap(spacing:6,runSpacing:6,children:[0.5,1.0,1.5,2.0,3.0,5.0,10.0].map((s)=>GestureDetector(
+      onTap:()=>_ch(()=>_vs.speed=s),
+      child:Container(
+        padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
+        decoration:BoxDecoration(
+          color:_vs.speed==s?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
+          borderRadius:BorderRadius.circular(8),
+          border:Border.all(color:_vs.speed==s?const Color(0xFF7C3AED):const Color(0xFF3A3A4A))),
+        child:Text('\${s}x',style:TextStyle(color:_vs.speed==s?Colors.white:const Color(0xFFB0B0C0),fontSize:12))),
+    )).toList()),
 
     const Divider(height:24),
     // حالت شب
@@ -357,13 +370,16 @@ class _SettingsState extends State<PlayerSettings> with SingleTickerProviderStat
     const SizedBox(height:8),
     Wrap(spacing:8,runSpacing:6,children:[
       for(final lang in kSupportedLangs)
-        ChoiceChip(
-          label:Text(kLangNames[lang]!),
-          selected: L.current==lang,
-          onSelected:(_)async{
-            await L.set(lang);
-            if(mounted)setState((){});
-          },
+        GestureDetector(
+          onTap:()async{await L.set(lang);if(mounted)setState((){});},
+          child:Container(
+            padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
+            decoration:BoxDecoration(
+              color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF2A2A3A),
+              borderRadius:BorderRadius.circular(8),
+              border:Border.all(color:L.current==lang?const Color(0xFF7C3AED):const Color(0xFF3A3A4A))),
+            child:Text(kLangNames[lang]!,style:TextStyle(
+              color:L.current==lang?Colors.white:const Color(0xFFB0B0C0),fontSize:12))),
         ),
     ]),
     const Divider(height:24,color:Colors.white12),

@@ -1047,7 +1047,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
   }
 
   Widget _settingsTab()=>Column(children:[
-    _LangSelector(),
+    Padding(padding:const EdgeInsets.fromLTRB(12,12,12,0),child:_LangSelector()),
     Expanded(child:FutureBuilder<Map<String,dynamic>?>(
     future:ApiService.getConfig(),
     builder:(ctx,snap){
