@@ -833,7 +833,7 @@ class MainActivity : FlutterActivity() {
 
     private fun isBinInstalled(type: String): Boolean {
         val f = getBinFile(type)
-        return f.exists() && f.length() > 1024L // حداقل ۱KB
+        return f.exists() && f.isFile && f.length() > 1024L && f.canRead()
     }
 
     private fun downloadBin(type: String, onProgress: (Int, String) -> Unit) {
@@ -843,7 +843,7 @@ class MainActivity : FlutterActivity() {
             else -> throw Exception("Unknown type: $type")
         }
         val dest = getBinFile(type)
-        dest.parentFile?.mkdirs()
+        dest.parentFile?.also { it.mkdirs() }
         onProgress(0, "Connecting...")
         val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
         conn.instanceFollowRedirects = true
@@ -864,7 +864,6 @@ class MainActivity : FlutterActivity() {
             }
         }
         if (isZip) {
-            // extract binary from zip
             onProgress(95, "Extracting...")
             val zis = java.util.zip.ZipInputStream(tmp.inputStream())
             var entry = zis.nextEntry
@@ -881,8 +880,13 @@ class MainActivity : FlutterActivity() {
             tmp.delete()
             if (!extracted) throw Exception("Binary not found in zip")
         } else {
-            tmp.renameTo(dest)
+            // renameTo روی Android میتونه fail کنه — از copyTo استفاده کن
+            if (!tmp.renameTo(dest)) {
+                tmp.copyTo(dest, overwrite = true)
+                tmp.delete()
+            }
         }
+        if (!dest.exists() || dest.length() == 0L) throw Exception("Download failed: file missing after save")
         dest.setExecutable(true, false)
         onProgress(100, "Done")
     }
