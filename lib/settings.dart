@@ -459,7 +459,6 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   String _status = '';
   Map<String,String?> _versions = {};
   bool _ytInstalled = false;
-  bool _denoInstalled = false;
   int _dlPct = 0;
 
   @override
@@ -471,8 +470,7 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     bool yt = false, de = false;
     try { v = await YtDlpService.getVersions(); } catch (_) {}
     try { yt = await YtDlpService.isYtDlpInstalled(); } catch (_) {}
-    try { de = await YtDlpService.isDenoInstalled(); } catch (_) {}
-    if (mounted) setState(() { _versions = v; _ytInstalled = yt; _denoInstalled = de; });
+    if (mounted) setState(() { _versions = v; _ytInstalled = yt; });
   }
 
   Future<void> _downloadBin(String type) async {
@@ -578,7 +576,6 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _binCard('ytdlp', _ytInstalled, _versions['ytdlp']),
-      _binCard('deno', _denoInstalled, _versions['deno']),
       if (_loading) LinearProgressIndicator(
         value: _dlPct > 0 ? _dlPct / 100 : null,
         color: const Color(0xFF7C3AED), backgroundColor: Colors.white12),
