@@ -190,9 +190,8 @@ class _State extends State<OnlinePlayerSheet> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                       child: _loading
                         ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.play_arrow, size: 18), SizedBox(width: 4), Text(L.play),
-                          ]),
+                        : Row(mainAxisSize: MainAxisSize.min, children: const [
+                            Icon(Icons.play_arrow, size: 18), SizedBox(width: 4)] + [Text(L.play)]),
                     )),
                 ]),
               ]),

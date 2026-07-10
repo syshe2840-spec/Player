@@ -79,9 +79,9 @@ class _State extends State<LiveSubSheet> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.1), borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF7C3AED).withOpacity(0.3))),
-                child: const Text(
+                child: Text(
                   L.liveSubDesc,
-                  style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.5)),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.5)),
               ),
 
               if (_models.isEmpty) ...[
