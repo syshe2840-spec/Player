@@ -60,9 +60,7 @@ jobs:
           if [ -n "$MAKT_DIR" ]; then
             cp android_files/WhisperV2Bridge.kt "$MAKT_DIR/WhisperV2Bridge.kt"
             cp android_files/LiveSubService.kt  "$MAKT_DIR/LiveSubService.kt"
-            cp android_files/VezooApplication.kt "$MAKT_DIR/VezooApplication.kt"
             echo "=== Kotlin files copied ==="
-            # اضافه کردن service به AndroidManifest
             MANIFEST="android/app/src/main/AndroidManifest.xml"
             if ! grep -q "LiveSubService" "$MANIFEST"; then
               sed -i 's|</application>|        <service android:name="com.vezoo.player.LiveSubService" android:foregroundServiceType="dataSync" android:exported="false"/>\n        </application>|' "$MANIFEST"
@@ -70,12 +68,7 @@ jobs:
               sed -i 's|<uses-permission android:name="android.permission.INTERNET"/>|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>|' "$MANIFEST"
               echo "=== AndroidManifest updated with LiveSubService ==="
             fi
-            # اضافه کردن VezooApplication برای WorkManager init
-            if ! grep -q "VezooApplication" "$MANIFEST"; then
-              sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:label="Vezoo"/' "$MANIFEST" || true
-              sed -i 's/<application/<application\n        android:name=".VezooApplication"/' "$MANIFEST" || true
-              echo "=== VezooApplication added to manifest ==="
-            fi
+
           fi
           # patch build.gradle.kts برای NDK
           APP=android/app/build.gradle.kts
