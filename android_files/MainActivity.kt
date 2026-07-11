@@ -40,6 +40,14 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : FlutterActivity() {
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        // initialize lifecycle برای extractor/WorkManager
+        try {
+            androidx.lifecycle.ProcessLifecycleOwner.get()
+        } catch (_: Exception) {}
+    }
     private val THUMB_CH  = "ir.subteam.subtitle_player/thumbnail"
     private val PIP_CH    = "ir.subteam.subtitle_player/pip"
     private val VEZ_CH    = "com.vezoo.player/vezoo"
