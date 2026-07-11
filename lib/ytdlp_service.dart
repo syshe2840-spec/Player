@@ -7,9 +7,17 @@ class YtDlpService {
 
   static Future<void> init() async {
     if (_initialized) return;
-    // result.success گاهی false میده حتی وقتی کار میکنه — ignore می‌کنیم
-    await _dl.initialize(enableFFmpeg: true, enableAria2c: false);
-    _initialized = true;
+    // WorkManager lifecycle ممکنه اول آماده نباشه — retry با delay
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) await Future.delayed(const Duration(seconds: 2));
+        await _dl.initialize(enableFFmpeg: true, enableAria2c: false);
+        _initialized = true;
+        return;
+      } catch (e) {
+        if (attempt == 2) rethrow;
+      }
+    }
   }
 
   static Future<void> _ensureInit() async {
