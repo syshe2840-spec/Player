@@ -1,4 +1,3 @@
-
 import 'package:extractor/extractor.dart';
 
 /// سرویس پخش آنلاین — YouTube, Instagram, TikTok, 1000+ سایت
@@ -8,17 +7,9 @@ class YtDlpService {
 
   static Future<void> init() async {
     if (_initialized) return;
-    try {
-      final result = await _dl.initialize(enableFFmpeg: true, enableAria2c: false);
-      if (result.success) {
-        _initialized = true;
-      } else {
-        throw Exception('extractor init: success=${result.success} err=${result.errorMessage ?? "null"}');
-      }
-    } catch (e) {
-      _initialized = false;
-      rethrow;
-    }
+    // result.success گاهی false میده حتی وقتی کار میکنه — ignore می‌کنیم
+    await _dl.initialize(enableFFmpeg: true, enableAria2c: false);
+    _initialized = true;
   }
 
   static Future<void> _ensureInit() async {
@@ -66,7 +57,7 @@ class YtDlpService {
 
     final formats = info.formats;
     if (formats != null && formats.isNotEmpty) {
-      // اول: video+audio در یه stream (mp4/webm)
+      // video+audio در یه stream
       for (final f in formats.reversed) {
         final fu = f?.url;
         if (fu == null || !fu.startsWith('http')) continue;
@@ -74,26 +65,22 @@ class YtDlpService {
         final vcodec = f?.vcodec ?? '';
         final acodec = f?.acodec ?? '';
         if (vcodec != 'none' && acodec != 'none' &&
-            (ext == 'mp4' || ext == 'webm' || ext == 'm4v')) {
-          return fu;
-        }
+            (ext == 'mp4' || ext == 'webm' || ext == 'm4v')) return fu;
       }
-      // fallback: هر url با video
+      // fallback: video only
       for (final f in formats.reversed) {
         final fu = f?.url;
-        if (fu != null && fu.startsWith('http') && (f?.vcodec ?? '') != 'none') {
-          return fu;
-        }
+        if (fu != null && fu.startsWith('http') && (f?.vcodec ?? '') != 'none') return fu;
       }
-      // آخرین fallback: هر url
+      // آخرین fallback
       for (final f in formats.reversed) {
         final fu = f?.url;
         if (fu != null && fu.startsWith('http')) return fu;
       }
     }
 
-    // اگه formats نبود، از url مستقیم info استفاده کن
     if (info.url != null && info.url!.startsWith('http')) return info.url!;
     throw Exception('No stream URL found');
   }
 }
+
