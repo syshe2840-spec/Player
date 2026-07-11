@@ -1,3 +1,4 @@
+
 import 'package:extractor/extractor.dart';
 
 /// سرویس پخش آنلاین — YouTube, Instagram, TikTok, 1000+ سایت
@@ -12,7 +13,7 @@ class YtDlpService {
       if (result.success) {
         _initialized = true;
       } else {
-        throw Exception('extractor init failed: \${result.errorMessage}');
+        throw Exception('extractor init: success=${result.success} err=${result.errorMessage ?? "null"}');
       }
     } catch (e) {
       _initialized = false;
@@ -96,4 +97,3 @@ class YtDlpService {
     throw Exception('No stream URL found');
   }
 }
-
