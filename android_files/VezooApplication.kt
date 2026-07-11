@@ -1,17 +1,10 @@
 package com.vezoo.player
 
-import android.app.Application
-import androidx.lifecycle.ProcessLifecycleOwner
+import com.chaquo.python.android.PyApplication
 
-class VezooApplication : Application() {
+class VezooApplication : PyApplication() {
     override fun onCreate() {
-        super.onCreate()
-        // force initialize lifecycle برای extractor package
-        try {
-            ProcessLifecycleOwner.get()
-        } catch (_: Exception) {
-            // ignore if already initialized
-        }
+        super.onCreate() // Chaquopy + lifecycle initialize میشه
     }
 }
 
