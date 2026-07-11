@@ -62,6 +62,11 @@ jobs:
             cp android_files/LiveSubService.kt  "$MAKT_DIR/LiveSubService.kt"
             echo "=== Kotlin files copied ==="
             MANIFEST="android/app/src/main/AndroidManifest.xml"
+            # اضافه VezooApplication به application tag (فقط یه بار)
+            if ! grep -q "VezooApplication" "$MANIFEST"; then
+              sed -i '/<application/{/android:name/!s/<application/<application android:name=".VezooApplication"/}' "$MANIFEST"
+              echo "=== VezooApplication added ==="
+            fi
             if ! grep -q "LiveSubService" "$MANIFEST"; then
               sed -i 's|</application>|        <service android:name="com.vezoo.player.LiveSubService" android:foregroundServiceType="dataSync" android:exported="false"/>\n        </application>|' "$MANIFEST"
               # اضافه کردن permission های Foreground Service
