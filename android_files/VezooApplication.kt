@@ -1,11 +1,17 @@
 package com.vezoo.player
 
 import android.app.Application
+import androidx.lifecycle.ProcessLifecycleOwner
 
 class VezooApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // initialize ProcessLifecycleOwner برای extractor/WorkManager
-        androidx.lifecycle.ProcessLifecycleOwner.get()
+        // force initialize lifecycle برای extractor package
+        try {
+            ProcessLifecycleOwner.get()
+        } catch (_: Exception) {
+            // ignore if already initialized
+        }
     }
 }
+
