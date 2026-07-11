@@ -12,7 +12,7 @@ class YtDlpService {
       if (result.success) {
         _initialized = true;
       } else {
-        throw Exception(result.errorMessage ?? 'Init failed');
+        throw Exception('extractor init failed: \${result.errorMessage}');
       }
     } catch (e) {
       _initialized = false;
