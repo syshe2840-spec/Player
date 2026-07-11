@@ -62,10 +62,10 @@ jobs:
             cp android_files/LiveSubService.kt  "$MAKT_DIR/LiveSubService.kt"
             echo "=== Kotlin files copied ==="
             MANIFEST="android/app/src/main/AndroidManifest.xml"
-            # VezooApplication با tools:replace برای override کردن PyApplication
-            if ! grep -q "VezooApplication" "$MANIFEST"; then
-              sed -i "s|<application|<application\n        android:name=\".VezooApplication\"\n        tools:replace=\"android:name\"|" "$MANIFEST" || true
-              echo "=== VezooApplication registered ==="
+            # اضافه کردن lifecycle startup provider برای extractor/WorkManager
+            if ! grep -q "ProcessLifecycleInitializer" "$MANIFEST"; then
+              sed -i "s|</manifest>|    <provider android:name=\"androidx.startup.InitializationProvider\" android:authorities=\"\${applicationId}.androidx-startup\" android:exported=\"false\" tools:node=\"merge\"><meta-data android:name=\"androidx.lifecycle.ProcessLifecycleInitializer\" android:value=\"androidx.startup\"/></provider>\n</manifest>|" "$MANIFEST" || true
+              echo "=== lifecycle startup added ==="
             fi
             if ! grep -q "LiveSubService" "$MANIFEST"; then
               sed -i 's|</application>|        <service android:name="com.vezoo.player.LiveSubService" android:foregroundServiceType="dataSync" android:exported="false"/>\n        </application>|' "$MANIFEST"
