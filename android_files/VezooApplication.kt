@@ -1,15 +1,11 @@
 package com.vezoo.player
 
 import android.app.Application
-import androidx.work.Configuration
 
-class VezooApplication : Application(), Configuration.Provider {
+class VezooApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // initialize ProcessLifecycleOwner برای extractor/WorkManager
+        androidx.lifecycle.ProcessLifecycleOwner.get()
     }
-
-    override fun getWorkManagerConfiguration(): Configuration =
-        Configuration.Builder()
-            .setMinimumLoggingLevel(android.util.Log.ERROR)
-            .build()
 }
