@@ -1,3 +1,4 @@
+
 package com.vezoo.player
 
 import android.content.Context
@@ -6,6 +7,7 @@ import io.flutter.plugin.common.EventChannel
 import okhttp3.*
 import okio.ByteString
 import org.json.JSONObject
+import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
 class DeepgramService(
@@ -20,7 +22,7 @@ class DeepgramService(
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS)
-        .pingInterval(20, TimeUnit.SECONDS)
+        .pingInterval(25, TimeUnit.SECONDS)
         .build()
 
     fun setSink(s: EventChannel.EventSink?) { sink = s }
@@ -44,15 +46,20 @@ class DeepgramService(
         } catch (e: Exception) { log("STEP1 ERROR: ${e.message}"); "" }
 
         if (apiKey.isEmpty()) {
-            sendEvent("error", "No API key"); running = false; return
+            log("STEP1 FAIL"); sendEvent("error", "No API key"); running = false; return
         }
         log("STEP1 OK")
 
-        val wsUrl = "wss://api.deepgram.com/v1/listen?" +
-            "model=nova-3&language=en&" +
-            "punctuate=true&interim_results=true&endpointing=300&" +
-            "encoding=linear16&sample_rate=16000&channels=1"
-        log("STEP2: connecting nova-3 en")
+        val model = when (language) {
+            "multi" -> "nova-2-general"
+            "fa", "ar", "hi", "id", "tr", "uk", "nl", "sv" -> "nova-2"
+            else -> "nova-3"
+        }
+        val langParam = if (language == "multi") "detect_language=true" else "language=$language"
+        val wsUrl = "wss://api.deepgram.com/v1/listen?model=$model&$langParam" +
+            "&punctuate=true&interim_results=true&endpointing=300" +
+            "&encoding=linear16&sample_rate=16000&channels=1"
+        log("STEP2: connecting model=$model lang=$langParam")
 
         ws = http.newWebSocket(
             Request.Builder().url(wsUrl).header("Authorization", "Token $apiKey").build(),
@@ -60,11 +67,10 @@ class DeepgramService(
                 override fun onOpen(ws: WebSocket, response: Response) {
                     log("STEP2 OK: ${response.code}")
                     sendEvent("status", "connected")
-                    // فوری شروع کن — بدون هیچ delay
                     startMicNow()
                 }
                 override fun onMessage(ws: WebSocket, text: String) {
-                    log("RAW: ${text.take(100)}")
+                    log("RAW: ${text.take(80)}")
                     try {
                         val j = JSONObject(text)
                         val t = j.optJSONObject("channel")
@@ -85,7 +91,7 @@ class DeepgramService(
                     sendEvent("error", "${t.message}"); stop()
                 }
                 override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-                    log("CLOSED $code $reason"); sendEvent("status", "closed"); stop()
+                    log("CLOSED $code"); sendEvent("status", "closed"); stop()
                 }
             }
         )
@@ -97,12 +103,10 @@ class DeepgramService(
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) * 2, 3200)
         val rec = AudioRecord(MediaRecorder.AudioSource.MIC, sr,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf)
-        log("MIC: state=${rec.state}")
-        sendEvent("status", "recording_mic")
+        log("MIC state=${rec.state}"); sendEvent("status", "recording_mic")
         rec.startRecording()
         Thread {
-            val chunk = ByteArray(buf / 4)
-            var total = 0L
+            val chunk = ByteArray(buf / 4); var total = 0L
             while (running) {
                 val read = rec.read(chunk, 0, chunk.size)
                 if (read > 0) {
@@ -132,4 +136,3 @@ class DeepgramService(
         }
     }
 }
-
