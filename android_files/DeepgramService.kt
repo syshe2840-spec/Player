@@ -34,7 +34,6 @@ class DeepgramService(
     }
 
     private fun doStart(language: String) {
-        // STEP 1: key از Worker
         log("STEP1: fetching key...")
         val apiKey = try {
             val resp = http.newCall(
@@ -51,8 +50,11 @@ class DeepgramService(
         }
         log("STEP1 OK")
 
-        // STEP 2: WebSocket به Deepgram
-        val model = if (language == "multi") "nova-2-general" else "nova-3"
+        val model = when (language) {
+            "multi" -> "nova-2-general"
+            "fa", "ar", "hi", "id", "tr", "uk", "nl", "sv" -> "nova-2"
+            else -> "nova-3"
+        }
         val langParam = if (language == "multi") "detect_language=true" else "language=$language"
         val wsUrl = "wss://api.deepgram.com/v1/listen?model=$model&$langParam" +
             "&punctuate=true&interim_results=true&endpointing=300" +
@@ -94,18 +96,13 @@ class DeepgramService(
     }
 
     private fun startAudioCapture() {
-        // STEP 3: MediaExtractor + MediaCodec — بدون هیچ permission
         val url = streamUrl
-        if (url.startsWith("http") && !url.isEmpty()) {
+        if (url.startsWith("http") && url.isNotEmpty()) {
             log("STEP3: MediaExtractor from URL: ${url.take(60)}")
-            try {
-                startMediaExtractor(url)
-                return
-            } catch (e: Exception) {
-                log("STEP3 MediaExtractor failed: ${e.message} — fallback to MIC")
-            }
+            try { startMediaExtractor(url); return }
+            catch (e: Exception) { log("STEP3 failed: ${e.message} — MIC") }
         } else {
-            log("STEP3: no URL — using MIC")
+            log("STEP3: no URL — MIC")
         }
         startMic()
     }
@@ -113,158 +110,93 @@ class DeepgramService(
     private fun startMediaExtractor(url: String) {
         val extractor = MediaExtractor()
         log("STEP3: calling setDataSource...")
-        var dataSourceSet = false
+        var ok = false
         val t = Thread {
-            try {
-                extractor.setDataSource(url)
-                dataSourceSet = true
-                log("STEP3: setDataSource OK")
-            } catch (e: Exception) {
-                log("STEP3: setDataSource ERROR: \${e.message}")
-            }
+            try { extractor.setDataSource(url); ok = true; log("STEP3: setDataSource OK") }
+            catch (e: Exception) { log("STEP3: setDataSource ERR: ${e.message}") }
         }
-        t.start()
-        t.join(8000) // 8 ثانیه timeout
-        if (!dataSourceSet) {
-            log("STEP3: setDataSource TIMEOUT — server blocking second connection — fallback to MIC")
-            extractor.release()
-            startMic()
-            return
-        }
+        t.start(); t.join(8000)
+        if (!ok) { log("STEP3: TIMEOUT — MIC"); extractor.release(); startMic(); return }
 
-        var audioTrackIndex = -1
-        var audioFormat: MediaFormat? = null
-        var mime = ""
-
+        var idx = -1; var fmt: MediaFormat? = null; var mime = ""
         for (i in 0 until extractor.trackCount) {
-            val fmt = extractor.getTrackFormat(i)
-            val m = fmt.getString(MediaFormat.KEY_MIME) ?: continue
-            if (m.startsWith("audio/")) {
-                audioTrackIndex = i
-                audioFormat = fmt
-                mime = m
-                log("STEP3: found audio track $i mime=$m")
-                break
-            }
+            val f = extractor.getTrackFormat(i)
+            val m = f.getString(MediaFormat.KEY_MIME) ?: continue
+            if (m.startsWith("audio/")) { idx = i; fmt = f; mime = m; log("STEP3: audio track $i $m"); break }
         }
+        if (idx < 0 || fmt == null) { log("STEP3: no audio — MIC"); extractor.release(); startMic(); return }
 
-        if (audioTrackIndex < 0 || audioFormat == null) {
-            log("STEP3: no audio track found — fallback to MIC")
-            extractor.release()
-            startMic()
-            return
-        }
-
-        extractor.selectTrack(audioTrackIndex)
-
-        val srcSampleRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-        val srcChannels = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-        log("STEP3: srcRate=$srcSampleRate srcCh=$srcChannels mime=$mime")
-
+        extractor.selectTrack(idx)
+        val sr = fmt.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+        val ch = fmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        log("STEP3: rate=$sr ch=$ch")
         val codec = MediaCodec.createDecoderByType(mime)
-        codec.configure(audioFormat, null, null, 0)
-        codec.start()
-
+        codec.configure(fmt, null, null, 0); codec.start()
         sendEvent("status", "capturing_stream_audio")
-        log("STEP3: MediaCodec started")
 
         Thread {
-            val bufInfo = MediaCodec.BufferInfo()
-            val timeoutUs = 10000L
-            val pcmBuf = ByteBuffer.allocate(65536)
-            var totalSent = 0L
-            var inputDone = false
-
+            val info = MediaCodec.BufferInfo(); var total = 0L; var inputDone = false
             while (running) {
-                // Input
                 if (!inputDone) {
-                    val inIdx = codec.dequeueInputBuffer(timeoutUs)
-                    if (inIdx >= 0) {
-                        val inBuf = codec.getInputBuffer(inIdx)!!
-                        inBuf.clear()
-                        val sampleSize = extractor.readSampleData(inBuf, 0)
-                        if (sampleSize < 0) {
-                            codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            inputDone = true
-                            log("STEP3: input done")
-                        } else {
-                            codec.queueInputBuffer(inIdx, 0, sampleSize, extractor.sampleTime, 0)
-                            extractor.advance()
-                        }
+                    val i = codec.dequeueInputBuffer(10000L)
+                    if (i >= 0) {
+                        val b = codec.getInputBuffer(i)!!; b.clear()
+                        val sz = extractor.readSampleData(b, 0)
+                        if (sz < 0) { codec.queueInputBuffer(i,0,0,0,MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone=true }
+                        else { codec.queueInputBuffer(i,0,sz,extractor.sampleTime,0); extractor.advance() }
                     }
                 }
-
-                // Output
-                val outIdx = codec.dequeueOutputBuffer(bufInfo, timeoutUs)
-                if (outIdx >= 0) {
-                    val outBuf = codec.getOutputBuffer(outIdx)!!
-                    val pcmSize = bufInfo.size
-                    if (pcmSize > 0) {
-                        val rawPcm = ByteArray(pcmSize)
-                        outBuf.get(rawPcm)
-                        // resample + downmix به 16000Hz mono
-                        val resampled = resampleToMono16k(rawPcm, srcSampleRate, srcChannels)
-                        ws?.send(ByteString.of(*resampled))
-                        totalSent += resampled.size
-                        if (totalSent % (16000 * 2 * 3L) < resampled.size)
-                            log("STEP3: sent ${totalSent/1024}kb")
+                val o = codec.dequeueOutputBuffer(info, 10000L)
+                if (o >= 0) {
+                    val ob = codec.getOutputBuffer(o)!!
+                    if (info.size > 0) {
+                        val raw = ByteArray(info.size); ob.get(raw)
+                        val pcm = resample(raw, sr, ch)
+                        ws?.send(ByteString.of(*pcm))
+                        total += pcm.size
+                        if (total % (16000*2*3L) < pcm.size) log("STEP3: sent ${total/1024}kb")
                     }
-                    codec.releaseOutputBuffer(outIdx, false)
-                    if (bufInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                        log("STEP3: stream ended")
-                        break
-                    }
+                    codec.releaseOutputBuffer(o, false)
+                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
                 }
             }
-
             codec.stop(); codec.release(); extractor.release()
-            log("STEP3: MediaExtractor done")
         }.start()
     }
 
-    // resample از srcRate/srcChannels به 16000Hz mono
-    private fun resampleToMono16k(src: ByteArray, srcRate: Int, srcChannels: Int): ByteArray {
-        val srcSamples = src.size / 2 // 16-bit
-        val outSamples = (srcSamples.toLong() * 16000 / srcRate / srcChannels).toInt()
-        if (outSamples <= 0) return ByteArray(0)
-        val out = ByteArray(outSamples * 2)
-        val ratio = srcSamples.toDouble() / outSamples / srcChannels
-        for (i in 0 until outSamples) {
-            val srcIdx = (i * ratio * srcChannels).toInt().coerceIn(0, srcSamples - srcChannels)
-            // mix channels به mono
+    private fun resample(src: ByteArray, srcRate: Int, srcCh: Int): ByteArray {
+        val s = src.size / 2
+        val out = (s.toLong() * 16000 / srcRate / srcCh).toInt()
+        if (out <= 0) return ByteArray(0)
+        val r = ByteArray(out * 2)
+        val ratio = s.toDouble() / out / srcCh
+        for (i in 0 until out) {
+            val si = (i * ratio * srcCh).toInt().coerceIn(0, s - srcCh)
             var sum = 0L
-            for (ch in 0 until srcChannels) {
-                val byteIdx = (srcIdx + ch) * 2
-                if (byteIdx + 1 < src.size) {
-                    val sample = (src[byteIdx].toInt() and 0xFF) or (src[byteIdx + 1].toInt() shl 8)
-                    sum += sample.toShort()
-                }
+            for (c in 0 until srcCh) {
+                val bi = (si + c) * 2
+                if (bi + 1 < src.size) sum += ((src[bi].toInt() and 0xFF) or (src[bi+1].toInt() shl 8)).toShort()
             }
-            val mono = (sum / srcChannels).toInt().toShort()
-            out[i * 2] = (mono.toInt() and 0xFF).toByte()
-            out[i * 2 + 1] = (mono.toInt() shr 8 and 0xFF).toByte()
+            val m = (sum / srcCh).toInt().toShort()
+            r[i*2] = (m.toInt() and 0xFF).toByte(); r[i*2+1] = (m.toInt() shr 8 and 0xFF).toByte()
         }
-        return out
+        return r
     }
 
     private fun startMic() {
         val sr = 16000
-        val buf = maxOf(AudioRecord.getMinBufferSize(sr,
-            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) * 2, 3200)
-        val rec = AudioRecord(MediaRecorder.AudioSource.MIC, sr,
-            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf)
-        log("MIC: state=${rec.state}")
-        sendEvent("status", "recording_mic_fallback")
+        val buf = maxOf(AudioRecord.getMinBufferSize(sr, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)*2, 3200)
+        val rec = AudioRecord(MediaRecorder.AudioSource.MIC, sr, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf)
+        log("MIC: state=${rec.state}"); sendEvent("status", "recording_mic_fallback")
         rec.startRecording()
         Thread {
-            val chunk = ByteArray(buf / 4)
-            var total = 0L
+            val chunk = ByteArray(buf/4); var total = 0L
             while (running) {
                 val read = rec.read(chunk, 0, chunk.size)
                 if (read > 0) {
                     ws?.send(ByteString.of(*chunk.copyOf(read)))
                     total += read
-                    if (total % (sr * 2 * 3L) < read) log("mic: sent ${total/1024}kb")
+                    if (total % (sr*2*3L) < read) log("mic: sent ${total/1024}kb")
                 }
             }
             rec.stop(); rec.release()
