@@ -30,6 +30,8 @@ import 'whisper_service.dart';
 import 'settings.dart';
 import 'main.dart' show showSnack;
 import 'l10n.dart';
+import 'deepgram_service.dart';
+import 'package:permission_handler/permission_handler.dart' as permission_handler;
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
 enum _Repeat{none,one,all}
@@ -39,7 +41,8 @@ class PlayerScreen extends StatefulWidget {
   final List<File> playlist;
   final int playlistIndex;
   final bool isOnlineUrl; // آدرس آنلاین (نه فایل محلی)
-  const PlayerScreen({super.key,this.subtitlePath,required this.playlist,required this.playlistIndex,this.isOnlineUrl=false});
+  final bool isLive; // پخش زنده IPTV
+  const PlayerScreen({super.key,this.subtitlePath,required this.playlist,required this.playlistIndex,this.isOnlineUrl=false,this.isLive=false});
   @override State<PlayerScreen> createState()=>_PlayerState();
 }
 
@@ -50,6 +53,17 @@ class _PlayerState extends State<PlayerScreen>{
 
   Duration _position=Duration.zero,_duration=Duration.zero;
   bool _playing=true;
+  bool _buffering=false;
+  String _bufferStatus='';
+  DateTime? _bufferStart;
+  List<String> _liveLog=[];
+  bool _showLiveLog=true;
+  bool _dgActive=false;
+  String _dgText='';
+  String _dgLang='multi';
+  StreamSubscription? _dgSub;
+  List<String> _aiLog=[];
+  bool _isFullscreen=false;
   final List<StreamSubscription> _subs=[];
 
   // زیرنویس
@@ -197,6 +211,7 @@ class _PlayerState extends State<PlayerScreen>{
       if(mounted&&!_seekDragging)setState((){});
     }));
     _subs.add(player.stream.playing.listen((pl){
+      if(widget.isLive&&pl)_addLiveLog('▶ Playback started!');
       _playing=pl;
       if(mounted){if(!_seekDragging)setState((){});_notifUpdate();}
     }));
@@ -223,7 +238,58 @@ class _PlayerState extends State<PlayerScreen>{
 
     _subs.add(player.stream.width.listen((w){if(mounted&&w!=null&&!_seekDragging)setState(()=>_videoWidth=w);}));
     _subs.add(player.stream.height.listen((h){if(mounted&&h!=null&&!_seekDragging)setState(()=>_videoHeight=h);}));
-    _subs.add(player.stream.videoParams.listen((vp){if(mounted)setState(()=>_videoParams=vp);}));
+    _subs.add(player.stream.videoParams.listen((vp){if(mounted)setState((){_videoParams=vp;if(widget.isLive&&vp.pixelformat!=null)_addLiveLog('Video: ${vp.pixelformat} ${_videoWidth??0}x${_videoHeight??0}');});}));
+    _subs.add(player.stream.buffering.listen((buf){
+      if(mounted) setState((){
+        _buffering=buf;
+        if(buf){
+          _bufferStart??=DateTime.now();
+          _bufferStatus='Buffering...';
+          _addLiveLog('Buffering...');
+        } else {
+          final elapsed=_bufferStart!=null?DateTime.now().difference(_bufferStart!).inSeconds:0;
+          _bufferStart=null;
+          _bufferStatus='';
+          _addLiveLog('Buffer done (${elapsed}s) — playing');
+        }
+      });
+    }));
+    // ── MPV error stream ──
+    _subs.add(player.stream.error.listen((err){
+      if(err.isNotEmpty)_addLiveLog('⚠ Error: $err');
+    }));
+    // ── MPV native log stream ──
+    if(widget.isLive){
+      _subs.add(player.stream.log.listen((log){
+        if(log.level=='error'||log.level=='warn'||log.level=='fatal')
+          _addLiveLog('[${log.level}] ${log.prefix}: ${log.text}');
+      }));
+    }
+
+    // ── position change — detect stall ──
+    if(widget.isLive){
+      Duration _lastPos=Duration.zero;
+      int _stallCount=0;
+      _subs.add(Stream.periodic(const Duration(seconds:2)).listen((_){
+        if(!mounted||!_buffering)return;
+        if(_position==_lastPos&&_position>Duration.zero){
+          _stallCount++;
+          _addLiveLog('⏸ Stalled ${_stallCount*2}s at ${_position.inSeconds}s');
+        } else if(_position!=_lastPos){
+          _stallCount=0;
+          _addLiveLog('▶ Position: ${_position.inSeconds}s (live)');
+        }
+        _lastPos=_position;
+      }));
+
+      // log هر ۵ ثانیه وضعیت
+      _subs.add(Stream.periodic(const Duration(seconds:5)).take(20).listen((_){
+        if(!mounted)return;
+        final native=player.platform as NativePlayer;
+        _addLiveLog('📊 buffering=$_buffering pos=${_position.inSeconds}s w=${_videoWidth??0}x${_videoHeight??0}');
+      }));
+    }
+
     _subs.add(player.stream.completed.listen((done){
       if(!done)return;
       switch(_repeatMode){
@@ -242,7 +308,37 @@ class _PlayerState extends State<PlayerScreen>{
       WidgetsBinding.instance.addPostFrameCallback((_)=>_playVez(_curPath));
       return;
     }
-    await player.open(Media(_curPath));
+    // آنلاین stream options — سرعت بیشتر
+    final isOnline = widget.isLive || widget.isOnlineUrl || 
+      _curPath.startsWith('http') || _curPath.startsWith('rtmp') || _curPath.startsWith('rtsp');
+    if(isOnline){
+      final native=player.platform as NativePlayer;
+      try{
+        native.setProperty('cache','no');
+        native.setProperty('cache-pause','no');
+        native.setProperty('stream-lavf-o','timeout=10000000');
+        native.setProperty('demuxer-readahead-secs','3');
+        if(widget.isLive){
+          native.setProperty('demuxer-lavf-o','fflags=nobuffer,http_persistent=1,reconnect=1,reconnect_at_eof=1,reconnect_streamed=1,reconnect_on_network_error=1');
+          native.setProperty('http-header-fields','User-Agent: TiviMate/4.7.0 (Linux;Android 13) ExoPlayerLib/2.18.1');
+          native.setProperty('tls-verify','no');
+        }
+      }catch(_){}
+    }
+    if(widget.isLive||widget.isOnlineUrl||_curPath.startsWith('http'))
+      setState(()=>_buffering=true);
+    if(widget.isLive){_addLiveLog('Opening stream...');_addLiveLog('URL: ${_curPath.substring(0,_curPath.length.clamp(0,60))}...');}
+    final isHttp = _curPath.startsWith('http');
+    final media = isHttp
+      ? Media(_curPath, httpHeaders: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+          'Connection': 'keep-alive',
+          'Accept': '*/*',
+        })
+      : Media(_curPath);
+
+    await player.open(media);
+    if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
     await Store.addToHistory(_curPath);
     final saved=await Store.getPos(_curPath);
     if(saved.inSeconds>5&&mounted){
@@ -271,13 +367,189 @@ class _PlayerState extends State<PlayerScreen>{
     final newVs=Store.loadVideoSettings(_curPath);
     if(newVs!=null)_vs=newVs;
     setState((){});
-    await player.open(Media(_curPath));
+    if(widget.isLive||widget.isOnlineUrl||_curPath.startsWith('http'))
+      setState(()=>_buffering=true);
+    if(widget.isLive){_addLiveLog('Opening stream...');_addLiveLog('URL: ${_curPath.substring(0,_curPath.length.clamp(0,60))}...');}
+    final isHttp = _curPath.startsWith('http');
+    final media = isHttp
+      ? Media(_curPath, httpHeaders: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+          'Connection': 'keep-alive',
+          'Accept': '*/*',
+        })
+      : Media(_curPath);
+
+    await player.open(media);
+    if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
     await Store.addToHistory(_curPath);
     final sv=await Store.getPos(_curPath);
     if(sv.inSeconds>5)await player.seek(sv);
     final sub=matchSubtitle(_curPath);
     if(sub!=null)await _loadSub(sub,secondary:false);
     if(_vs.speed!=1.0)player.setRate(_vs.speed);
+  }
+
+  void _toggleDeeepgram()async{
+    if(_dgActive){
+      await DeepgramService.stop();
+      _dgSub?.cancel();
+      setState((){_dgActive=false;_dgText='';});
+    } else {
+      // انتخاب زبان
+      final lang=await showDialog<String>(context:context,builder:(_)=>AlertDialog(
+        backgroundColor:const Color(0xFF12121C),
+        title:const Text('Deepgram Language',style:TextStyle(color:Colors.white,fontSize:14)),
+        content:SizedBox(width:280,height:300,child:ListView(children:
+          DeepgramService.languages.entries.map((e)=>ListTile(dense:true,
+            title:Text(e.value,style:const TextStyle(color:Colors.white,fontSize:13)),
+            onTap:()=>Navigator.pop(context,e.key))).toList()))));
+      if(lang==null)return;
+      setState((){_dgActive=true;_dgLang=lang;_dgText='⏳ Connecting...';});
+      _dgSub=DeepgramService.events().listen((e){
+        final type=e['type'] as String;
+        final data=e['data'];
+        final ts=DateTime.now();
+        final tsStr='${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}';
+        if(type=='transcript'){
+          final t=(data as Map)['text'] as String;
+          final isFinal=(data)['final'] as bool;
+          final dbg=(data as Map)['debug'] as String? ?? '';
+          _aiLog.add('[$tsStr] 📊 deepgram: "$t" final=$isFinal $dbg');
+          if(t.isNotEmpty){
+            if(mounted)setState((){
+              _dgText=isFinal?t:'$t...';
+              _aiLog.add('[$tsStr] 📝 ${isFinal?"✓":"…"} $t');
+              if(_aiLog.length>30)_aiLog.removeAt(0);
+            });
+          }
+        } else if(type=='status'){
+          if(mounted)setState((){
+            _dgText='[$data]';
+            _aiLog.add('[$tsStr] 🔗 status: $data');
+          });
+        } else if(type=='error'){
+          if(mounted)setState((){
+            _dgActive=false;_dgText='';
+            _aiLog.add('[$tsStr] ❌ error: $data');
+          });
+        } else {
+          if(mounted)setState((){_aiLog.add('[$tsStr] ℹ $type: $data');});
+        }
+      });
+      if(mounted)setState((){_aiLog.add('[${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}] 🚀 Connecting to Deepgram...');});
+      // request runtime permission
+      final status = await permission_handler.Permission.microphone.request();
+      if (!status.isGranted) {
+        if(mounted) setState((){_dgActive=false;_dgText='Microphone permission denied';});
+        return;
+      }
+      await DeepgramService.start(language:lang, streamUrl:_curPath);
+    }
+  }
+
+  void _showAiLogDialog(){
+    showDialog(context:context,barrierColor:Colors.black54,builder:(ctx)=>StatefulBuilder(
+      builder:(ctx,ss){
+        // آپدیت هر ثانیه
+        Future.delayed(const Duration(seconds:1),()=>ss((){}));
+        return AlertDialog(
+          backgroundColor:const Color(0xFF0E0E1A),
+          insetPadding:const EdgeInsets.all(16),
+          titlePadding:const EdgeInsets.fromLTRB(16,16,16,0),
+          contentPadding:const EdgeInsets.all(12),
+          title:Row(children:[
+            Icon(Icons.bug_report_rounded,color:_dgActive?Colors.green:Colors.white38,size:18),
+            const SizedBox(width:8),
+            Text('AI Subtitle Log',style:const TextStyle(color:Colors.white,fontSize:14)),
+            const Spacer(),
+            Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:2),
+              decoration:BoxDecoration(
+                color:_dgActive?Colors.green.withOpacity(0.2):Colors.red.withOpacity(0.2),
+                borderRadius:BorderRadius.circular(8)),
+              child:Text(_dgActive?'ACTIVE':'OFF',style:TextStyle(
+                color:_dgActive?Colors.green:Colors.red,fontSize:10,fontWeight:FontWeight.bold))),
+            const SizedBox(width:8),
+            IconButton(icon:const Icon(Icons.close,color:Colors.white54,size:18),
+              padding:EdgeInsets.zero,constraints:const BoxConstraints(),
+              onPressed:()=>Navigator.pop(ctx)),
+          ]),
+          content:SizedBox(width:double.maxFinite,height:300,
+            child:_aiLog.isEmpty
+              ?const Center(child:Text('Press AI button to start\nThen tap this log to see status',
+                style:TextStyle(color:Colors.white38,fontSize:12),textAlign:TextAlign.center))
+              :ListView.builder(
+                reverse:true,
+                itemCount:_aiLog.length,
+                itemBuilder:(_,i){
+                  final log=_aiLog[_aiLog.length-1-i];
+                  final color=log.contains('❌')?Colors.redAccent:
+                    log.contains('✓')?Colors.greenAccent:
+                    log.contains('🔗')?Colors.blueAccent:Colors.white60;
+                  return Padding(padding:const EdgeInsets.only(bottom:3),
+                    child:Text(log,style:TextStyle(color:color,fontSize:10,fontFamily:'monospace')));
+                })),
+          actions:[
+            TextButton(onPressed:(){setState((){_aiLog.clear();});ss((){});},
+              child:const Text('Clear',style:TextStyle(color:Colors.white54))),
+          ]);
+      }));
+  }
+
+  void _showLogDialog(){
+    showDialog(context:context,barrierColor:Colors.black54,builder:(ctx)=>StatefulBuilder(
+      builder:(ctx,ss)=>AlertDialog(
+        backgroundColor:const Color(0xFF0E0E1A),
+        insetPadding:const EdgeInsets.all(16),
+        titlePadding:const EdgeInsets.fromLTRB(16,16,16,0),
+        contentPadding:const EdgeInsets.all(12),
+        title:Row(children:[
+          const Icon(Icons.terminal_rounded,color:Color(0xFF7C3AED),size:18),
+          const SizedBox(width:8),
+          const Text('Live Stream Log',style:TextStyle(color:Colors.white,fontSize:14)),
+          const Spacer(),
+          IconButton(icon:const Icon(Icons.close,color:Colors.white54,size:18),
+            padding:EdgeInsets.zero,constraints:const BoxConstraints(),
+            onPressed:()=>Navigator.pop(ctx)),
+        ]),
+        content:SizedBox(width:double.maxFinite,height:300,
+          child:_liveLog.isEmpty
+            ?const Center(child:Text('No logs yet...',style:TextStyle(color:Colors.white38)))
+            :ListView.builder(
+              reverse:true,
+              itemCount:_liveLog.length,
+              itemBuilder:(_,i){
+                final log=_liveLog[_liveLog.length-1-i];
+                final color=log.contains('▶')?const Color(0xFF22c55e):
+                  log.contains('Error')||log.contains('error')?Colors.redAccent:
+                  log.contains('Buffering')?Colors.orange:Colors.white60;
+                return Padding(padding:const EdgeInsets.only(bottom:4),
+                  child:Text(log,style:TextStyle(color:color,fontSize:11,fontFamily:'monospace')));
+              })),
+        actions:[
+          TextButton(onPressed:(){setState((){_liveLog.clear();});ss((){});},
+            child:const Text('Clear',style:TextStyle(color:Colors.white54))),
+        ])));
+  }
+
+  void _addLiveLog(String msg){
+    if(!widget.isLive)return;
+    final t=DateTime.now();
+    final ts='${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}:${t.second.toString().padLeft(2,'0')}';
+    if(mounted)setState((){
+      _liveLog.add('[$ts] $msg');
+      if(_liveLog.length>20)_liveLog.removeAt(0);
+    });
+  }
+
+  void _toggleFullscreen(){
+    setState(()=>_isFullscreen=!_isFullscreen);
+    if(_isFullscreen){
+      SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft,DeviceOrientation.landscapeRight]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
   }
 
   void _maybeWatched(){
@@ -491,6 +763,57 @@ class _PlayerState extends State<PlayerScreen>{
         if(_fpsStr.isNotEmpty)_infoRow(Icons.speed_rounded,const Color(0xFF7C3AED),L.frameRate,_fpsStr),
         if(_codecStr.isNotEmpty)_infoRow(Icons.code_rounded,const Color(0xFF10B981),L.codec,_codecStr),
         if(_bitrateStr.isNotEmpty)_infoRow(Icons.network_check_rounded,const Color(0xFFF59E0B),L.bitrate,_bitrateStr),
+        // ── buffering overlay for live ──
+        // ── live debug log ──
+        if(widget.isLive&&_showLiveLog)Positioned(
+          top:60,left:12,right:12,
+          child:GestureDetector(
+            onTap:()=>setState(()=>_showLiveLog=false),
+            child:Container(
+              padding:const EdgeInsets.all(10),
+              decoration:BoxDecoration(
+                color:Colors.black.withOpacity(0.82),
+                borderRadius:BorderRadius.circular(10),
+                border:Border.all(color:const Color(0xFF7C3AED).withOpacity(0.5))),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+                Row(children:[
+                  const Icon(Icons.terminal_rounded,color:Color(0xFF7C3AED),size:14),
+                  const SizedBox(width:6),
+                  const Text('Live Stream Log',style:TextStyle(color:Color(0xFF7C3AED),fontSize:12,fontWeight:FontWeight.bold)),
+                  const Spacer(),
+                  const Text('tap to hide',style:TextStyle(color:Colors.white30,fontSize:10)),
+                ]),
+                const Divider(color:Colors.white12,height:10),
+                ..._liveLog.reversed.take(8).map((l)=>Padding(
+                  padding:const EdgeInsets.only(bottom:2),
+                  child:Text(l,style:const TextStyle(color:Colors.white70,fontSize:10,fontFamily:'monospace'),
+                    maxLines:1,overflow:TextOverflow.ellipsis))),
+                if(_liveLog.isEmpty)const Text('Starting...',style:TextStyle(color:Colors.white38,fontSize:10)),
+              ])))),
+        // ── Deepgram subtitle — همیشه روی ویدیو نمایش داده میشه ──
+        if(_dgActive&&_dgText.isNotEmpty&&!_dgText.startsWith('⏳')&&!_dgText.startsWith('['))Positioned(
+          bottom:100,left:16,right:16,
+          child:IgnorePointer(child:Container(
+            padding:const EdgeInsets.symmetric(horizontal:16,vertical:10),
+            decoration:BoxDecoration(
+              color:Colors.black.withOpacity(0.78),
+              borderRadius:BorderRadius.circular(10)),
+            child:Text(_dgText,
+              textAlign:TextAlign.center,
+              style:const TextStyle(color:Colors.white,fontSize:18,height:1.4,fontWeight:FontWeight.w500,
+                shadows:[Shadow(color:Colors.black,blurRadius:6)]))))),
+        if(_buffering&&widget.isLive)Positioned(
+          top:0,left:0,right:0,bottom:0,
+          child:Container(
+            color:Colors.black54,
+            child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+              const CircularProgressIndicator(color:Color(0xFF7C3AED),strokeWidth:3),
+              const SizedBox(height:16),
+              Text('📡 Connecting to live stream...',style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w500)),
+              if(_bufferStart!=null)Padding(padding:const EdgeInsets.only(top:6),
+                child:Text('${DateTime.now().difference(_bufferStart!).inSeconds}s',
+                  style:const TextStyle(color:Colors.white54,fontSize:12))),
+            ])))),
         if(_isHDR)_infoRow(Icons.hdr_on_rounded,const Color(0xFFEC4899),'HDR',L.activeTick),
         if(_pixelFmtStr.isNotEmpty)_infoRow(Icons.palette_rounded,const Color(0xFF7C3AED),'Pixel Format',_pixelFmtStr),
         _infoRow(Icons.timer_outlined,const Color(0xFF94A3B8),L.duration,fmt(_duration)),
@@ -852,6 +1175,8 @@ class _PlayerState extends State<PlayerScreen>{
   void dispose(){
     Store.savePos(_curPath,_position);
     for(final s in _subs)s.cancel();
+    _dgSub?.cancel();
+    if(_dgActive)DeepgramService.stop();
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
     VezService.cleanup(_vezTempPath);
     try{_pipCh.invokeMethod('hideNotif');}catch(_){}
@@ -1576,6 +1901,38 @@ class _PlayerState extends State<PlayerScreen>{
           child:Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
               decoration:BoxDecoration(color:Colors.red.withOpacity(0.7),borderRadius:BorderRadius.circular(6)),
               child:const Icon(Icons.clear,size:16))),
+    ],
+    if(widget.isLive||widget.isOnlineUrl)...[
+      const SizedBox(width:8),
+      GestureDetector(
+        onTap:()=>_toggleDeeepgram(),
+        child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+          decoration:BoxDecoration(
+            color:_dgActive?Colors.green.withOpacity(0.8):Colors.white12,
+            borderRadius:BorderRadius.circular(6),
+            border:Border.all(color:_dgActive?Colors.green:Colors.white24)),
+          child:Row(mainAxisSize:MainAxisSize.min,children:[
+            Icon(Icons.record_voice_over_rounded,size:14,color:_dgActive?Colors.white:Colors.white54),
+            const SizedBox(width:4),
+            Text('AI',style:TextStyle(fontSize:11,color:_dgActive?Colors.white:Colors.white54,fontWeight:FontWeight.bold)),
+          ]))),
+    ],
+    if(widget.isLive||widget.isOnlineUrl||_curPath.startsWith('http'))...[
+      const SizedBox(width:8),
+      GestureDetector(
+        onTap:()=>_showAiLogDialog(),
+        child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+          decoration:BoxDecoration(
+            color:const Color(0xFF7C3AED).withOpacity(0.3),
+            borderRadius:BorderRadius.circular(6),
+            border:Border.all(color:const Color(0xFF7C3AED))),
+          child:const Row(mainAxisSize:MainAxisSize.min,children:[
+            Icon(Icons.bug_report_rounded,size:14,color:Colors.white),
+            SizedBox(width:4),
+            Text('AI LOG',style:TextStyle(fontSize:11,color:Colors.white,fontWeight:FontWeight.bold)),
+          ]))),
     ],
   ]);
 

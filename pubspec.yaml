@@ -39,7 +39,10 @@ dependencies:
   whisper_ggml_plus: ^1.1.0
   path_provider: ^2.1.2
   share_plus: ^11.0.0
-  extractor: ^1.0.0
+  youtube_explode_dart: ^2.5.0
+  flutter_go_torrent_streamer: ^0.0.8
+  dio: ^5.4.0
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -47,4 +50,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-

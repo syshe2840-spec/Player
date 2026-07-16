@@ -285,7 +285,6 @@ class L {
   static String get aiModels => _t({'en':'AI Models','fa':'مدل‌های AI','ar':'نماذج الذكاء الاصطناعي','ru':'Модели ИИ','zh':'AI模型','ja':'AIモデル','hi':'AI मॉडल','id':'Model AI'});
   static String get aiSubtitleOffline => _t({'en':'AI Subtitle (Offline)','fa':'زیرنویس AI آفلاین','ar':'ترجمة AI غير متصل','ru':'ИИ субтитры (офлайн)','zh':'AI字幕 (离线)','ja':'AI字幕 (オフライン)','hi':'AI सबटाइटल (ऑफलाइन)','id':'AI Subtitle (Offline)'});
   static String get download => _t({'en':'Download','fa':'دانلود','ar':'تنزيل','ru':'Скачать','zh':'下载','ja':'ダウンロード','hi':'डाउनलोड','id':'Unduh'});
-  static String get downloading => _t({'en':'Downloading...','fa':'در حال دانلود...','ar':'جارٍ التنزيل...','ru':'Загрузка...','zh':'下载中...','ja':'ダウンロード中...','hi':'डाउनलोड हो रहा है...','id':'Mengunduh...'});
   static String get downloaded => _t({'en':'Downloaded','fa':'دانلود شده','ar':'تم التنزيل','ru':'Загружено','zh':'已下载','ja':'ダウンロード済み','hi':'डाउनलोड हो गया','id':'Terunduh'});
   static String get noModelDownloaded => _t({'en':'No AI model downloaded\nDownload a model from AI section','fa':'هیچ مدلی دانلود نشده\nابتدا از بخش AI مدل دانلود کنید','ar':'لم يتم تنزيل نموذج\nنزّل نموذجاً من قسم AI','ru':'Нет загруженных моделей\nСначала загрузите модель ИИ','zh':'未下载AI模型\n请先从AI部分下载模型','ja':'モデル未ダウンロード\nAIセクションからダウンロードしてください','hi':'कोई AI मॉडल नहीं\nAI सेक्शन से मॉडल डाउनलोड करें','id':'No AI model downloaded\nDownload a model from AI section'});
   static String get importModel => _t({'en':'Import Model','fa':'ایمپورت مدل','ar':'استيراد النموذج','ru':'Импорт модели','zh':'导入模型','ja':'モデルをインポート','hi':'मॉडल आयात करें','id':'Import Model'});
@@ -447,5 +446,16 @@ class L {
 
   static String get features => _t({'en':'Features','fa':'ویژگی‌ها','ar':'المميزات','ru':'Возможности','zh':'功能','ja':'機能','hi':'विशेषताएं','id':'Features'});
   static String get subtitleLoaded2 => _t({'en':'Subtitle loaded','fa':'زیرنویس بارگذاری شد','ar':'تم تحميل الترجمة','ru':'Субтитры загружены','zh':'字幕已加载','ja':'字幕読み込み完了','hi':'सबटाइटल लोड','id':'Subtitle loaded'});
+
+  // ── آنلاین پلیر ──
+  static String get fetchingInfo => _t({'en':'🎬 Fetching video info...','fa':'🎬 دریافت اطلاعات ویدیو...','ar':'🎬 جلب معلومات الفيديو...','ru':'🎬 Получение информации...','zh':'🎬 获取视频信息...','ja':'🎬 動画情報を取得中...','hi':'🎬 वीडियो जानकारी...','id':'🎬 Mengambil info video...'});
+  static String get loadingQualities => _t({'en':'🎬 Loading qualities...','fa':'🎬 بارگذاری کیفیت‌ها...','ar':'🎬 تحميل الجودات...','ru':'🎬 Загрузка качеств...','zh':'🎬 加载质量列表...','ja':'🎬 画質リスト読込中...','hi':'🎬 गुणवत्ता लोड हो रही है...','id':'🎬 Memuat kualitas...'});
+  static String get connectingPeers => _t({'en':'🧲 Connecting to peers...','fa':'🧲 اتصال به پیرها...','ar':'🧲 الاتصال بالأقران...','ru':'🧲 Подключение к пирам...','zh':'🧲 连接到节点...','ja':'🧲 ピアに接続中...','hi':'🧲 पीयर से जुड़ रहा है...','id':'🧲 Menghubungi peers...'});
+  static String get cancelSearch => _t({'en':'Cancel','fa':'لغو جستجو','ar':'إلغاء البحث','ru':'Отменить','zh':'取消搜索','ja':'キャンセル','hi':'रद्द करें','id':'Batalkan'});
+  static String get streamNow => _t({'en':'Stream','fa':'پخش آنی','ar':'بث مباشر','ru':'Стрим','zh':'串流','ja':'ストリーム','hi':'स्ट्रीम','id':'Streaming'});
+  static String get downloadFull => _t({'en':'Download','fa':'دانلود کامل','ar':'تنزيل كامل','ru':'Скачать','zh':'下载','ja':'ダウンロード','hi':'डाउनलोड','id':'Unduh'});
+  static String get torrentFiles => _t({'en':'Torrent Files','fa':'فایل‌های تورنت','ar':'ملفات التورنت','ru':'Файлы торрента','zh':'种子文件','ja':'トレントファイル','hi':'टोरेंट फ़ाइलें','id':'File Torrent'});
+  static String get downloading => _t({'en':'Downloading...','fa':'در حال دانلود...','ar':'جارٍ التنزيل...','ru':'Загрузка...','zh':'下载中...','ja':'ダウンロード中...','hi':'डाउनलोड हो रहा है...','id':'Mengunduh...'});
+  static String get nopeersTimeout => _t({'en':'Timeout — no peers found','fa':'تایم‌اوت — پیری پیدا نشد','ar':'انتهى الوقت — لا أقران','ru':'Таймаут — нет пиров','zh':'超时 — 未找到节点','ja':'タイムアウト — ピアなし','hi':'टाइमआउट — कोई पीयर नहीं','id':'Timeout — tidak ada peers'});
 
 }

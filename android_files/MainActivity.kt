@@ -41,13 +41,6 @@ import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : FlutterActivity() {
 
-    override fun onCreate(savedInstanceState: android.os.Bundle?) {
-        super.onCreate(savedInstanceState)
-        // initialize lifecycle برای extractor/WorkManager
-        try {
-            androidx.lifecycle.ProcessLifecycleOwner.get()
-        } catch (_: Exception) {}
-    }
     private val THUMB_CH  = "ir.subteam.subtitle_player/thumbnail"
     private val PIP_CH    = "ir.subteam.subtitle_player/pip"
     private val VEZ_CH    = "com.vezoo.player/vezoo"
@@ -108,83 +101,45 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private var deepgramService: DeepgramService? = null
+    private var deepgramSink: io.flutter.plugin.common.EventChannel.EventSink? = null
+
     override fun configureFlutterEngine(fe: FlutterEngine) {
         super.configureFlutterEngine(fe)
         createNotifChannel()
         requestNotifPermission()
 
-        // ── yt-dlp + deno channel ──
-        val ytdlpProgressSink = arrayOfNulls<io.flutter.plugin.common.EventChannel.EventSink>(1)
-        io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp_progress")
+        // ── Deepgram real-time transcription ──
+        io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/deepgram_events")
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
-                override fun onListen(a: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) { ytdlpProgressSink[0] = sink }
-                override fun onCancel(a: Any?) { ytdlpProgressSink[0] = null }
+                override fun onListen(a: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) {
+                    deepgramSink = sink
+                    deepgramService?.setSink(sink)
+                }
+                override fun onCancel(a: Any?) { deepgramSink = null }
             })
 
-        MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp").setMethodCallHandler { call, result ->
-            executor.execute {
-                try {
-                    when (call.method) {
-                        "isInstalled" -> {
-                            val type = call.arguments as String
-                            handler.post { result.success(isBinInstalled(type)) }
-                        }
-                        "getVersions" -> {
-                            val ytVer = runBin("ytdlp", listOf("--version"))?.trim()
-                            val denoVer = runBin("deno", listOf("--version"))?.lines()?.firstOrNull()?.replace("deno ", "")?.trim()
-                            handler.post { result.success(mapOf("ytdlp" to ytVer, "deno" to denoVer)) }
-                        }
-                        "download", "update" -> {
-                            val type = call.arguments as String
-                            downloadBin(type) { pct, msg ->
-                                handler.post { ytdlpProgressSink[0]?.success(mapOf("type" to type, "pct" to pct, "msg" to msg)) }
-                            }
-                            handler.post { result.success(null) }
-                        }
-                        "delete" -> {
-                            val type = call.arguments as String
-                            getBinFile(type).delete()
-                            handler.post { result.success(null) }
-                        }
-                        "backup" -> {
-                            val dest = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
-                                android.os.Environment.DIRECTORY_DOWNLOADS), "Vezoo/Backup")
-                            dest.mkdirs()
-                            val copied = mutableListOf<String>()
-                            for (type in listOf("ytdlp", "deno")) {
-                                val f = getBinFile(type)
-                                if (f.exists()) { f.copyTo(java.io.File(dest, type), overwrite = true); copied.add(type) }
-                            }
-                            handler.post { result.success(copied) }
-                        }
-                        "import" -> {
-                            val path = call.argument<String>("path") ?: return@execute
-                            val type = call.argument<String>("type") ?: return@execute
-                            val dest = getBinFile(type)
-                            java.io.File(path).copyTo(dest, overwrite = true)
-                            dest.setExecutable(true, false)
-                            handler.post { result.success(dest.absolutePath) }
-                        }
-                        "streamUrl" -> {
-                            val url = call.arguments as String
-                            val out = runBin("ytdlp", listOf(
-                                "--no-playlist", "-g", "--no-warnings",
-                                "--extractor-args", "youtube:client=android",
-                                url
-                            ))
-                            val streamUrl = out?.lines()?.firstOrNull { it.startsWith("http") }
-                            handler.post {
-                                if (streamUrl != null) result.success(streamUrl)
-                                else result.error("NO_STREAM", "No stream URL found", null)
-                            }
-                        }
-                        else -> handler.post { result.notImplemented() }
-                    }
-                } catch (e: Exception) {
-                    handler.post { result.error("YTDLP_ERROR", e.message, null) }
+        MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/deepgram").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    val lang = call.argument<String>("language") ?: "multi"
+                    val workerUrl = (call.argument<String>("workerUrl") ?: "").trimEnd('/')
+                    val streamUrl = call.argument<String>("streamUrl") ?: ""
+                    deepgramService = DeepgramService(this, workerUrl)
+                    deepgramService?.setSink(deepgramSink)
+                    deepgramService?.setStreamUrl(streamUrl)
+                    Thread { deepgramService?.start(lang) }.start()
+                    result.success(null)
                 }
+                "stop" -> {
+                    deepgramService?.stop()
+                    deepgramService = null
+                    result.success(null)
+                }
+                else -> result.notImplemented()
             }
         }
+
 
         // ── Thumbnail ──
         MethodChannel(fe.dartExecutor.binaryMessenger, THUMB_CH).setMethodCallHandler { call, result ->
@@ -790,116 +745,7 @@ class MainActivity : FlutterActivity() {
     override fun onStart() { super.onStart(); if (playing) showNotif() }
     override fun onDestroy() { try { unregisterReceiver(receiver) } catch (_: Exception) {}; nm().cancel(NOTIF_ID); super.onDestroy() }
 
-    // ── yt-dlp / deno helpers ──
-    private fun getBinFile(type: String): java.io.File {
-        val name = if (type == "ytdlp") "yt-dlp" else "deno"
-        return java.io.File(filesDir, "bins/$name")
-    }
-
-    private fun getYtDlpUrl(): String {
-        val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
-        return when {
-            abi.contains("arm64") -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"
-            abi.contains("armeabi") -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_armv7l"
-            else -> "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"
-        }
-    }
-
-    private fun runBin(type: String, args: List<String>): String? {
-        val bin = getBinFile(type)
-        if (!bin.exists() || bin.length() == 0L) return null
-        bin.setExecutable(true, false)
-        val env = mutableMapOf(
-            "HOME" to filesDir.absolutePath,
-            "PATH" to "/system/bin:/system/xbin",
-            "TMPDIR" to cacheDir.absolutePath
-        )
-        // روش ۱: اجرای مستقیم
-        try {
-            val proc = ProcessBuilder(mutableListOf(bin.absolutePath) + args)
-                .redirectErrorStream(true)
-                .apply { environment().putAll(env) }
-                .start()
-            val out = proc.inputStream.bufferedReader().readText()
-            proc.waitFor()
-            if (proc.exitValue() != 126 && proc.exitValue() != 13) return out.ifBlank { null }
-        } catch (e: Exception) {
-            if (!e.message.orEmpty().contains("Permission denied") &&
-                !e.message.orEmpty().contains("error=13")) throw e
-        }
-        // روش ۲: linker64 (bypass W^X برای Android 10+)
-        val linker = listOf("/system/bin/linker64", "/system/bin/linker")
-            .firstOrNull { java.io.File(it).exists() } ?: throw Exception("No linker found")
-        val proc = ProcessBuilder(mutableListOf(linker, bin.absolutePath) + args)
-            .redirectErrorStream(true)
-            .apply { environment().putAll(env) }
-            .start()
-        val out = proc.inputStream.bufferedReader().readText()
-        proc.waitFor()
-        return out.ifBlank { null }
-    }
-
-    private fun isBinInstalled(type: String): Boolean {
-        val f = getBinFile(type)
-        return f.exists() && f.isFile && f.length() > 1024L && f.canRead()
-    }
-
-    private fun downloadBin(type: String, onProgress: (Int, String) -> Unit) {
-        val url = when (type) {
-            "ytdlp" -> getYtDlpUrl()
-            "deno" -> "https://github.com/denoland/deno/releases/latest/download/deno-aarch64-unknown-linux-gnu.zip"
-            else -> throw Exception("Unknown type: $type")
-        }
-        val dest = getBinFile(type)
-        dest.parentFile?.also { it.mkdirs() }
-        onProgress(0, "Connecting...")
-        val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-        conn.instanceFollowRedirects = true
-        conn.connect()
-        val total = conn.contentLengthLong
-        val isZip = url.endsWith(".zip")
-        val tmp = java.io.File(dest.parent, "${dest.name}.tmp")
-        conn.inputStream.use { inp ->
-            tmp.outputStream().use { out ->
-                val buf = ByteArray(65536)
-                var downloaded = 0L
-                var n: Int
-                while (inp.read(buf).also { n = it } != -1) {
-                    out.write(buf, 0, n)
-                    downloaded += n
-                    if (total > 0) onProgress(((downloaded * 100) / total).toInt(), "Downloading...")
-                }
-            }
-        }
-        if (isZip) {
-            onProgress(95, "Extracting...")
-            val zis = java.util.zip.ZipInputStream(tmp.inputStream())
-            var entry = zis.nextEntry
-            var extracted = false
-            while (entry != null) {
-                if (!entry.isDirectory) {
-                    dest.outputStream().use { out -> zis.copyTo(out) }
-                    extracted = true
-                    break
-                }
-                entry = zis.nextEntry
-            }
-            zis.close()
-            tmp.delete()
-            if (!extracted) throw Exception("Binary not found in zip")
-        } else {
-            // renameTo روی Android میتونه fail کنه — از copyTo استفاده کن
-            if (!tmp.renameTo(dest)) {
-                tmp.copyTo(dest, overwrite = true)
-                tmp.delete()
-            }
-        }
-        if (!dest.exists() || dest.length() == 0L) throw Exception("Download failed: file missing after save")
-        dest.setExecutable(true, false)
-        onProgress(100, "Done")
-    }
-
-    private fun genThumb(path: String, timeUs: Long): ByteArray? {
+private fun genThumb(path: String, timeUs: Long): ByteArray? {
         val r = MediaMetadataRetriever()
         return try {
             if (!File(path).exists()) return null
@@ -913,4 +759,3 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
-

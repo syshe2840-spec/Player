@@ -7,4 +7,7 @@ class VezooApplication : PyApplication() {
         super.onCreate() // Chaquopy + lifecycle initialize میشه
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5c25363 (Update project)

@@ -457,66 +457,12 @@ class ToolsTabBody extends StatefulWidget {
 class ToolsTabBodyState extends State<ToolsTabBody> {
   bool _loading = false;
   String _status = '';
-  Map<String,String?> _versions = {};
-  bool _ytInstalled = false;
-  int _dlPct = 0;
-
-  @override
-  void initState() { super.initState(); _refresh(); }
-
-  Future<void> _refresh() async {
-    // هر call مستقل — خطای یکی بقیه رو خراب نمیکنه
-    Map<String,String?> v = {};
-    bool yt = false, de = false;
-    try { v = await YtDlpService.getVersions(); } catch (_) {}
-    try { yt = await YtDlpService.isYtDlpInstalled(); } catch (_) {}
-    if (mounted) setState(() { _versions = v; _ytInstalled = yt; });
-  }
-
-  Future<void> _downloadBin(String type) async {
-    setState(() { _loading = true; _status = 'Downloading $type...'; _dlPct = 0; });
-    final sub = YtDlpService.downloadProgress().listen((e) {
-      if (mounted) setState(() { _dlPct = (e['pct'] as int? ?? 0); _status = '${e['msg']}'; });
-    });
-    try {
-      if (type == 'ytdlp') await YtDlpService.downloadYtDlp();
-      else await YtDlpService.downloadDeno();
-      setState(() { _status = '✓ $type installed'; });
-    } catch (e) { setState(() { _status = 'Error: $e'; }); }
-    finally {
-      sub.cancel();
-      setState(() { _loading = false; });
-      await _refresh(); // آپدیت state دکمه‌ها
-    }
-  }
-
-  Future<void> _deleteBin(String type) async {
-    setState(() { _loading = true; });
-    try {
-      if (type == 'ytdlp') await YtDlpService.deleteYtDlp();
-      else await YtDlpService.deleteDeno();
-      setState(() { _status = '$type deleted'; });
-    } catch (e) { setState(() { _status = 'Error: $e'; }); }
-    finally { setState(() { _loading = false; }); await _refresh(); }
-  }
-
-  Future<void> _importBin(String type) async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.any);
-    if (res == null || res.files.single.path == null) return;
-    setState(() { _loading = true; _status = 'Importing...'; });
-    try {
-      await YtDlpService.importBin(res.files.single.path!, type);
-      setState(() { _status = 'SUCCESS: $type imported'; });
-    } catch (e) { setState(() { _status = 'Error: $e'; }); }
-    finally { setState(() { _loading = false; }); await _refresh(); }
-  }
 
   Future<void> _backupAll() async {
     setState(() { _loading = true; _status = L.backingUp; });
     try {
       await const MethodChannel('com.vezoo.player/whisper')
         .invokeMethod<List>('backupModels', {'destDir': '/storage/emulated/0/Download/Vezoo/Backup'});
-      await YtDlpService.backup();
       setState(() { _status = 'SUCCESS: ${L.backup}'; });
     } catch (e) { setState(() { _status = L.errorMsg(e); }); }
     finally { setState(() { _loading = false; }); }
@@ -536,53 +482,10 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     finally { setState(() { _loading = false; }); }
   }
 
-  Widget _binCard(String type, bool installed, String? version) {
-    final name = type == 'ytdlp' ? 'yt-dlp' : 'Deno';
-    final color = type == 'ytdlp' ? const Color(0xFFFF6B35) : const Color(0xFF4CAF50);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text(name, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          Text(installed ? (version ?? 'installed') : 'not installed',
-            style: TextStyle(fontSize: 11, color: installed ? color : Colors.white38)),
-        ]),
-        const SizedBox(height: 8),
-        Row(children: [
-          if (!installed) Expanded(child: FilledButton(
-            onPressed: _loading ? null : () => _downloadBin(type),
-            style: FilledButton.styleFrom(backgroundColor: color),
-            child: const Text('Download', style: TextStyle(fontSize: 12)))),
-          if (installed) Expanded(child: OutlinedButton(
-            onPressed: _loading ? null : () => _downloadBin(type),
-            child: const Text('Update', style: TextStyle(fontSize: 12)))),
-          const SizedBox(width: 6),
-          OutlinedButton(onPressed: _loading ? null : () => _importBin(type),
-            child: const Text('Import', style: TextStyle(fontSize: 12))),
-          if (installed) ...[ const SizedBox(width: 6),
-            IconButton(icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
-              onPressed: _loading ? null : () => _deleteBin(type),
-              constraints: const BoxConstraints(), padding: EdgeInsets.zero)],
-        ]),
-      ]),
-    );
-  }
-
   @override
   Widget build(BuildContext ctx) => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _binCard('ytdlp', _ytInstalled, _versions['ytdlp']),
-      if (_loading) LinearProgressIndicator(
-        value: _dlPct > 0 ? _dlPct / 100 : null,
-        color: const Color(0xFF7C3AED), backgroundColor: Colors.white12),
-      if (_status.isNotEmpty) Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11))),
-      const SizedBox(height: 8),
       Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -591,6 +494,8 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
             const SizedBox(width: 8),
             Text(L.backupImport, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
           ]),
+          const SizedBox(height: 4),
+          Text(L.backupPath, style: const TextStyle(color: Colors.white54, fontSize: 11)),
           const SizedBox(height: 10),
           Row(children: [
             Expanded(child: FilledButton.icon(
@@ -604,9 +509,12 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
               icon: const Icon(Icons.upload_file_rounded, size: 16),
               label: Text(L.importModel))),
           ]),
+          if (_loading) ...[const SizedBox(height:8), const LinearProgressIndicator()],
+          if (_status.isNotEmpty) Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11))),
         ]),
       ),
     ]),
   );
 }
-

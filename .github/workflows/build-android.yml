@@ -28,7 +28,7 @@ jobs:
 
       - name: Restore our files
         run: |
-          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt lib/srt_editor_screen.dart lib/ai_batch_queue_screen.dart lib/ai_history_screen.dart lib/opensubtitles_service.dart lib/opensubtitles_search_sheet.dart lib/live_sub_sheet.dart android_files/LiveSubService.kt android_files/VezooApplication.kt lib/srt_translation_service.dart lib/srt_translate_sheet.dart lib/live_translation_sync.dart lib/online_player_sheet.dart lib/subtitle_storage.dart lib/l10n.dart lib/lyrics_service.dart lib/lyrics_sheet.dart
+          git checkout HEAD -- pubspec.yaml lib/main.dart lib/store.dart lib/browser.dart lib/player.dart lib/settings.dart lib/api_service.dart lib/vez_service.dart android_files/MainActivity.kt android_files/icon.png android_files/cpp/vezoo.h android_files/cpp/vezoo.c android_files/cpp/vezoo_jni.c android_files/cpp/CMakeLists.txt lib/whisper_service.dart lib/ai_subtitle_sheet.dart lib/ai_models_screen.dart android_files/cpp/whisper_v2 android_files/WhisperV2Bridge.kt lib/srt_editor_screen.dart lib/ai_batch_queue_screen.dart lib/ai_history_screen.dart lib/opensubtitles_service.dart lib/opensubtitles_search_sheet.dart lib/live_sub_sheet.dart android_files/LiveSubService.kt android_files/DeepgramService.kt lib/srt_translation_service.dart lib/srt_translate_sheet.dart lib/live_translation_sync.dart lib/online_player_sheet.dart lib/subtitle_storage.dart lib/l10n.dart lib/lyrics_service.dart lib/lyrics_sheet.dart
           MAKT=$(find android -name "MainActivity.kt" | head -1)
           echo "=== Found MainActivity at: $MAKT ==="
           if [ -n "$MAKT" ]; then
@@ -60,13 +60,10 @@ jobs:
           if [ -n "$MAKT_DIR" ]; then
             cp android_files/WhisperV2Bridge.kt "$MAKT_DIR/WhisperV2Bridge.kt"
             cp android_files/LiveSubService.kt  "$MAKT_DIR/LiveSubService.kt"
+            cp android_files/DeepgramService.kt "$MAKT_DIR/DeepgramService.kt"
+            cp "$MAKT_DIR/AudioHook.kt"
             echo "=== Kotlin files copied ==="
             MANIFEST="android/app/src/main/AndroidManifest.xml"
-            # اضافه کردن lifecycle startup provider برای extractor/WorkManager
-            if ! grep -q "ProcessLifecycleInitializer" "$MANIFEST"; then
-              sed -i "s|</manifest>|    <provider android:name=\"androidx.startup.InitializationProvider\" android:authorities=\"\${applicationId}.androidx-startup\" android:exported=\"false\" tools:node=\"merge\"><meta-data android:name=\"androidx.lifecycle.ProcessLifecycleInitializer\" android:value=\"androidx.startup\"/></provider>\n</manifest>|" "$MANIFEST" || true
-              echo "=== lifecycle startup added ==="
-            fi
             if ! grep -q "LiveSubService" "$MANIFEST"; then
               sed -i 's|</application>|        <service android:name="com.vezoo.player.LiveSubService" android:foregroundServiceType="dataSync" android:exported="false"/>\n        </application>|' "$MANIFEST"
               # اضافه کردن permission های Foreground Service
@@ -75,6 +72,14 @@ jobs:
             fi
 
           fi
+          # اضافه کردن okhttp3 برای DeepgramService
+          BAPP=android/app/build.gradle.kts
+          if [ ! -f "$BAPP" ]; then BAPP=android/app/build.gradle; fi
+          if ! grep -q "okhttp" "$BAPP"; then
+            echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
+            echo "=== okhttp3 added ==="
+          fi
+
           # patch build.gradle.kts برای NDK
           APP=android/app/build.gradle.kts
           if [ ! -f "$APP" ]; then APP=android/app/build.gradle; fi
@@ -102,6 +107,10 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>\n    <uses-feature android:name=\"android.software.leanback\" android:required=\"false\"/>\n    <uses-feature android:name=\"android.hardware.touchscreen\" android:required=\"false\"/>\n    <application#' "$M"
           sed -i 's/android:launchMode="singleTop"/android:launchMode="singleTop"\n            android:supportsPictureInPicture="true"/' "$M" || true
+          # اضافه کردن RECORD_AUDIO permission
+          if ! grep -q "RECORD_AUDIO" "$M"; then
+            sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>#' "$M"
+          fi
           sed -i 's/android:label="[^"]*"/android:label="Vezoo"/g' "$M" || true
           S=android/app/src/main/res/values/strings.xml
           sed -i 's|<string name="app_name">.*</string>|<string name="app_name">Vezoo</string>|' "$S" || true
@@ -217,4 +226,3 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-

@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
 import 'store.dart';
 import 'ai_models_screen.dart';
+import 'iptv_screen.dart';
 import 'api_service.dart';
 import 'online_player_sheet.dart';
 import 'settings.dart' show ToolsTabBody;
@@ -481,7 +482,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
       if(!_searching)IconButton(
         icon:const Icon(Icons.wifi_tethering_rounded,size:20),
         tooltip:L.onlineVideo,
-        onPressed:()=>OnlinePlayerSheet.show(context)),
+        onPressed:()=>showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,builder:(_)=>const OnlinePlayerSheet())),
+      if(!_searching)IconButton(
+        icon:const Icon(Icons.live_tv_rounded,size:20,color:Color(0xFF22c55e)),
+        tooltip:'IPTV',
+        onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const IptvScreen()))),
       if(!_searching)...[
         if(_path!=root)IconButton(
           icon:Icon(isSaved?Icons.push_pin_rounded:Icons.push_pin_outlined,color:isSaved?kAmber:kTextSec,size:20),
@@ -619,12 +624,47 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   }
 
   void _openPanel(int page){
+    final ctrl=DraggableScrollableController();
     showModalBottomSheet(
       context:context,isScrollControlled:true,
-      builder:(ctx)=>SizedBox(height:MediaQuery.of(context).size.height*0.65,
-          child:BottomPanel(initialPage:page,
+      backgroundColor:Colors.transparent,
+      enableDrag:false,
+      builder:(ctx)=>DraggableScrollableSheet(
+        controller:ctrl,
+        initialChildSize:0.55,
+        minChildSize:0.35,
+        maxChildSize:0.97,
+        expand:false,
+        snap:true,
+        snapSizes:const[0.35,0.55,0.97],
+        shouldCloseOnMinExtent:false,
+        builder:(bctx,sc)=>Container(
+          decoration:const BoxDecoration(
+            color:Color(0xFF0E0E1A),
+            borderRadius:BorderRadius.vertical(top:Radius.circular(18))),
+          child:Column(children:[
+            // ── handle — drag اینجا کار میکنه ──
+            GestureDetector(
+              behavior:HitTestBehavior.translucent,
+              onVerticalDragUpdate:(d){
+                final size=MediaQuery.of(ctx).size.height;
+                final delta=-d.delta.dy/size;
+                final cur=ctrl.size;
+                ctrl.jumpTo((cur+delta).clamp(0.35,0.97));
+              },
+              onVerticalDragEnd:(d)async{
+                final cur=ctrl.size;
+                final target=cur>0.76?0.97:cur>0.45?0.55:0.35;
+                await ctrl.animateTo(target,duration:const Duration(milliseconds:250),curve:Curves.easeOut);
+                if(target<=0.35&&ctx.mounted)Navigator.pop(ctx);
+              },
+              child:SizedBox(height:22,child:Center(child:Container(
+                width:40,height:4,
+                decoration:BoxDecoration(color:Colors.white30,borderRadius:BorderRadius.circular(2)))))),
+            Expanded(child:BottomPanel(initialPage:page,noHandle:true,
               onVideoTap:(path){Navigator.pop(ctx);_openVideoByPath(path);},
               onFolderTap:(folder){Navigator.pop(ctx);_loadDir(folder);})),
+          ]))),
     );
   }
 }
@@ -811,7 +851,8 @@ class _VideoMenuState extends State<VideoMenu>{
 class BottomPanel extends StatefulWidget{
   final int initialPage;
   final ValueChanged<String> onVideoTap,onFolderTap;
-  const BottomPanel({super.key,required this.initialPage,required this.onVideoTap,required this.onFolderTap});
+  final bool noHandle;
+  const BottomPanel({super.key,required this.initialPage,required this.onVideoTap,required this.onFolderTap,this.noHandle=false});
   @override State<BottomPanel> createState()=>_BottomPanelState();
 }
 class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStateMixin{
@@ -819,9 +860,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
   @override void initState(){super.initState();_tab=TabController(length:8,vsync:this,initialIndex:widget.initialPage.clamp(0,6));}
   @override void dispose(){_tab.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Column(children:[
-    const SizedBox(height:10),
-    Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kBorder,borderRadius:BorderRadius.circular(2)))),
-    const SizedBox(height:4),
+    if(!widget.noHandle)...[const SizedBox(height:10),Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kBorder,borderRadius:BorderRadius.circular(2)))),const SizedBox(height:4)],
     TabBar(controller:_tab,isScrollable:true,indicatorColor:kAccent,labelColor:kAccent,unselectedLabelColor:kTextSec,
         labelStyle:const TextStyle(fontSize:12,fontWeight:FontWeight.w600),unselectedLabelStyle:const TextStyle(fontSize:12),
         tabs:[Tab(icon:Icon(Icons.history_rounded,size:16),text:L.history),
@@ -831,6 +870,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:L.playlist),
           Tab(icon:Icon(Icons.star_rounded,size:16),text:L.sponsors),
           Tab(icon:Icon(Icons.build_rounded,size:16),text:L.tools),
+
           Tab(icon:Icon(Icons.settings_rounded,size:16),text:L.app)]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),

@@ -241,4 +241,3 @@ class _HomeWrapperState extends State<_HomeWrapper>{
 
   @override Widget build(BuildContext ctx)=>const BrowserScreen();
 }
-
