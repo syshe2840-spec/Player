@@ -112,7 +112,25 @@ class DeepgramService(
 
     private fun startMediaExtractor(url: String) {
         val extractor = MediaExtractor()
-        extractor.setDataSource(url)
+        log("STEP3: calling setDataSource...")
+        var dataSourceSet = false
+        val t = Thread {
+            try {
+                extractor.setDataSource(url)
+                dataSourceSet = true
+                log("STEP3: setDataSource OK")
+            } catch (e: Exception) {
+                log("STEP3: setDataSource ERROR: \${e.message}")
+            }
+        }
+        t.start()
+        t.join(8000) // 8 ثانیه timeout
+        if (!dataSourceSet) {
+            log("STEP3: setDataSource TIMEOUT — server blocking second connection — fallback to MIC")
+            extractor.release()
+            startMic()
+            return
+        }
 
         var audioTrackIndex = -1
         var audioFormat: MediaFormat? = null
@@ -270,3 +288,4 @@ class DeepgramService(
         }
     }
 }
+
