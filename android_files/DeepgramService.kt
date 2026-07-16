@@ -20,6 +20,7 @@ class DeepgramService(
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS)
+        .pingInterval(20, TimeUnit.SECONDS)
         .build()
 
     fun setSink(s: EventChannel.EventSink?) { sink = s }
@@ -47,12 +48,11 @@ class DeepgramService(
         }
         log("STEP1 OK")
 
-        val lang = when (language) { "multi", "fa" -> "en"; else -> language }
         val wsUrl = "wss://api.deepgram.com/v1/listen?" +
-            "model=nova-2-general&language=$lang&" +
-            "encoding=linear16&sample_rate=16000&channels=1&" +
-            "punctuate=true&interim_results=true"
-        log("STEP2: $wsUrl")
+            "model=nova-3&language=en&" +
+            "punctuate=true&interim_results=true&endpointing=300&" +
+            "encoding=linear16&sample_rate=16000&channels=1"
+        log("STEP2: connecting nova-3 en")
 
         ws = http.newWebSocket(
             Request.Builder().url(wsUrl).header("Authorization", "Token $apiKey").build(),
