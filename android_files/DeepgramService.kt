@@ -68,6 +68,8 @@ class DeepgramService(
                     startAudioCapture()
                 }
                 override fun onMessage(ws: WebSocket, text: String) {
+                    // RAW log — هر پیامی از Deepgram
+                    log("RAW: \${text.take(80)}")
                     try {
                         val j = JSONObject(text)
                         val t = j.optJSONObject("channel")
@@ -81,6 +83,9 @@ class DeepgramService(
                             log("MSG empty type=${j.optString("type")}")
                         }
                     } catch (e: Exception) { log("MSG parse: ${e.message}") }
+                }
+                override fun onMessage(ws: WebSocket, bytes: okio.ByteString) {
+                    log("RAW BINARY: \${bytes.size}b")
                 }
                 override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
                     log("FAIL: ${t.message} resp=${response?.code}")
@@ -218,4 +223,3 @@ class DeepgramService(
         }
     }
 }
-
