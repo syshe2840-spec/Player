@@ -50,11 +50,7 @@ class DeepgramService(
         }
         log("STEP1 OK")
 
-        val model = when (language) {
-            "multi" -> "nova-2-general"
-            "fa", "ar", "hi", "id", "tr", "uk", "nl", "sv" -> "nova-2"
-            else -> "nova-3"
-        }
+        val model = "nova-2-general" // stable برای همه زبان‌ها
         val langParam = if (language == "multi") "detect_language=true" else "language=$language"
         val wsUrl = "wss://api.deepgram.com/v1/listen?model=$model&$langParam" +
             "&punctuate=true&interim_results=true&endpointing=300" +
