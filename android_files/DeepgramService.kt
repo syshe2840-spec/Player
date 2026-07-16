@@ -51,11 +51,13 @@ class DeepgramService(
         log("STEP1 OK")
 
         val model = "nova-2-general" // stable برای همه زبان‌ها
-        val langParam = if (language == "multi") "detect_language=true" else "language=$language"
-        val wsUrl = "wss://api.deepgram.com/v1/listen?model=$model&$langParam" +
-            "&punctuate=true&interim_results=true&endpointing=300" +
-            "&encoding=linear16&sample_rate=16000&channels=1"
-        log("STEP2: connecting...")
+        // ساده‌ترین URL
+        val lang = if (language == "multi" || language == "fa") "en" else language
+        val wsUrl = "wss://api.deepgram.com/v1/listen?" +
+            "model=nova-2-general&language=$lang&" +
+            "encoding=linear16&sample_rate=16000&channels=1&" +
+            "punctuate=true&interim_results=true"
+        log("STEP2: connecting url=$wsUrl")
 
         ws = http.newWebSocket(
             Request.Builder().url(wsUrl).header("Authorization", "Token $apiKey").build(),
