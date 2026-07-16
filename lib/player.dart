@@ -413,12 +413,10 @@ class _PlayerState extends State<PlayerScreen>{
         if(type=='transcript'){
           final t=(data as Map)['text'] as String;
           final isFinal=(data)['final'] as bool;
-          final dbg=(data as Map)['debug'] as String? ?? '';
-          _aiLog.add('[$tsStr] 📊 deepgram: "$t" final=$isFinal $dbg');
-          if(t.isNotEmpty){
-            if(mounted)setState((){
+          _aiLog.add('[$tsStr] 📝 "$t" final=$isFinal');
+          if(t.isNotEmpty&&mounted){
+            setState((){
               _dgText=isFinal?t:'$t...';
-              _aiLog.add('[$tsStr] 📝 ${isFinal?"✓":"…"} $t');
               if(_aiLog.length>30)_aiLog.removeAt(0);
             });
           }
