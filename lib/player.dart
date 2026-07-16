@@ -424,8 +424,9 @@ class _PlayerState extends State<PlayerScreen>{
           }
         } else if(type=='status'){
           if(mounted)setState((){
-            _dgText='[$data]';
-            _aiLog.add('[$tsStr] 🔗 status: $data');
+            // status فقط به log میره، _dgText رو عوض نمیکنه
+            _aiLog.add('[$tsStr] 🔗 $data');
+            if(_aiLog.length>30)_aiLog.removeAt(0);
           });
         } else if(type=='error'){
           if(mounted)setState((){
@@ -2153,3 +2154,4 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
+
