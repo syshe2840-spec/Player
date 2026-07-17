@@ -177,6 +177,8 @@ class _State extends State<OfflineTranslationScreen> {
                 onPressed: () async {
                   setState(() => _downloading[lang.bcpCode] = true);
                   try {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Downloading \${lang.displayName} (\${lang.bcpCode})...'), duration: const Duration(seconds: 2)));
                     final ok = await OfflineTranslationService.downloadModel(lang, (_) {});
                     if (mounted) setState(() {
                       _downloading[lang.bcpCode] = false;
@@ -189,9 +191,8 @@ class _State extends State<OfflineTranslationScreen> {
                   } catch (e) {
                     if (mounted) setState(() { _downloading[lang.bcpCode] = false; });
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: \$e'), backgroundColor: Colors.red));
+                      SnackBar(content: Text(e.toString().substring(0, e.toString().length.clamp(0, 100))), backgroundColor: Colors.red));
                   }
                 })));
   }
 }
-
