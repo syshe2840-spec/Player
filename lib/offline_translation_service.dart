@@ -124,6 +124,7 @@ class OfflineTranslationService {
   static OrtSession? _encoder, _decoder;
   static SentencePieceTokenizer? _tokenizer;
   static String? _loadedModelId;
+  static final _ort = OnnxRuntime();
 
   static Future<String> getSelectedModel() async =>
     (await SharedPreferences.getInstance()).getString(_kModel) ?? 'nllb_600m_q8';
@@ -186,11 +187,9 @@ class OfflineTranslationService {
     final dir = '$_kDir/$modelId';
     if (!Directory(dir).existsSync()) return false;
     try {
-      final env = OrtEnvironment.instance;
-      _encoder = await OrtSession.fromFile('$dir/encoder.onnx',
-        options: OrtSessionOptions()..setNumIntraOpThreads(2));
-      _decoder = await OrtSession.fromFile('$dir/decoder.onnx',
-        options: OrtSessionOptions()..setNumIntraOpThreads(2));
+      await _encoder?.close(); await _decoder?.close();
+      _encoder = await _ort.createSessionFromFile('$dir/encoder.onnx');
+      _decoder = await _ort.createSessionFromFile('$dir/decoder.onnx');
       _tokenizer = await SentencePieceTokenizer.fromModelFile('$dir/tokenizer.spm');
       _loadedModelId = modelId;
       return true;
@@ -215,11 +214,14 @@ class OfflineTranslationService {
       final attMask  = Int64List.fromList(List.filled(inputIds.length, 1));
 
       // Encode
+      final inputIdsList = inputIds.toList();
+      final attMaskList  = attMask.toList();
       final encInputs = {
-        'input_ids':     OrtValue.fromTensor(inputIds, [1, inputIds.length]),
-        'attention_mask': OrtValue.fromTensor(attMask,  [1, attMask.length]),
+        'input_ids':      await OrtValue.fromList(inputIdsList, [1, inputIds.length]),
+        'attention_mask': await OrtValue.fromList(attMaskList,  [1, attMask.length]),
       };
       final encOut = await enc.run(encInputs);
+      for (final v in encInputs.values) v.dispose();
       final encHidden = encOut['last_hidden_state']!;
 
       // Greedy decode
@@ -228,12 +230,15 @@ class OfflineTranslationService {
       for (int step = 0; step < 256; step++) {
         final decIds = Int64List.fromList(generated);
         final decInputs = {
-          'input_ids':              OrtValue.fromTensor(decIds, [1, decIds.length]),
-          'attention_mask':         OrtValue.fromTensor(attMask, [1, attMask.length]),
+          'input_ids':              await OrtValue.fromList(decIds.toList(), [1, decIds.length]),
+          'attention_mask':         await OrtValue.fromList(attMaskList, [1, attMask.length]),
           'encoder_hidden_states':  encHidden,
         };
         final decOut = await dec.run(decInputs);
-        final logits = (decOut['logits']!.value as List).last as List;
+        decInputs['input_ids']?.dispose();
+        decInputs['attention_mask']?.dispose();
+        final logitsList = await decOut['logits']!.asList() as List;
+        final logits = (logitsList.last as List);
         final nextTok = logits.indexOf(logits.reduce((a, b) => a > b ? a : b));
         if (nextTok == tok.encode('</s>').ids.firstOrNull) break;
         generated.add(nextTok);
@@ -277,3 +282,4 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
+
