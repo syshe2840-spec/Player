@@ -150,26 +150,38 @@ class OfflineTranslationService {
 
   // ── دانلود مدل ──
   static Stream<double> downloadModel(OfflineTransModel m) async* {
-    final dir = Directory('$_kDir/${m.id}');
+    final dir = Directory('\$_kDir/\${m.id}');
     await dir.create(recursive: true);
     final files = m.files.entries.toList();
     for (int fi = 0; fi < files.length; fi++) {
       final entry = files[fi];
-      final dest = File('${dir.path}/${entry.key}');
-      if (dest.existsSync()) { yield (fi + 1) / files.length; continue; }
-      final client = http.Client();
-      try {
-        final req = await client.send(http.Request('GET', Uri.parse(entry.value)));
-        final total = req.contentLength ?? 0;
-        int received = 0;
-        final sink = dest.openWrite();
-        await for (final chunk in req.stream) {
-          sink.add(chunk);
-          received += chunk.length;
-          if (total > 0) yield (fi + received / total) / files.length;
+      final dest = File('\${dir.path}/\${entry.key}');
+      if (dest.existsSync()) {
+        // بررسی که LFS pointer نباشه (فایل واقعی باید >100KB باشه)
+        if (dest.lengthSync() > 100 * 1024) {
+          yield (fi + 1) / files.length;
+          continue;
         }
-        await sink.close();
-      } finally { client.close(); }
+        await dest.delete(); // حذف فایل خراب
+      }
+      // دانلود با follow redirect
+      var url = entry.value;
+      http.Response? res;
+      for (int r = 0; r < 5; r++) { // max 5 redirect
+        res = await http.get(Uri.parse(url));
+        if (res.statusCode == 301 || res.statusCode == 302 || res.statusCode == 307) {
+          url = res.headers['location'] ?? url;
+        } else { break; }
+      }
+      if (res == null || res.statusCode != 200) {
+        throw Exception('Download failed: \${res?.statusCode} for \${entry.key}');
+      }
+      // بررسی LFS pointer
+      final content = res.bodyBytes;
+      if (content.length < 1000 && String.fromCharCodes(content).startsWith('version https://git-lfs')) {
+        throw Exception('Got LFS pointer instead of file. Use GitHub Releases model.');
+      }
+      await dest.writeAsBytes(content);
       yield (fi + 1) / files.length;
     }
   }
