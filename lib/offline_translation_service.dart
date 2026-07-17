@@ -189,12 +189,19 @@ class OfflineTranslationService {
     if (!Directory(dir).existsSync()) return false;
     try {
       await _encoder?.close(); await _decoder?.close();
+      debugPrint('OFFLINE: loading encoder...');
       _encoder = await _ort.createSession('$dir/encoder.onnx');
+      debugPrint('OFFLINE: loading decoder...');
       _decoder = await _ort.createSession('$dir/decoder.onnx');
+      debugPrint('OFFLINE: loading tokenizer...');
       _tokenizer = await SentencePieceTokenizer.fromModelFile('$dir/tokenizer.spm');
       _loadedModelId = modelId;
+      debugPrint('OFFLINE: model loaded OK');
       return true;
-    } catch (e) { return false; }
+    } catch (e, st) {
+      debugPrint('OFFLINE LOAD ERROR: \$e');
+      return false;
+    }
   }
 
   // ── ترجمه ──
@@ -203,7 +210,7 @@ class OfflineTranslationService {
     final m = modelId ?? await getSelectedModel();
     final s = src ?? await getSrcLang();
     final t = tgt ?? await getTgtLang();
-    if (!await _loadModel(m)) return text;
+    if (!await _loadModel(m)) return '[MODEL_LOAD_FAILED:\$m]';
 
     final enc = _encoder!; final dec = _decoder!; final tok = _tokenizer!;
     final srcFlores = _floresMap[s] ?? 'eng_Latn';
@@ -224,6 +231,7 @@ class OfflineTranslationService {
       final encOut = await enc.run(encInputs);
       for (final v in encInputs.values) v.dispose();
       final encHidden = encOut['last_hidden_state']!;
+      debugPrint('STEP3: encoder done, keys=\${encOut.keys.toList()}');
 
       // Greedy decode
       final tgtLangTok = tok.encode('__${tgtFlores}__').ids.first;
@@ -244,10 +252,12 @@ class OfflineTranslationService {
         if (nextTok == tok.encode('</s>').ids.firstOrNull) break;
         generated.add(nextTok);
       }
-      return tok.decode(generated.skip(1).toList());
-    } catch (e, st) {
-      debugPrint('OFFLINE TRANS ERROR: \$e\n\$st');
-      return 'ERROR: \${e.toString().substring(0, e.toString().length.clamp(0, 100))}';
+      debugPrint('STEP5: generated=\${generated.take(10).toList()}');
+      final decoded = tok.decode(generated.skip(1).toList());
+      if (decoded.isEmpty) return "[EMPTY_DECODE] gen=\${generated.length}tok";
+      return decoded;
+    } catch (e) {
+      return '[ERR:\${e.toString().substring(0, e.toString().length.clamp(0, 60))}]';
     }
   }
 
