@@ -226,13 +226,14 @@ class OfflineTranslationService {
     return await _modelManager.isModelDownloaded(lang.bcpCode);
   }
 
-  static Future<void> downloadModel(
+  static Future<bool> downloadModel(
     TranslateLanguage lang,
     void Function(double) onProgress,
   ) async {
     onProgress(0);
-    await _modelManager.downloadModel(lang.bcpCode, isWifiRequired: false);
+    final result = await _modelManager.downloadModel(lang.bcpCode, isWifiRequired: false);
     onProgress(1);
+    return result;
   }
 
   static Future<void> deleteModel(TranslateLanguage lang) async {
