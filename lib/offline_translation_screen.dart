@@ -31,7 +31,11 @@ class _State extends State<OfflineTranslationScreen> {
         orElse: () => kOfflineModels.first);
     final Map<String, bool> dl = {};
     for (final lang in model.languages) {
-      dl[lang.bcpCode] = await OfflineTranslationService.isDownloaded(lang);
+      try {
+        dl[lang.bcpCode] = await OfflineTranslationService.isDownloaded(lang);
+      } catch (_) {
+        dl[lang.bcpCode] = false;
+      }
     }
     if (mounted) setState(() { _downloaded = dl; _loading = false; });
   }
@@ -176,3 +180,4 @@ class _State extends State<OfflineTranslationScreen> {
                 })));
   }
 }
+
