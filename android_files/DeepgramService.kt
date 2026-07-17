@@ -20,7 +20,6 @@ class DeepgramService(
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS)
-        .pingInterval(25, TimeUnit.SECONDS)
         .build()
 
     fun setSink(s: EventChannel.EventSink?) { sink = s }
@@ -54,7 +53,7 @@ class DeepgramService(
         val langParam = if (language == "multi") "detect_language=true" else "language=$language"
         val wsUrl = "wss://api.deepgram.com/v1/listen?" +
             "model=$model&$langParam&" +
-            "punctuate=true&interim_results=true&endpointing=300&" +
+            "punctuate=true&interim_results=true&endpointing=100&" +
             "encoding=linear16&sample_rate=16000&channels=1"
         log("STEP2: connecting model=$model lang=$langParam")
 
@@ -117,11 +116,12 @@ class DeepgramService(
             )
             val state = recorder.state
             log("AUDIO: REMOTE_SUBMIX state=$state (1=initialized, 0=uninitialized)")
-            if (state == AudioRecord.STATE_INITIALIZED) {
+            // state=1 → initialized, state=0 → ممکن هنوز کار کنه روی بعضی دیوایس‌ها
+            if (state == AudioRecord.STATE_INITIALIZED || state == 0) {
                 captureMode = "REMOTE_SUBMIX"
-                log("AUDIO: REMOTE_SUBMIX OK — capturing internal audio")
+                log("AUDIO: REMOTE_SUBMIX OK state=$state — capturing internal audio")
             } else {
-                log("AUDIO: REMOTE_SUBMIX not initialized — releasing")
+                log("AUDIO: REMOTE_SUBMIX bad state=$state — releasing")
                 recorder.release()
                 recorder = null
             }
