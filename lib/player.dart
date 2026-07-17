@@ -762,46 +762,7 @@ class _PlayerState extends State<PlayerScreen>{
         if(_fpsStr.isNotEmpty)_infoRow(Icons.speed_rounded,const Color(0xFF7C3AED),L.frameRate,_fpsStr),
         if(_codecStr.isNotEmpty)_infoRow(Icons.code_rounded,const Color(0xFF10B981),L.codec,_codecStr),
         if(_bitrateStr.isNotEmpty)_infoRow(Icons.network_check_rounded,const Color(0xFFF59E0B),L.bitrate,_bitrateStr),
-        // live log removed
-        if(false)SizedBox(height:0,
-          child:GestureDetector(
-            onTap:()=>setState(()=>_showLiveLog=false),
-            child:Container(
-              padding:const EdgeInsets.all(10),
-              decoration:BoxDecoration(
-                color:Colors.black.withOpacity(0.82),
-                borderRadius:BorderRadius.circular(10),
-                border:Border.all(color:const Color(0xFF7C3AED).withOpacity(0.5))),
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-                Row(children:[
-                  const Icon(Icons.terminal_rounded,color:Color(0xFF7C3AED),size:14),
-                  const SizedBox(width:6),
-                  const Text('Live Stream Log',style:TextStyle(color:Color(0xFF7C3AED),fontSize:12,fontWeight:FontWeight.bold)),
-                  const Spacer(),
-                  const Text('tap to hide',style:TextStyle(color:Colors.white30,fontSize:10)),
-                ]),
-                const Divider(color:Colors.white12,height:10),
-                ..._liveLog.reversed.take(8).map((l)=>Padding(
-                  padding:const EdgeInsets.only(bottom:2),
-                  child:Text(l,style:const TextStyle(color:Colors.white70,fontSize:10,fontFamily:'monospace'),
-                    maxLines:1,overflow:TextOverflow.ellipsis))),
-                if(_liveLog.isEmpty)const Text('Starting...',style:TextStyle(color:Colors.white38,fontSize:10)),
-              ])))),
-        // placeholder
-        if(false)SizedBox(height:0,),
-        // subtitle
-        if(false)SizedBox(height:0,
-          bottom:100,left:16,right:16,
-          child:IgnorePointer(child:Container(
-            padding:const EdgeInsets.symmetric(horizontal:16,vertical:10),
-            decoration:BoxDecoration(
-              color:Colors.black.withOpacity(0.85),
-              borderRadius:BorderRadius.circular(10)),
-            child:Text(_dgText,
-              textAlign:TextAlign.center,
-              style:const TextStyle(color:Colors.white,fontSize:18,height:1.4,
-                fontWeight:FontWeight.w500,
-                shadows:[Shadow(color:Colors.black,blurRadius:6)]))))),
+
         if(_buffering&&widget.isLive)Positioned(
           top:0,left:0,right:0,bottom:0,
           child:Container(
@@ -2167,3 +2128,4 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
+
