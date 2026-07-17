@@ -5,7 +5,6 @@ import 'srt_translation_service.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'main.dart' show showSnack;
 import 'l10n.dart';
-import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'offline_translation_service.dart';
 
 /// شیت ترجمه زیرنویس — آنلاین (Cloudflare) یا آفلاین (ML Kit)
@@ -58,10 +57,8 @@ class _State extends State<SrtTranslateSheet> {
     }
     try {
       final content = File(srtPath).readAsStringSync(encoding: utf8);
-      final tgtLang = TranslateLanguage.values.firstWhere(
-        (l) => l.bcpCode == _targetLang, orElse: () => TranslateLanguage.persian);
       final translated = await OfflineTranslationService.translateSrt(
-        content, tgt: tgtLang,
+        content, tgt: _targetLang,
         onProgress: (_) {},
         onChunk: (partial) => widget.onSrtUpdated?.call(srtPath),
       );
@@ -78,10 +75,9 @@ class _State extends State<SrtTranslateSheet> {
   }
 
   Future<bool> _checkOfflineReady() async {
-    final tgtLang = TranslateLanguage.values.firstWhere(
-      (l) => l.bcpCode == _targetLang, orElse: () => TranslateLanguage.persian);
-    final isReady = await OfflineTranslationService.isDownloaded(tgtLang);
-    return isReady;
+    final modelId = await OfflineTranslationService.getSelectedModel();
+    final model = kOfflineModels.firstWhere((m) => m.id == modelId, orElse: () => kOfflineModels.first);
+    return OfflineTranslationService.isDownloaded(model);
   }
 
   void _start() {
