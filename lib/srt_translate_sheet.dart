@@ -77,8 +77,26 @@ class _State extends State<SrtTranslateSheet> {
     }
   }
 
+  Future<bool> _checkOfflineReady() async {
+    final tgtLang = TranslateLanguage.values.firstWhere(
+      (l) => l.bcpCode == _targetLang, orElse: () => TranslateLanguage.persian);
+    final isReady = await OfflineTranslationService.isDownloaded(tgtLang);
+    return isReady;
+  }
+
   void _start() {
-    if (_offlineMode) { _startOffline(); return; }
+    if (_offlineMode) {
+      // چک میکنیم مدل دانلود شده باشه
+      _checkOfflineReady().then((ready) {
+        if (!ready) {
+          showSnack(context, '⚠ زبان مقصد دانلود نشده — به Offline Translation برو و دانلود کن',
+            color: Colors.orange, seconds: 4);
+        } else {
+          _startOffline();
+        }
+      });
+      return;
+    }
     // فوری sheet رو می‌بندیم — ترجمه در پس‌زمینه ادامه میده
     Navigator.pop(context);
 
