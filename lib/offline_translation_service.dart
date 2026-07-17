@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:dart_sentencepiece_tokenizer/dart_sentencepiece_tokenizer.dart';
@@ -244,7 +245,10 @@ class OfflineTranslationService {
         generated.add(nextTok);
       }
       return tok.decode(generated.skip(1).toList());
-    } catch (_) { return text; }
+    } catch (e, st) {
+      debugPrint('OFFLINE TRANS ERROR: \$e\n\$st');
+      return 'ERROR: \${e.toString().substring(0, e.toString().length.clamp(0, 100))}';
+    }
   }
 
   // ── ترجمه SRT ──
@@ -282,4 +286,3 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
-
