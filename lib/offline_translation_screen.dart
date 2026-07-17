@@ -1,12 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_translation/google_mlkit_translation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 import 'offline_translation_service.dart';
 import 'l10n.dart';
 
-const _kBg = Color(0xFF08080F);
-const _kCard = Color(0xFF12121C);
-const _kAccent = Color(0xFF7C3AED);
+const _bg = Color(0xFF08080F);
+const _card = Color(0xFF12121C);
+const _accent = Color(0xFF7C3AED);
 
 class OfflineTranslationScreen extends StatefulWidget {
   const OfflineTranslationScreen({super.key});
@@ -14,185 +15,183 @@ class OfflineTranslationScreen extends StatefulWidget {
 }
 
 class _State extends State<OfflineTranslationScreen> {
-  String _selectedModel = 'mlkit_lite';
-  Map<String, bool> _downloading = {};
-  Map<String, bool> _downloaded = {};
+  String _selectedModel = 'nllb_600m_q8';
+  String _srcLang = 'en', _tgtLang = 'fa';
+  Map<String, double> _downloadProgress = {};
   bool _loading = true;
 
-  @override void initState() {
-    super.initState();
-    _load();
-  }
+  @override void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
     setState(() => _loading = true);
     _selectedModel = await OfflineTranslationService.getSelectedModel();
-    final model = kOfflineModels.firstWhere((m) => m.id == _selectedModel,
-        orElse: () => kOfflineModels.first);
-    final Map<String, bool> dl = {};
-    for (final lang in model.languages) {
-      try {
-        dl[lang.bcpCode] = await OfflineTranslationService.isDownloaded(lang);
-      } catch (_) {
-        dl[lang.bcpCode] = false;
-      }
-    }
-    if (mounted) setState(() { _downloaded = dl; _loading = false; });
+    _srcLang = await OfflineTranslationService.getSrcLang();
+    _tgtLang = await OfflineTranslationService.getTgtLang();
+    if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _downloadAll() async {
-    final model = kOfflineModels.firstWhere((m) => m.id == _selectedModel);
-    final notDownloaded = model.languages.where((l) => _downloaded[l.bcpCode] != true).toList();
-    for (final lang in notDownloaded) {
-      if (!mounted) return;
-      setState(() => _downloading[lang.bcpCode] = true);
-      try {
-        final ok = await OfflineTranslationService.downloadModel(lang, (_) {});
-        if (mounted) setState(() {
-          _downloading[lang.bcpCode] = false;
-          _downloaded[lang.bcpCode] = ok;
-        });
-      } catch (e) {
-        if (mounted) setState(() { _downloading[lang.bcpCode] = false; });
+  OfflineTransModel get _current => kOfflineModels.firstWhere(
+    (m) => m.id == _selectedModel, orElse: () => kOfflineModels.first);
+
+  Future<void> _download(OfflineTransModel m) async {
+    setState(() => _downloadProgress[m.id] = 0.0);
+    try {
+      await for (final p in OfflineTranslationService.downloadModel(m)) {
+        if (!mounted) return;
+        setState(() => _downloadProgress[m.id] = p);
       }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString().substring(0, e.toString().length.clamp(0, 80))}'),
+          backgroundColor: Colors.red));
     }
+    if (mounted) setState(() => _downloadProgress.remove(m.id));
   }
 
-  Future<void> _deleteAll() async {
-    final model = kOfflineModels.firstWhere((m) => m.id == _selectedModel);
-    for (final lang in model.languages) {
-      await OfflineTranslationService.deleteModel(lang);
-    }
+  Future<void> _delete(OfflineTransModel m) async {
+    await OfflineTranslationService.deleteModel(m);
+    setState(() {});
+  }
+
+  Future<void> _backup() async {
+    final settings = await OfflineTranslationService.exportSettings();
+    final json = jsonEncode(settings);
+    final dir = Directory('/storage/emulated/0/Download/Vezoo/Backup');
+    await dir.create(recursive: true);
+    final file = File('${dir.path}/offline_translation_settings.json');
+    await file.writeAsString(json);
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('✓ Saved to ${file.path}'), backgroundColor: Colors.green));
+  }
+
+  Future<void> _import() async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+    if (res == null || res.files.single.path == null) return;
+    final json = await File(res.files.single.path!).readAsString();
+    await OfflineTranslationService.importSettings(Map<String, String>.from(jsonDecode(json)));
     await _load();
   }
 
-  // ── بکاپ تنظیمات ──
-  Future<void> _backup() async {
-    final p = await SharedPreferences.getInstance();
-    final data = {
-      'model': _selectedModel,
-      'src': (await OfflineTranslationService.getSrcLang()).bcpCode,
-      'tgt': (await OfflineTranslationService.getTgtLang()).bcpCode,
-    };
-    // TODO: export JSON file
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Settings backed up')));
-  }
-
-  @override Widget build(BuildContext context) => Scaffold(
-    backgroundColor: _kBg,
+  @override Widget build(BuildContext ctx) => Scaffold(
+    backgroundColor: _bg,
     appBar: AppBar(
-      backgroundColor: _kBg,
+      backgroundColor: _bg,
       title: const Text('Offline Translation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       actions: [
         IconButton(icon: const Icon(Icons.upload_rounded, color: Colors.white70), onPressed: _backup, tooltip: 'Backup'),
-        IconButton(icon: const Icon(Icons.refresh_rounded, color: Colors.white70), onPressed: _load, tooltip: 'Refresh'),
+        IconButton(icon: const Icon(Icons.download_done_rounded, color: Colors.white70), onPressed: _import, tooltip: 'Import'),
       ]),
-    body: _loading
-      ? const Center(child: CircularProgressIndicator())
+    body: _loading ? const Center(child: CircularProgressIndicator())
       : ListView(padding: const EdgeInsets.all(12), children: [
-          // ── انتخاب مدل ──
-          const Text('Select Model', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+          // ── انتخاب زبان ──
+          _sectionTitle('Default Languages'),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: _langDropdown('Source', _srcLang, _current.langCodes, (v) async {
+              await OfflineTranslationService.setSrcLang(v); setState(() => _srcLang = v); })),
+            const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.arrow_forward_rounded, color: Colors.white38)),
+            Expanded(child: _langDropdown('Target', _tgtLang, _current.langCodes, (v) async {
+              await OfflineTranslationService.setTgtLang(v); setState(() => _tgtLang = v); })),
+          ]),
+          const SizedBox(height: 20),
+          _sectionTitle('AI Models'),
           const SizedBox(height: 8),
           ...kOfflineModels.map((m) => _modelCard(m)),
-          const SizedBox(height: 16),
-
-          // ── زبان‌های مدل انتخاب شده ──
-          Builder(builder: (_) {
-            final model = kOfflineModels.firstWhere((m) => m.id == _selectedModel);
-            final total = model.languages.length;
-            final dlCount = model.languages.where((l) => _downloaded[l.bcpCode] == true).length;
-            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Text('Languages ($dlCount/$total)', style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _downloadAll,
-                  icon: const Icon(Icons.download_rounded, size: 14),
-                  label: const Text('Download All', style: TextStyle(fontSize: 11)),
-                  style: TextButton.styleFrom(foregroundColor: _kAccent)),
-                TextButton.icon(
-                  onPressed: _deleteAll,
-                  icon: const Icon(Icons.delete_rounded, size: 14),
-                  label: const Text('Delete All', style: TextStyle(fontSize: 11)),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white38)),
-              ]),
-              const SizedBox(height: 6),
-              ...model.languages.map((lang) => _langTile(lang)),
-            ]);
-          }),
+          const SizedBox(height: 12),
+          const Text('مدل‌ها در /Download/Vezoo/OfflineModels ذخیره میشن',
+            style: TextStyle(color: Colors.white24, fontSize: 10), textAlign: TextAlign.center),
         ]));
+
+  Widget _sectionTitle(String t) => Text(t, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600));
+
+  Widget _langDropdown(String label, String value, List<String> langs, void Function(String) onChanged) =>
+    Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(8)),
+      child: DropdownButton<String>(
+        value: langs.contains(value) ? value : langs.first,
+        dropdownColor: _card,
+        isExpanded: true,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+        underline: const SizedBox(),
+        hint: Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+        items: langs.map((l) => DropdownMenuItem(value: l, child: Text(langNames[l] ?? l))).toList(),
+        onChanged: (v) { if (v != null) onChanged(v); },
+      ));
 
   Widget _modelCard(OfflineTransModel m) {
     final isSelected = _selectedModel == m.id;
+    final isDownloaded = OfflineTranslationService.isDownloaded(m);
+    final progress = _downloadProgress[m.id];
+    final isDownloading = progress != null;
+
     return GestureDetector(
       onTap: () async {
         await OfflineTranslationService.setSelectedModel(m.id);
         setState(() => _selectedModel = m.id);
-        _load();
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isSelected ? _kAccent.withOpacity(0.15) : _kCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? _kAccent : Colors.transparent, width: 1.5)),
-        child: Row(children: [
-          Icon(isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
-            color: isSelected ? _kAccent : Colors.white38, size: 20),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(m.name, style: TextStyle(color: isSelected ? Colors.white : Colors.white70,
-              fontWeight: FontWeight.bold, fontSize: 13)),
-            Text(m.description, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-            Text('${m.langCount} languages • ${m.size}',
-              style: TextStyle(color: isSelected ? _kAccent : Colors.white30, fontSize: 11)),
-          ])),
+          color: isSelected ? _accent.withOpacity(0.12) : _card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isSelected ? _accent : Colors.transparent, width: 1.5)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+              color: isSelected ? _accent : Colors.white38, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(m.name, style: TextStyle(color: isSelected ? Colors.white : Colors.white70,
+                fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(m.desc, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              Row(children: [
+                _tag('${m.langCount} زبان', Colors.blue),
+                const SizedBox(width: 4),
+                _tag('~${m.sizeMb}MB', Colors.orange),
+                if (isDownloaded) ...[const SizedBox(width: 4), _tag('✓ دانلود شده', Colors.green)],
+              ]),
+            ])),
+            // دکمه‌های دانلود / حذف
+            if (isDownloading)
+              SizedBox(width: 40, height: 40, child: CircularProgressIndicator(
+                value: progress, strokeWidth: 3, color: _accent))
+            else if (isDownloaded)
+              IconButton(icon: const Icon(Icons.delete_outline_rounded, color: Colors.white30),
+                onPressed: () => _delete(m))
+            else
+              FilledButton.icon(
+                onPressed: () => _download(m),
+                icon: const Icon(Icons.download_rounded, size: 14),
+                label: const Text('Download', style: TextStyle(fontSize: 11)),
+                style: FilledButton.styleFrom(backgroundColor: _accent,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6))),
+          ]),
+          if (isDownloading) ...[
+            const SizedBox(height: 8),
+            ClipRRect(borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(value: progress, minHeight: 4,
+                backgroundColor: Colors.white12, color: _accent)),
+            Padding(padding: const EdgeInsets.only(top: 4),
+              child: Text('${(progress! * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Colors.white38, fontSize: 10))),
+          ],
+          // لیست زبان‌ها
+          if (isSelected) ...[
+            const SizedBox(height: 10),
+            const Divider(color: Colors.white12, height: 1),
+            const SizedBox(height: 8),
+            Wrap(spacing: 4, runSpacing: 4,
+              children: m.langCodes.map((l) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.07), borderRadius: BorderRadius.circular(4)),
+                child: Text(langNames[l] ?? l, style: const TextStyle(color: Colors.white54, fontSize: 9)))).toList()),
+          ],
         ])));
   }
 
-  Widget _langTile(TranslateLanguage lang) {
-    final isDownloaded = _downloaded[lang.bcpCode] == true;
-    final isDownloading = _downloading[lang.bcpCode] == true;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      decoration: BoxDecoration(color: _kCard, borderRadius: BorderRadius.circular(8)),
-      child: ListTile(dense: true,
-        leading: Text(lang.displayName,
-          style: TextStyle(color: isDownloaded ? Colors.white : Colors.white54, fontSize: 13)),
-        title: Text(lang.bcpCode.toUpperCase(),
-          style: const TextStyle(color: Colors.white30, fontSize: 10)),
-        trailing: isDownloading
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C3AED)))
-          : isDownloaded
-            ? IconButton(
-                icon: const Icon(Icons.delete_rounded, color: Colors.white24, size: 18),
-                onPressed: () async {
-                  await OfflineTranslationService.deleteModel(lang);
-                  setState(() => _downloaded[lang.bcpCode] = false);
-                })
-            : IconButton(
-                icon: const Icon(Icons.download_rounded, color: Color(0xFF7C3AED), size: 18),
-                onPressed: () async {
-                  setState(() => _downloading[lang.bcpCode] = true);
-                  try {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Downloading \${lang.displayName} (\${lang.bcpCode})...'), duration: const Duration(seconds: 2)));
-                    final ok = await OfflineTranslationService.downloadModel(lang, (_) {});
-                    if (mounted) setState(() {
-                      _downloading[lang.bcpCode] = false;
-                      _downloaded[lang.bcpCode] = ok;
-                    });
-                    if (!ok && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Download failed for \${lang.displayName} — check network'), backgroundColor: Colors.red));
-                    }
-                  } catch (e) {
-                    if (mounted) setState(() { _downloading[lang.bcpCode] = false; });
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString().substring(0, e.toString().length.clamp(0, 100))), backgroundColor: Colors.red));
-                  }
-                })));
-  }
+  Widget _tag(String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+    child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)));
 }
