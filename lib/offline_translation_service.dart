@@ -1,198 +1,279 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'offline_translation_service.dart';
-import 'l10n.dart';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
+import 'package:dart_sentencepiece_tokenizer/dart_sentencepiece_tokenizer.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-const _bg = Color(0xFF08080F);
-const _card = Color(0xFF12121C);
-const _accent = Color(0xFF7C3AED);
+// ── مدل‌های ترجمه آفلاین ──
+class OfflineTransModel {
+  final String id, name, desc;
+  final int sizeMb, langCount;
+  final List<String> langCodes;
+  final Map<String, String> files;
 
-class OfflineTranslationScreen extends StatefulWidget {
-  const OfflineTranslationScreen({super.key});
-  @override State<OfflineTranslationScreen> createState() => _State();
+  const OfflineTransModel({
+    required this.id, required this.name, required this.desc,
+    required this.sizeMb, required this.langCount,
+    required this.langCodes, required this.files,
+  });
 }
 
-class _State extends State<OfflineTranslationScreen> {
-  String _selectedModel = 'nllb_600m_q8';
-  String _srcLang = 'en', _tgtLang = 'fa';
-  Map<String, double> _downloadProgress = {};
-  bool _loading = true;
+const _gh = 'https://github.com/niedev/RTranslator/releases/download/2.0.0';
+const _xen = 'https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx';
 
-  @override void initState() { super.initState(); _load(); }
+final kOfflineModels = [
+  OfflineTransModel(
+    id: 'nllb_600m_q8',
+    name: 'NLLB-600M Q8',
+    desc: '200 زبان • int8 • سریع و سبک — توصیه شده',
+    sizeMb: 300, langCount: 200,
+    langCodes: _nllbLangs,
+    files: {
+      'encoder.onnx': '$_gh/nllb_encoder_q8.onnx',
+      'decoder.onnx': '$_gh/nllb_decoder_q8.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+    },
+  ),
+  OfflineTransModel(
+    id: 'nllb_600m_q8_xenova',
+    name: 'NLLB-600M Q8 Alt',
+    desc: '200 زبان • int8 • نسخه آلترناتیو',
+    sizeMb: 350, langCount: 200,
+    langCodes: _nllbLangs,
+    files: {
+      'encoder.onnx': '$_xen/encoder_model_quantized.onnx',
+      'decoder.onnx': '$_xen/decoder_model_quantized.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+    },
+  ),
+  OfflineTransModel(
+    id: 'nllb_600m_q4',
+    name: 'NLLB-600M Q4',
+    desc: '200 زبان • uint8 • کمترین حجم',
+    sizeMb: 200, langCount: 200,
+    langCodes: _nllbLangs,
+    files: {
+      'encoder.onnx': '$_xen/encoder_model_uint8.onnx',
+      'decoder.onnx': '$_xen/decoder_model_uint8.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+    },
+  ),
+  OfflineTransModel(
+    id: 'nllb_600m_standard',
+    name: 'NLLB-600M Standard',
+    desc: '200 زبان • float32 • کیفیت بالا',
+    sizeMb: 1200, langCount: 200,
+    langCodes: _nllbLangs,
+    files: {
+      'encoder.onnx': '$_xen/encoder_model.onnx',
+      'decoder.onnx': '$_xen/decoder_model.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+    },
+  ),
+  OfflineTransModel(
+    id: 'nllb_600m_fp16',
+    name: 'NLLB-600M FP16',
+    desc: '200 زبان • float16 • بالاترین کیفیت',
+    sizeMb: 1100, langCount: 200,
+    langCodes: _nllbLangs,
+    files: {
+      'encoder.onnx': '$_xen/encoder_model_fp16.onnx',
+      'decoder.onnx': '$_xen/decoder_model_fp16.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+    },
+  ),
+];
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    _selectedModel = await OfflineTranslationService.getSelectedModel();
-    _srcLang = await OfflineTranslationService.getSrcLang();
-    _tgtLang = await OfflineTranslationService.getTgtLang();
-    if (mounted) setState(() => _loading = false);
+// زبان‌های NLLB Flores-200
+const _floresMap = {
+  'fa':'fas_Arab','en':'eng_Latn','ar':'arb_Arab','zh':'zho_Hans',
+  'ru':'rus_Cyrl','es':'spa_Latn','fr':'fra_Latn','de':'deu_Latn',
+  'tr':'tur_Latn','hi':'hin_Deva','ja':'jpn_Jpan','ko':'kor_Hang',
+  'it':'ita_Latn','pt':'por_Latn','nl':'nld_Latn','pl':'pol_Latn',
+  'uk':'ukr_Cyrl','id':'ind_Latn','sv':'swe_Latn','no':'nob_Latn',
+  'da':'dan_Latn','fi':'fin_Latn','el':'ell_Grek','he':'heb_Hebr',
+  'hu':'hun_Latn','ro':'ron_Latn','cs':'ces_Latn','bg':'bul_Cyrl',
+  'th':'tha_Thai','vi':'vie_Latn','ms':'zsm_Latn','bn':'ben_Beng',
+  'ur':'urd_Arab','sw':'swh_Latn','ka':'kat_Geor',
+};
+
+const _nllbLangs = ['fa','en','ar','zh','ru','es','fr','de','tr','hi',
+  'ja','ko','it','pt','nl','pl','uk','id','sv','no','da','fi','el',
+  'he','hu','ro','cs','bg','th','vi','ms','bn','ur','sw','ka'];
+
+const langNames = {
+  'fa':'فارسی','en':'English','ar':'العربية','zh':'中文','ru':'Русский',
+  'es':'Español','fr':'Français','de':'Deutsch','tr':'Türkçe','hi':'हिन्दी',
+  'ja':'日本語','ko':'한국어','it':'Italiano','pt':'Português','nl':'Nederlands',
+  'pl':'Polski','uk':'Українська','id':'Indonesia','sv':'Svenska','no':'Norsk',
+  'da':'Dansk','fi':'Suomi','el':'Ελληνικά','he':'עברית','hu':'Magyar',
+  'ro':'Română','cs':'Čeština','bg':'Български','th':'ภาษาไทย','vi':'Tiếng Việt',
+  'ms':'Melayu','bn':'বাংলা','ur':'اردو','sw':'Kiswahili','ka':'ქართული',
+};
+
+// ── سرویس ──
+class OfflineTranslationService {
+  static const _kModel = 'offline_trans_model_v3';
+  static const _kSrc   = 'offline_trans_src_v3';
+  static const _kTgt   = 'offline_trans_tgt_v3';
+  static const _kDir   = '/storage/emulated/0/Download/Vezoo/OfflineModels';
+
+  static OrtSession? _encoder, _decoder;
+  static SentencePieceTokenizer? _tokenizer;
+  static String? _loadedModelId;
+
+  static Future<String> getSelectedModel() async =>
+    (await SharedPreferences.getInstance()).getString(_kModel) ?? 'nllb_600m_q8';
+  static Future<void> setSelectedModel(String v) async =>
+    (await SharedPreferences.getInstance()).setString(_kModel, v);
+  static Future<String> getSrcLang() async =>
+    (await SharedPreferences.getInstance()).getString(_kSrc) ?? 'en';
+  static Future<String> getTgtLang() async =>
+    (await SharedPreferences.getInstance()).getString(_kTgt) ?? 'fa';
+  static Future<void> setSrcLang(String v) async =>
+    (await SharedPreferences.getInstance()).setString(_kSrc, v);
+  static Future<void> setTgtLang(String v) async =>
+    (await SharedPreferences.getInstance()).setString(_kTgt, v);
+
+  // ── بررسی دانلود ──
+  static bool isDownloaded(OfflineTransModel m) {
+    final dir = Directory('$_kDir/${m.id}');
+    if (!dir.existsSync()) return false;
+    return m.files.keys.every((f) => File('${dir.path}/$f').existsSync());
   }
 
-  OfflineTransModel get _current => kOfflineModels.firstWhere(
-    (m) => m.id == _selectedModel, orElse: () => kOfflineModels.first);
-
-  Future<void> _download(OfflineTransModel m) async {
-    setState(() => _downloadProgress[m.id] = 0.0);
-    try {
-      await for (final p in OfflineTranslationService.downloadModel(m)) {
-        if (!mounted) return;
-        setState(() => _downloadProgress[m.id] = p);
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString().substring(0, e.toString().length.clamp(0, 80))}'),
-          backgroundColor: Colors.red));
-    }
-    if (mounted) setState(() => _downloadProgress.remove(m.id));
-  }
-
-  Future<void> _delete(OfflineTransModel m) async {
-    await OfflineTranslationService.deleteModel(m);
-    setState(() {});
-  }
-
-  Future<void> _backup() async {
-    final settings = await OfflineTranslationService.exportSettings();
-    final json = jsonEncode(settings);
-    final dir = Directory('/storage/emulated/0/Download/Vezoo/Backup');
+  // ── دانلود مدل ──
+  static Stream<double> downloadModel(OfflineTransModel m) async* {
+    final dir = Directory('$_kDir/${m.id}');
     await dir.create(recursive: true);
-    final file = File('${dir.path}/offline_translation_settings.json');
-    await file.writeAsString(json);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✓ Saved to ${file.path}'), backgroundColor: Colors.green));
+    final files = m.files.entries.toList();
+    for (int fi = 0; fi < files.length; fi++) {
+      final entry = files[fi];
+      final dest = File('${dir.path}/${entry.key}');
+      if (dest.existsSync()) { yield (fi + 1) / files.length; continue; }
+      final client = http.Client();
+      try {
+        final req = await client.send(http.Request('GET', Uri.parse(entry.value)));
+        final total = req.contentLength ?? 0;
+        int received = 0;
+        final sink = dest.openWrite();
+        await for (final chunk in req.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (total > 0) yield (fi + received / total) / files.length;
+        }
+        await sink.close();
+      } finally { client.close(); }
+      yield (fi + 1) / files.length;
+    }
   }
 
-  Future<void> _import() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
-    if (res == null || res.files.single.path == null) return;
-    final json = await File(res.files.single.path!).readAsString();
-    await OfflineTranslationService.importSettings(Map<String, String>.from(jsonDecode(json)));
-    await _load();
+  // ── حذف مدل ──
+  static Future<void> deleteModel(OfflineTransModel m) async {
+    final dir = Directory('$_kDir/${m.id}');
+    if (dir.existsSync()) await dir.delete(recursive: true);
+    if (_loadedModelId == m.id) {
+      _encoder = null; _decoder = null; _tokenizer = null; _loadedModelId = null;
+    }
   }
 
-  @override Widget build(BuildContext ctx) => Scaffold(
-    backgroundColor: _bg,
-    appBar: AppBar(
-      backgroundColor: _bg,
-      title: const Text('Offline Translation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      actions: [
-        IconButton(icon: const Icon(Icons.upload_rounded, color: Colors.white70), onPressed: _backup, tooltip: 'Backup'),
-        IconButton(icon: const Icon(Icons.download_done_rounded, color: Colors.white70), onPressed: _import, tooltip: 'Import'),
-      ]),
-    body: _loading ? const Center(child: CircularProgressIndicator())
-      : ListView(padding: const EdgeInsets.all(12), children: [
-          // ── انتخاب زبان ──
-          _sectionTitle('Default Languages'),
-          const SizedBox(height: 8),
-          Row(children: [
-            Expanded(child: _langDropdown('Source', _srcLang, _current.langCodes, (v) async {
-              await OfflineTranslationService.setSrcLang(v); setState(() => _srcLang = v); })),
-            const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.arrow_forward_rounded, color: Colors.white38)),
-            Expanded(child: _langDropdown('Target', _tgtLang, _current.langCodes, (v) async {
-              await OfflineTranslationService.setTgtLang(v); setState(() => _tgtLang = v); })),
-          ]),
-          const SizedBox(height: 20),
-          _sectionTitle('AI Models'),
-          const SizedBox(height: 8),
-          ...kOfflineModels.map((m) => _modelCard(m)),
-          const SizedBox(height: 12),
-          const Text('مدل‌ها در /Download/Vezoo/OfflineModels ذخیره میشن',
-            style: TextStyle(color: Colors.white24, fontSize: 10), textAlign: TextAlign.center),
-        ]));
-
-  Widget _sectionTitle(String t) => Text(t, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600));
-
-  Widget _langDropdown(String label, String value, List<String> langs, void Function(String) onChanged) =>
-    Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(8)),
-      child: DropdownButton<String>(
-        value: langs.contains(value) ? value : langs.first,
-        dropdownColor: _card,
-        isExpanded: true,
-        style: const TextStyle(color: Colors.white, fontSize: 12),
-        underline: const SizedBox(),
-        hint: Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-        items: langs.map((l) => DropdownMenuItem(value: l, child: Text(langNames[l] ?? l))).toList(),
-        onChanged: (v) { if (v != null) onChanged(v); },
-      ));
-
-  Widget _modelCard(OfflineTransModel m) {
-    final isSelected = _selectedModel == m.id;
-    final isDownloaded = OfflineTranslationService.isDownloaded(m);
-    final progress = _downloadProgress[m.id];
-    final isDownloading = progress != null;
-
-    return GestureDetector(
-      onTap: () async {
-        await OfflineTranslationService.setSelectedModel(m.id);
-        setState(() => _selectedModel = m.id);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? _accent.withOpacity(0.12) : _card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? _accent : Colors.transparent, width: 1.5)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
-              color: isSelected ? _accent : Colors.white38, size: 18),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(m.name, style: TextStyle(color: isSelected ? Colors.white : Colors.white70,
-                fontWeight: FontWeight.bold, fontSize: 14)),
-              Text(m.desc, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-              Row(children: [
-                _tag('${m.langCount} زبان', Colors.blue),
-                const SizedBox(width: 4),
-                _tag('~${m.sizeMb}MB', Colors.orange),
-                if (isDownloaded) ...[const SizedBox(width: 4), _tag('✓ دانلود شده', Colors.green)],
-              ]),
-            ])),
-            // دکمه‌های دانلود / حذف
-            if (isDownloading)
-              SizedBox(width: 40, height: 40, child: CircularProgressIndicator(
-                value: progress, strokeWidth: 3, color: _accent))
-            else if (isDownloaded)
-              IconButton(icon: const Icon(Icons.delete_outline_rounded, color: Colors.white30),
-                onPressed: () => _delete(m))
-            else
-              FilledButton.icon(
-                onPressed: () => _download(m),
-                icon: const Icon(Icons.download_rounded, size: 14),
-                label: const Text('Download', style: TextStyle(fontSize: 11)),
-                style: FilledButton.styleFrom(backgroundColor: _accent,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6))),
-          ]),
-          if (isDownloading) ...[
-            const SizedBox(height: 8),
-            ClipRRect(borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(value: progress, minHeight: 4,
-                backgroundColor: Colors.white12, color: _accent)),
-            Padding(padding: const EdgeInsets.only(top: 4),
-              child: Text('${(progress! * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(color: Colors.white38, fontSize: 10))),
-          ],
-          // لیست زبان‌ها
-          if (isSelected) ...[
-            const SizedBox(height: 10),
-            const Divider(color: Colors.white12, height: 1),
-            const SizedBox(height: 8),
-            Wrap(spacing: 4, runSpacing: 4,
-              children: m.langCodes.map((l) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.07), borderRadius: BorderRadius.circular(4)),
-                child: Text(langNames[l] ?? l, style: const TextStyle(color: Colors.white54, fontSize: 9)))).toList()),
-          ],
-        ])));
+  // ── بارگذاری مدل ──
+  static Future<bool> _loadModel(String modelId) async {
+    if (_loadedModelId == modelId) return true;
+    final dir = '$_kDir/$modelId';
+    if (!Directory(dir).existsSync()) return false;
+    try {
+      final env = OrtEnvironment.instance;
+      _encoder = await OrtSession.fromFile('$dir/encoder.onnx',
+        options: OrtSessionOptions()..setNumIntraOpThreads(2));
+      _decoder = await OrtSession.fromFile('$dir/decoder.onnx',
+        options: OrtSessionOptions()..setNumIntraOpThreads(2));
+      _tokenizer = await SentencePieceTokenizer.fromModelFile('$dir/tokenizer.spm');
+      _loadedModelId = modelId;
+      return true;
+    } catch (e) { return false; }
   }
 
-  Widget _tag(String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-    decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-    child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)));
+  // ── ترجمه ──
+  static Future<String> translate(String text,
+      {String? src, String? tgt, String? modelId}) async {
+    final m = modelId ?? await getSelectedModel();
+    final s = src ?? await getSrcLang();
+    final t = tgt ?? await getTgtLang();
+    if (!await _loadModel(m)) return text;
+
+    final enc = _encoder!; final dec = _decoder!; final tok = _tokenizer!;
+    final srcFlores = _floresMap[s] ?? 'eng_Latn';
+    final tgtFlores = _floresMap[t] ?? 'fas_Arab';
+
+    try {
+      final encoded = tok.encode('__${srcFlores}__ $text');
+      final inputIds = Int64List.fromList(encoded.ids.map((e) => e.toInt()).toList());
+      final attMask  = Int64List.fromList(List.filled(inputIds.length, 1));
+
+      // Encode
+      final encInputs = {
+        'input_ids':     OrtValue.fromTensor(inputIds, [1, inputIds.length]),
+        'attention_mask': OrtValue.fromTensor(attMask,  [1, attMask.length]),
+      };
+      final encOut = await enc.run(encInputs);
+      final encHidden = encOut['last_hidden_state']!;
+
+      // Greedy decode
+      final tgtLangTok = tok.encode('__${tgtFlores}__').ids.first;
+      final generated = <int>[tgtLangTok];
+      for (int step = 0; step < 256; step++) {
+        final decIds = Int64List.fromList(generated);
+        final decInputs = {
+          'input_ids':              OrtValue.fromTensor(decIds, [1, decIds.length]),
+          'attention_mask':         OrtValue.fromTensor(attMask, [1, attMask.length]),
+          'encoder_hidden_states':  encHidden,
+        };
+        final decOut = await dec.run(decInputs);
+        final logits = (decOut['logits']!.value as List).last as List;
+        final nextTok = logits.indexOf(logits.reduce((a, b) => a > b ? a : b));
+        if (nextTok == tok.encode('</s>').ids.firstOrNull) break;
+        generated.add(nextTok);
+      }
+      return tok.decode(generated.skip(1).toList());
+    } catch (_) { return text; }
+  }
+
+  // ── ترجمه SRT ──
+  static Future<String> translateSrt(String srtContent,
+      {String? src, String? tgt, String? modelId,
+       void Function(double)? onProgress,
+       void Function(String)? onChunk}) async {
+    final lines = srtContent.split('\n');
+    final result = List<String>.from(lines);
+    final textIdx = <int>[];
+    for (int i = 0; i < lines.length; i++) {
+      final l = lines[i].trim();
+      if (l.isNotEmpty && !RegExp(r'^\d+$').hasMatch(l) && !l.contains('-->'))
+        textIdx.add(i);
+    }
+    for (int i = 0; i < textIdx.length; i++) {
+      final idx = textIdx[i];
+      result[idx] = await translate(lines[idx].trim(), src: src, tgt: tgt, modelId: modelId);
+      onProgress?.call((i + 1) / textIdx.length);
+      onChunk?.call(result.join('\n'));
+    }
+    return result.join('\n');
+  }
+
+  // ── بکاپ / ایمپورت ──
+  static Future<Map<String, String>> exportSettings() async => {
+    'model': await getSelectedModel(),
+    'src': await getSrcLang(),
+    'tgt': await getTgtLang(),
+  };
+
+  static Future<void> importSettings(Map<String, String> data) async {
+    if (data['model'] != null) await setSelectedModel(data['model']!);
+    if (data['src']   != null) await setSrcLang(data['src']!);
+    if (data['tgt']   != null) await setTgtLang(data['tgt']!);
+  }
 }
-
