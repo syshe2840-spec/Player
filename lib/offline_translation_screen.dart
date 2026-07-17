@@ -195,3 +195,4 @@ class _State extends State<OfflineTranslationScreen> {
     decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
     child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)));
 }
+
