@@ -164,13 +164,6 @@ final kOfflineModels = [
       TranslateLanguage.lithuanian,
       TranslateLanguage.estonian,
       TranslateLanguage.galician,
-      TranslateLanguage.belarusian,
-      TranslateLanguage.azerbaijani,
-      TranslateLanguage.georgian,
-      TranslateLanguage.armenian,
-      TranslateLanguage.albanian,
-      TranslateLanguage.macedonian,
-      TranslateLanguage.serbian,
     ],
   ),
   OfflineTransModel(
@@ -213,9 +206,9 @@ class OfflineTranslationService {
 
   static Future<TranslateLanguage> getTgtLang() async {
     final p = await SharedPreferences.getInstance();
-    final name = p.getString(_kTgtLang) ?? 'fa';
+    final name2 = p.getString(_kTgtLang) ?? 'fa';
     return TranslateLanguage.values.firstWhere(
-      (l) => l.bcpCode == name, orElse: () => TranslateLanguage.persian);
+      (l) => l.bcpCode == name2, orElse: () => TranslateLanguage.persian);
   }
 
   static Future<void> setSrcLang(TranslateLanguage l) async {
@@ -280,7 +273,7 @@ class OfflineTranslationService {
     // پیدا کردن خطوط متن
     for (int i = 0; i < lines.length; i++) {
       final l = lines[i].trim();
-      if (l.isEmpty || RegExp(r'^\d+$').test(l) || l.contains('-->')) {
+      if (l.isEmpty || RegExp(r'^\d+$').hasMatch(l) || l.contains('-->')) {
         result.add(lines[i]);
       } else {
         textLines.add(i);
@@ -327,3 +320,4 @@ extension TranslateLanguageExt on TranslateLanguage {
     return names[bcpCode] ?? bcpCode.toUpperCase();
   }
 }
+
