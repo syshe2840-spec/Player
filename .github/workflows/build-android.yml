@@ -80,6 +80,9 @@ jobs:
             echo "=== okhttp3 added ==="
           fi
           # اضافه کردن ONNX Runtime برای offline translation
+          # proguard برای flutter_onnxruntime
+          echo "-keep class ai.onnxruntime.** { *; }" >> android/app/proguard-rules.pro || true
+
           if ! grep -q "onnxruntime" "$BAPP"; then
             echo 'dependencies { implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0") }' >> "$BAPP"
             echo "=== onnxruntime added ==="
