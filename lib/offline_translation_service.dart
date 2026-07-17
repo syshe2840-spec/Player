@@ -19,68 +19,68 @@ class OfflineTransModel {
   });
 }
 
-const _hf = 'https://huggingface.co/niedev/RTranslator/resolve/main';
+const _gh = 'https://github.com/niedev/RTranslator/releases/download/2.0.0';
 const _hfFb = 'https://huggingface.co/facebook';
 
 final kOfflineModels = [
   OfflineTransModel(
     id: 'nllb_600m_q8',
     name: 'NLLB-600M Q8',
-    desc: '200 زبان • int8 • سریع و سبک',
+    desc: '200 زبان • int8 optimized • سریع و سبک',
     sizeMb: 300, langCount: 200,
     langCodes: _nllbLangs,
     files: {
-      'encoder.onnx': '$_hf/nllb_encoder_q8.onnx',
-      'decoder.onnx': '$_hf/nllb_decoder_q8.onnx',
-      'tokenizer.spm': '$_hf/flores200_sacrebleu_tokenizer.spm',
+      'encoder.onnx': '$_gh/nllb_encoder_q8.onnx',
+      'decoder.onnx': '$_gh/nllb_decoder_q8.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
     },
   ),
   OfflineTransModel(
-    id: 'nllb_600m',
-    name: 'NLLB-600M',
-    desc: '200 زبان • float32 • دقت بیشتر',
-    sizeMb: 550, langCount: 200,
-    langCodes: _nllbLangs,
-    files: {
-      'encoder.onnx': '$_hfFb/nllb-200-distilled-600M/resolve/main/onnx/encoder_model.onnx',
-      'decoder.onnx': '$_hfFb/nllb-200-distilled-600M/resolve/main/onnx/decoder_model.onnx',
-      'tokenizer.spm': '$_hf/flores200_sacrebleu_tokenizer.spm',
-    },
-  ),
-  OfflineTransModel(
-    id: 'nllb_1b3_q8',
-    name: 'NLLB-1.3B Q8',
-    desc: '200 زبان • int8 • کیفیت بالا',
-    sizeMb: 650, langCount: 200,
-    langCodes: _nllbLangs,
-    files: {
-      'encoder.onnx': '$_hfFb/nllb-200-distilled-1.3B/resolve/main/onnx/encoder_model_quantized.onnx',
-      'decoder.onnx': '$_hfFb/nllb-200-distilled-1.3B/resolve/main/onnx/decoder_model_quantized.onnx',
-      'tokenizer.spm': '$_hf/flores200_sacrebleu_tokenizer.spm',
-    },
-  ),
-  OfflineTransModel(
-    id: 'nllb_1b3',
-    name: 'NLLB-1.3B',
-    desc: '200 زبان • float32 • کیفیت عالی',
+    id: 'nllb_600m_xenova',
+    name: 'NLLB-600M Standard',
+    desc: '200 زبان • کیفیت بالا',
     sizeMb: 1200, langCount: 200,
     langCodes: _nllbLangs,
     files: {
-      'encoder.onnx': '$_hfFb/nllb-200-distilled-1.3B/resolve/main/onnx/encoder_model.onnx',
-      'decoder.onnx': '$_hfFb/nllb-200-distilled-1.3B/resolve/main/onnx/decoder_model.onnx',
-      'tokenizer.spm': '$_hf/flores200_sacrebleu_tokenizer.spm',
+      'encoder.onnx': '$_xen/encoder_model.onnx',
+      'decoder.onnx': '$_xen/decoder_model.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
     },
   ),
   OfflineTransModel(
-    id: 'm2m_100_418m',
-    name: 'M2M-100 418M',
-    desc: '100 زبان • کیفیت خوب',
-    sizeMb: 800, langCount: 100,
-    langCodes: _m2mLangs,
+    id: 'nllb_600m_q8_xenova',
+    name: 'NLLB-600M Q8 Alt',
+    desc: '200 زبان • int8 • نسخه آلترناتیو',
+    sizeMb: 350, langCount: 200,
+    langCodes: _nllbLangs,
     files: {
-      'encoder.onnx': 'https://huggingface.co/facebook/m2m100_418M/resolve/main/onnx/encoder_model.onnx',
-      'decoder.onnx': 'https://huggingface.co/facebook/m2m100_418M/resolve/main/onnx/decoder_model.onnx',
-      'tokenizer.spm': 'https://huggingface.co/facebook/m2m100_418M/resolve/main/sentencepiece.bpe.model',
+      'encoder.onnx': '$_xen/encoder_model_quantized.onnx',
+      'decoder.onnx': '$_xen/decoder_model_quantized.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+    },
+  ),
+  OfflineTransModel(
+    id: 'nllb_600m_q4',
+    name: 'NLLB-600M Q4',
+    desc: '200 زبان • int4 • کمترین حجم',
+    sizeMb: 200, langCount: 200,
+    langCodes: _nllbLangs,
+    files: {
+      'encoder.onnx': '$_xen/encoder_model_uint8.onnx',
+      'decoder.onnx': '$_xen/decoder_model_uint8.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+    },
+  ),
+  OfflineTransModel(
+    id: 'nllb_600m_fp16',
+    name: 'NLLB-600M FP16',
+    desc: '200 زبان • float16 • بالاترین کیفیت',
+    sizeMb: 1100, langCount: 200,
+    langCodes: _nllbLangs,
+    files: {
+      'encoder.onnx': '$_xen/encoder_model_fp16.onnx',
+      'decoder.onnx': '$_xen/decoder_model_fp16.onnx',
+      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
     },
   ),
 ];
