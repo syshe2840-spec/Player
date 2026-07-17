@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -150,7 +151,7 @@ class OfflineTranslationService {
 
   // ── دانلود مدل ──
   static Stream<double> downloadModel(OfflineTransModel m) async* {
-    final dir = Directory('\$_kDir/\${m.id}');
+    final dir = Directory('$_kDir/${m.id}');
     await dir.create(recursive: true);
     final files = m.files.entries.toList();
     for (int fi = 0; fi < files.length; fi++) {
@@ -309,4 +310,3 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
-
