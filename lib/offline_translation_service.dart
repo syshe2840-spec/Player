@@ -188,8 +188,10 @@ class OfflineTranslationService {
     if (!Directory(dir).existsSync()) return false;
     try {
       await _encoder?.close(); await _decoder?.close();
-      _encoder = await _ort.createSessionFromFile('$dir/encoder.onnx');
-      _decoder = await _ort.createSessionFromFile('$dir/decoder.onnx');
+      final encBytes = await File('$dir/encoder.onnx').readAsBytes();
+      final decBytes = await File('$dir/decoder.onnx').readAsBytes();
+      _encoder = await _ort.createSessionFromBytes(encBytes);
+      _decoder = await _ort.createSessionFromBytes(decBytes);
       _tokenizer = await SentencePieceTokenizer.fromModelFile('$dir/tokenizer.spm');
       _loadedModelId = modelId;
       return true;
