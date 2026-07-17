@@ -20,6 +20,7 @@ class OfflineTransModel {
 }
 
 const _gh = 'https://github.com/niedev/RTranslator/releases/download/2.0.0';
+const _xen = 'https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx';
 const _hfFb = 'https://huggingface.co/facebook';
 
 final kOfflineModels = [
