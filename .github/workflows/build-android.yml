@@ -79,6 +79,11 @@ jobs:
             echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
             echo "=== okhttp3 added ==="
           fi
+          # اضافه کردن ONNX Runtime برای offline translation
+          if ! grep -q "onnxruntime" "$BAPP"; then
+            echo 'dependencies { implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0") }' >> "$BAPP"
+            echo "=== onnxruntime added ==="
+          fi
 
           # patch build.gradle.kts برای NDK
           APP=android/app/build.gradle.kts
