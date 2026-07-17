@@ -43,7 +43,7 @@ dependencies:
   flutter_go_torrent_streamer: ^0.0.8
   dio: ^5.4.0
   http: ^1.2.0
-  google_mlkit_translation: ^0.9.0
+  flutter_onnxruntime: ^1.8.0
 
 dev_dependencies:
   flutter_test:
