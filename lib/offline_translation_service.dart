@@ -125,6 +125,7 @@ class OfflineTranslationService {
   static OrtSession? _encoder, _decoder;
   static SentencePieceTokenizer? _tokenizer;
   static String? _loadedModelId;
+  static String? _lastError;
   static final _ort = OnnxRuntime();
 
   static Future<String> getSelectedModel() async =>
@@ -198,8 +199,8 @@ class OfflineTranslationService {
       _loadedModelId = modelId;
       debugPrint('OFFLINE: model loaded OK');
       return true;
-    } catch (e, st) {
-      debugPrint('OFFLINE LOAD ERROR: \$e');
+    } catch (e) {
+      _lastError = e.toString();
       return false;
     }
   }
@@ -210,7 +211,7 @@ class OfflineTranslationService {
     final m = modelId ?? await getSelectedModel();
     final s = src ?? await getSrcLang();
     final t = tgt ?? await getTgtLang();
-    if (!await _loadModel(m)) return '[MODEL_LOAD_FAILED:\$m]';
+    if (!await _loadModel(m)) return '[LOAD_FAIL: ${_lastError ?? "unknown"}]';
 
     final enc = _encoder!; final dec = _decoder!; final tok = _tokenizer!;
     final srcFlores = _floresMap[s] ?? 'eng_Latn';
@@ -296,3 +297,4 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
+
