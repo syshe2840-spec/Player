@@ -46,11 +46,15 @@ class _State extends State<OfflineTranslationScreen> {
     for (final lang in notDownloaded) {
       if (!mounted) return;
       setState(() => _downloading[lang.bcpCode] = true);
-      await OfflineTranslationService.downloadModel(lang, (_) {});
-      if (mounted) setState(() {
-        _downloading[lang.bcpCode] = false;
-        _downloaded[lang.bcpCode] = true;
-      });
+      try {
+        final ok = await OfflineTranslationService.downloadModel(lang, (_) {});
+        if (mounted) setState(() {
+          _downloading[lang.bcpCode] = false;
+          _downloaded[lang.bcpCode] = ok;
+        });
+      } catch (e) {
+        if (mounted) setState(() { _downloading[lang.bcpCode] = false; });
+      }
     }
   }
 
@@ -172,11 +176,21 @@ class _State extends State<OfflineTranslationScreen> {
                 icon: const Icon(Icons.download_rounded, color: Color(0xFF7C3AED), size: 18),
                 onPressed: () async {
                   setState(() => _downloading[lang.bcpCode] = true);
-                  await OfflineTranslationService.downloadModel(lang, (_) {});
-                  if (mounted) setState(() {
-                    _downloading[lang.bcpCode] = false;
-                    _downloaded[lang.bcpCode] = true;
-                  });
+                  try {
+                    final ok = await OfflineTranslationService.downloadModel(lang, (_) {});
+                    if (mounted) setState(() {
+                      _downloading[lang.bcpCode] = false;
+                      _downloaded[lang.bcpCode] = ok;
+                    });
+                    if (!ok && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Download failed for \${lang.displayName} — check network'), backgroundColor: Colors.red));
+                    }
+                  } catch (e) {
+                    if (mounted) setState(() { _downloading[lang.bcpCode] = false; });
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: \$e'), backgroundColor: Colors.red));
+                  }
                 })));
   }
 }
