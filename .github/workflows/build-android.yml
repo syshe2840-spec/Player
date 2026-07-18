@@ -90,11 +90,11 @@ jobs:
             curl -L -o "$VOSK_AAR" "https://alphacephei.com/maven/com/alphacephei/vosk-android/0.3.50/vosk-android-0.3.50.aar"
             echo "=== vosk AAR downloaded ==="
           fi
-          # اضافه کردن alphacephei به settings.gradle (محل درست)
-          SFILE="android/settings.gradle"
-          if [ -f "$SFILE" ] && ! grep -q "alphacephei" "$SFILE"; then
-            echo 'dependencyResolutionManagement { repositories { maven { url = uri("https://alphacephei.com/maven/") } } }' >> "$SFILE"
-            echo "=== alphacephei repo added to settings.gradle ==="
+          # اضافه alphacephei به settings.gradle.kts (داخل dependencyResolutionManagement)
+          SKTS="android/settings.gradle.kts"
+          if [ -f "$SKTS" ] && ! grep -q "alphacephei" "$SKTS"; then
+            sed -i 's|maven("https://storage.googleapis.com/download.flutter.io")|maven("https://storage.googleapis.com/download.flutter.io")\n        maven("https://alphacephei.com/maven/")|' "$SKTS"
+            echo "=== alphacephei added to settings.gradle.kts ==="
           fi
           # اضافه کردن vosk dependency
           if ! grep -q "vosk-android" "$BAPP"; then
@@ -248,3 +248,4 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
