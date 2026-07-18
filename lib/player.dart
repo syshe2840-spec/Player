@@ -2165,3 +2165,4 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
+
