@@ -287,4 +287,3 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
-
