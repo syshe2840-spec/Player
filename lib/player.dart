@@ -465,15 +465,15 @@ class _PlayerState extends State<PlayerScreen>{
             final isFinal=(data)['final'] as bool;
             if(t.isNotEmpty){
               if(mounted)setState((){
-                _dgText=isFinal?t:'\$t...';
-                _aiLog.add('[\$tsStr] \${isFinal?"✓":"…"} \$t');
+                _dgText=isFinal?t:'$t...';
+                _aiLog.add('[$tsStr] ${isFinal?"✓":"…"} $t');
                 if(_aiLog.length>30)_aiLog.removeAt(0);
               });
             }
           } else if(type=='status'){
-            if(mounted)setState((){_aiLog.add('[\$tsStr] 🔗 \$data');if(_aiLog.length>30)_aiLog.removeAt(0);});
+            if(mounted)setState((){_aiLog.add('[$tsStr] 🔗 $data');if(_aiLog.length>30)_aiLog.removeAt(0);});
           } else if(type=='error'){
-            if(mounted)setState((){_dgActive=false;_dgText='';_aiLog.add('[\$tsStr] ❌ \$data');});
+            if(mounted)setState((){_dgActive=false;_dgText='';_aiLog.add('[$tsStr] ❌ $data');});
           }
         });
         await VoskService.start(lang=='multi'?'en':lang);
@@ -2165,4 +2165,3 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
-
