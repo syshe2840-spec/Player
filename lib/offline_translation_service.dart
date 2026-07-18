@@ -145,8 +145,10 @@ class OfflineTranslationService {
         continue;
       }
 
+      for (int attempt = 0; attempt < 10; attempt++) { // max 10 retry
       final client = HttpClient();
       client.connectionTimeout = const Duration(seconds: 30);
+      bool success = false;
       try {
         final existingBytes = tmp.existsSync() ? tmp.lengthSync() : 0;
         final req = await client.getUrl(Uri.parse(entry.value));
@@ -159,6 +161,7 @@ class OfflineTranslationService {
           // فایل کامل بود
           await res.drain();
           if (tmp.existsSync()) tmp.renameSync(dest.path);
+          success = true;
           yield (fi + 1) / files.length;
           continue;
         }
@@ -177,17 +180,32 @@ class OfflineTranslationService {
         int recv = isResume ? existingBytes : 0;
         final sink = tmp.openWrite(mode: isResume ? FileMode.append : FileMode.write);
 
-        await for (final chunk in res) {
-          sink.add(chunk);
-          recv += chunk.length;
-          yield (fi + recv / total) / files.length;
+        // timeout per-chunk: اگه ۳۰ ثانیه داده نیومد retry
+        final stream = res.timeout(const Duration(seconds: 120));
+        try {
+          await for (final chunk in stream) {
+            sink.add(chunk);
+            recv += chunk.length;
+            yield (fi + recv / total) / files.length;
+          }
+          await sink.close();
+          tmp.renameSync(dest.path);
+          success = true;
+          yield (fi + 1) / files.length;
+        } on TimeoutException {
+          await sink.close();
+          // resume از همونجا ادامه میده
+          throw Exception('Timeout at ${recv ~/ 1024}KB — retrying...');
         }
-        await sink.close();
-        tmp.renameSync(dest.path);
-        yield (fi + 1) / files.length;
+      } catch (e) {
+        if (success) rethrow;
+        // retry خودکار با resume
+        await Future.delayed(const Duration(seconds: 2));
       } finally {
         client.close();
       }
+      if (success) break;
+      } // end retry loop
     }
   }
 
