@@ -84,14 +84,11 @@ jobs:
             echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
             echo "=== okhttp3 added ==="
           fi
-          # Vosk: اضافه alphacephei به settings.gradle.kts با perl
+          # Vosk: اضافه dependencyResolutionManagement به settings.gradle.kts
           SKTS="android/settings.gradle.kts"
           if [ -f "$SKTS" ] && ! grep -q "alphacephei" "$SKTS"; then
-            perl -i -pe 's|mavenCentral\(\)|mavenCentral()\n        maven("https://alphacephei.com/maven/")|' "$SKTS"
-            echo "=== alphacephei added ==="
-            echo "=== FULL settings.gradle.kts ==="
-            cat "$SKTS"
-            echo "=== END ==="
+            printf '\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven { url = uri("https://alphacephei.com/maven/") }\n    }\n}\n' >> "$SKTS"
+            echo "=== alphacephei dependencyResolutionManagement added ==="
           fi
           if ! grep -q "vosk" "$BAPP"; then
             echo 'dependencies { implementation("com.alphacephei:vosk-android:0.3.50") }' >> "$BAPP"
