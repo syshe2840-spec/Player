@@ -103,11 +103,63 @@ class MainActivity : FlutterActivity() {
 
     private var deepgramService: DeepgramService? = null
     private var deepgramSink: io.flutter.plugin.common.EventChannel.EventSink? = null
+    private var voskService: VoskService? = null
+    private var voskSink: io.flutter.plugin.common.EventChannel.EventSink? = null
+    private var pendingVoskLang: String? = null
+    private val PROJ_REQ_VOSK = 2001
 
     override fun configureFlutterEngine(fe: FlutterEngine) {
         super.configureFlutterEngine(fe)
         createNotifChannel()
         requestNotifPermission()
+
+        // ── Vosk STT ──
+        io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_events")
+            .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
+                override fun onListen(args: Any?, s: io.flutter.plugin.common.EventChannel.EventSink?) {
+                    voskSink = s; voskService?.setSink(s) }
+                override fun onCancel(args: Any?) { voskSink = null }
+            })
+
+        io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "requestMediaProjection" -> {
+                        val lang = call.argument<String>("lang") ?: "en"
+                        voskService = VoskService(this)
+                        voskService?.setSink(voskSink)
+                        pendingVoskLang = lang
+                        val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+                        if (mgr != null) {
+                            startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
+                        } else {
+                            Thread { voskService?.start(lang, null) }.start()
+                        }
+                        result.success(null)
+                    }
+                    "stop" -> { voskService?.stop(); result.success(null) }
+                    "extractModel" -> {
+                        val zipPath = call.argument<String>("zipPath") ?: ""
+                        val destDir = call.argument<String>("destDir") ?: ""
+                        try {
+                            val zf = java.util.zip.ZipFile(zipPath)
+                            val entries = zf.entries()
+                            while (entries.hasMoreElements()) {
+                                val entry = entries.nextElement()
+                                val outFile = java.io.File(destDir, entry.name)
+                                if (entry.isDirectory) { outFile.mkdirs(); continue }
+                                outFile.parentFile?.mkdirs()
+                                zf.getInputStream(entry).use { inp ->
+                                    outFile.outputStream().use { out -> inp.copyTo(out) }
+                                }
+                            }
+                            zf.close()
+                            result.success(null)
+                        } catch (e: Exception) { result.error("EXTRACT_ERROR", e.message, null) }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
 
         // ── Deepgram real-time transcription ──
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/deepgram_events")
@@ -759,3 +811,4 @@ private fun genThumb(path: String, timeUs: Long): ByteArray? {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
