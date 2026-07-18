@@ -83,6 +83,13 @@ jobs:
             echo 'dependencies { implementation("com.alphacephei:vosk-android:0.3.50") }' >> "$BAPP"
             echo "=== vosk-android added ==="
           fi
+          # اضافه کردن alphacephei repository به settings.gradle یا build.gradle
+          for REPO_FILE in android/settings.gradle android/build.gradle; do
+            if [ -f "$REPO_FILE" ] && ! grep -q "alphacephei" "$REPO_FILE"; then
+              sed -i 's|repositories {|repositories {\n        maven { url "https://alphacephei.com/maven/" }|g' "$REPO_FILE"
+              echo "=== alphacephei repo added to $REPO_FILE ==="
+            fi
+          done
           # اضافه کردن ONNX Runtime برای offline translation
           # proguard برای flutter_onnxruntime
           echo "-keep class ai.onnxruntime.** { *; }" >> android/app/proguard-rules.pro || true
