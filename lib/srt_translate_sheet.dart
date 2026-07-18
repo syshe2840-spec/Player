@@ -5,7 +5,6 @@ import 'srt_translation_service.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'main.dart' show showSnack;
 import 'l10n.dart';
-import 'offline_translation_service.dart';
 
 /// شیت ترجمه زیرنویس — آنلاین (Cloudflare) یا آفلاین (ML Kit)
 class SrtTranslateSheet extends StatefulWidget {
@@ -44,55 +43,9 @@ class SrtTranslateSheet extends StatefulWidget {
 class _State extends State<SrtTranslateSheet> {
   String _targetLang = 'fa';
   int _subTarget = 0; // 0=sub1, 1=sub2, 2=هر دو
-  bool _offlineMode = false; // false=آنلاین Cloudflare, true=آفلاین ML Kit
-
-  Future<void> _startOffline() async {
-    Navigator.pop(context);
-    showSnack(context, 'ترجمه آفلاین شروع شد...', color: const Color(0xFF7C3AED), seconds: 2);
-    String srtPath = widget.srtPath;
-    if (widget.srtContent != null) {
-      final tmp = File('\${Directory.systemTemp.path}/tmp_offline_translate.srt');
-      tmp.writeAsStringSync(widget.srtContent!, encoding: utf8);
-      srtPath = tmp.path;
-    }
-    try {
-      final content = File(srtPath).readAsStringSync(encoding: utf8);
-      final translated = await OfflineTranslationService.translateSrt(
-        content, tgt: _targetLang,
-        onProgress: (_) {},
-        onChunk: (partial) => widget.onSrtUpdated?.call(srtPath),
-      );
-      final outPath = srtPath.replaceAll('.srt', '_offline_\$_targetLang.srt');
-      File(outPath).writeAsStringSync(translated, encoding: utf8);
-      switch(_subTarget) {
-        case 0: widget.onDone(outPath); break;
-        case 1: widget.onDoneSecondary?.call(outPath); break;
-        case 2: widget.onDone(outPath); widget.onDoneSecondary?.call(outPath); break;
-      }
-    } catch (e) {
-      WhisperService.updateProgressNotification('⚠ Offline translate error: \$e', 0);
-    }
-  }
-
-  Future<bool> _checkOfflineReady() async {
-    final modelId = await OfflineTranslationService.getSelectedModel();
-    final model = kOfflineModels.firstWhere((m) => m.id == modelId, orElse: () => kOfflineModels.first);
-    return OfflineTranslationService.isDownloaded(model);
-  }
 
   void _start() {
-    if (_offlineMode) {
-      // چک میکنیم مدل دانلود شده باشه
-      _checkOfflineReady().then((ready) {
-        if (!ready) {
-          showSnack(context, '⚠ زبان مقصد دانلود نشده — به Offline Translation برو و دانلود کن',
-            color: Colors.orange, seconds: 4);
-        } else {
-          _startOffline();
-        }
-      });
-      return;
-    }
+
     // فوری sheet رو می‌بندیم — ترجمه در پس‌زمینه ادامه میده
     Navigator.pop(context);
 
@@ -141,37 +94,8 @@ class _State extends State<SrtTranslateSheet> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.close)),
           ]),
           const SizedBox(height: 4),
-          Text(_offlineMode ? 'ML Kit — آفلاین بدون اینترنت' : L.cloudflareAiNote,
+          Text(L.cloudflareAiNote,
             style: TextStyle(color: Colors.white54, fontSize: 11)),
-          const SizedBox(height: 10),
-          // ── toggle آنلاین / آفلاین ──
-          Row(children: [
-            Expanded(child: GestureDetector(
-              onTap: () => setState(() => _offlineMode = false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: !_offlineMode ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.cloud_rounded, size: 14, color: Colors.white70),
-                  const SizedBox(width: 4),
-                  Text('آنلاین', style: TextStyle(color: !_offlineMode ? Colors.white : Colors.white38, fontSize: 12, fontWeight: FontWeight.w600)),
-                ])))),
-            const SizedBox(width: 8),
-            Expanded(child: GestureDetector(
-              onTap: () => setState(() => _offlineMode = true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _offlineMode ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.wifi_off_rounded, size: 14, color: Colors.white70),
-                  const SizedBox(width: 4),
-                  Text('آفلاین', style: TextStyle(color: _offlineMode ? Colors.white : Colors.white38, fontSize: 12, fontWeight: FontWeight.w600)),
-                ])))),
-          ]),
           const SizedBox(height: 16),
 
           // ── انتخاب زبان مقصد ──
