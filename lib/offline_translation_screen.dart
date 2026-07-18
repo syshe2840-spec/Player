@@ -18,6 +18,7 @@ class _State extends State<OfflineTranslationScreen> {
   String _selectedModel = 'nllb_600m_q8';
   String _srcLang = 'en', _tgtLang = 'fa';
   Map<String, double> _downloadProgress = {};
+  Map<String, String> _downloadLog = {};
   bool _loading = true;
 
   @override void initState() { super.initState(); _load(); }
@@ -35,12 +36,17 @@ class _State extends State<OfflineTranslationScreen> {
 
   Future<void> _download(OfflineTransModel m) async {
     setState(() => _downloadProgress[m.id] = 0.0);
+    _downloadLog[m.id] = 'شروع دانلود...';
     try {
       await for (final p in OfflineTranslationService.downloadModel(m)) {
         if (!mounted) return;
-        setState(() => _downloadProgress[m.id] = p);
+        setState(() {
+          _downloadProgress[m.id] = p;
+          _downloadLog[m.id] = '${(p * 100).toStringAsFixed(1)}% — فایل \${(p * m.files.length).floor() + 1}/\${m.files.length}';
+        });
       }
     } catch (e) {
+      setState(() => _downloadLog[m.id] = 'خطا: \${e.toString().substring(0, e.toString().length.clamp(0, 80))}');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString().substring(0, e.toString().length.clamp(0, 80))}'),
           backgroundColor: Colors.red));
@@ -195,4 +201,3 @@ class _State extends State<OfflineTranslationScreen> {
     decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
     child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)));
 }
-
