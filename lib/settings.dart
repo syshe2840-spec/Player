@@ -487,6 +487,16 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   Widget build(BuildContext ctx) => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── Vosk Models ──
+      ListTile(
+        tileColor: const Color(0xFF1A1A2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        leading: const Icon(Icons.record_voice_over_rounded, color: Color(0xFF7C3AED)),
+        title: const Text('Vosk — مدل‌های زبان', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: const Text('آفلاین • ۱۸ زبان • زیرنویس زنده بدون اینترنت', style: TextStyle(color: Colors.white38, fontSize: 11)),
+        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+        onTap: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const VoskModelsScreen()))),
+      const SizedBox(height: 12),
 
       Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
@@ -520,4 +530,3 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
     ]),
   );
 }
-
