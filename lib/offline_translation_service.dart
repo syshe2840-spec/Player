@@ -169,6 +169,15 @@ class OfflineTranslationService {
     dio.close();
   }
 
+  static Future<void> deleteModel(OfflineTransModel m) async {
+    final dir = Directory('$_kDir/${m.id}');
+    if (dir.existsSync()) await dir.delete(recursive: true);
+    if (_loadedModelId == m.id) {
+      _encoder = _decoder = _cacheInit = _embedLmHead = null;
+      _tokenizer = null; _loadedModelId = null;
+    }
+  }
+
     static Future<bool> _loadModel(String modelId) async {
     if (_loadedModelId == modelId) return true;
     final dir = '$_kDir/$modelId';
@@ -287,3 +296,4 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
+
