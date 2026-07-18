@@ -79,24 +79,23 @@ jobs:
             echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
             echo "=== okhttp3 added ==="
           fi
-          if ! grep -q "vosk" "$BAPP"; then
+          # Vosk: دانلود AAR + اضافه به settings.gradle
+          mkdir -p android/app/libs
+          VOSK_AAR="android/app/libs/vosk-android-0.3.50.aar"
+          if [ ! -f "$VOSK_AAR" ]; then
+            curl -L -o "$VOSK_AAR" "https://alphacephei.com/maven/com/alphacephei/vosk-android/0.3.50/vosk-android-0.3.50.aar"
+            echo "=== vosk AAR downloaded ==="
+          fi
+          # اضافه کردن alphacephei به settings.gradle (محل درست)
+          SFILE="android/settings.gradle"
+          if [ -f "$SFILE" ] && ! grep -q "alphacephei" "$SFILE"; then
+            echo 'dependencyResolutionManagement { repositories { maven { url = uri("https://alphacephei.com/maven/") } } }' >> "$SFILE"
+            echo "=== alphacephei repo added to settings.gradle ==="
+          fi
+          # اضافه کردن vosk dependency
+          if ! grep -q "vosk-android" "$BAPP"; then
             echo 'dependencies { implementation("com.alphacephei:vosk-android:0.3.50") }' >> "$BAPP"
             echo "=== vosk-android added ==="
-          fi
-          # اضافه کردن alphacephei repository به settings.gradle یا build.gradle
-          for REPO_FILE in android/settings.gradle android/build.gradle; do
-            if [ -f "$REPO_FILE" ] && ! grep -q "alphacephei" "$REPO_FILE"; then
-              sed -i 's|repositories {|repositories {\n        maven { url "https://alphacephei.com/maven/" }|g' "$REPO_FILE"
-              echo "=== alphacephei repo added to $REPO_FILE ==="
-            fi
-          done
-          # اضافه کردن ONNX Runtime برای offline translation
-          # proguard برای flutter_onnxruntime
-          echo "-keep class ai.onnxruntime.** { *; }" >> android/app/proguard-rules.pro || true
-
-          if ! grep -q "onnxruntime" "$BAPP"; then
-            echo 'dependencies { implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0") }' >> "$BAPP"
-            echo "=== onnxruntime added ==="
           fi
 
           # patch build.gradle.kts برای NDK
