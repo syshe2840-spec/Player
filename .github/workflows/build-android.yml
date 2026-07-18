@@ -84,15 +84,16 @@ jobs:
             echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
             echo "=== okhttp3 added ==="
           fi
-          # Vosk: اضافه کردن alphacephei به settings.gradle.kts
+          # Vosk: اضافه alphacephei به settings.gradle.kts با perl
           SKTS="android/settings.gradle.kts"
           if [ -f "$SKTS" ] && ! grep -q "alphacephei" "$SKTS"; then
-            sed -i 's|maven("https://storage.googleapis.com/download.flutter.io")|maven("https://storage.googleapis.com/download.flutter.io")\n        maven("https://alphacephei.com/maven/")|' "$SKTS"
-            echo "=== alphacephei added to settings.gradle.kts ==="
+            perl -i -pe 's|mavenCentral\(\)|mavenCentral()\n        maven("https://alphacephei.com/maven/")|' "$SKTS"
+            echo "=== alphacephei added ==="
+            cat "$SKTS" | grep -A2 -B2 "alphacephei" || echo "NOT FOUND in file"
           fi
           if ! grep -q "vosk" "$BAPP"; then
             echo 'dependencies { implementation("com.alphacephei:vosk-android:0.3.50") }' >> "$BAPP"
-            echo "=== vosk-android added ==="
+            echo "=== vosk added ==="
           fi
 
           # patch build.gradle.kts برای NDK
@@ -241,4 +242,3 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
