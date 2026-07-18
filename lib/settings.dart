@@ -9,6 +9,7 @@ import 'whisper_service.dart' show WhisperService;
 import 'ytdlp_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
+import 'vosk_models_screen.dart';
 import 'main.dart' show showSnack;
 
 class PlayerSettings extends StatefulWidget {
