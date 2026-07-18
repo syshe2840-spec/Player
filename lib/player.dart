@@ -459,7 +459,7 @@ class _PlayerState extends State<PlayerScreen>{
           final type=e['type'] as String;
           final data=e['data'];
           final ts=DateTime.now();
-          final tsStr='\${ts.hour.toString().padLeft(2,'0')}:\${ts.minute.toString().padLeft(2,'0')}:\${ts.second.toString().padLeft(2,'0')}';
+          final tsStr="${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}";
           if(type=='transcript'){
             final t=(data as Map)['text'] as String;
             final isFinal=(data)['final'] as bool;
