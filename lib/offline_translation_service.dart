@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -294,3 +293,4 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
+
