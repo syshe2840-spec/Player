@@ -437,13 +437,7 @@ class _PlayerState extends State<PlayerScreen>{
           if(mounted)setState((){_aiLog.add('[$tsStr] ℹ $type: $data');});
         }
       });
-      if(mounted)setState((){_aiLog.add('[${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}] 🚀 Connecting to Deepgram...');});
-      // request runtime permission
-      final status = await permission_handler.Permission.microphone.request();
-      if (!status.isGranted) {
-        if(mounted) setState((){_dgActive=false;_dgText='Microphone permission denied';});
-        return;
-      }
+      if(mounted)setState((){_aiLog.add('[${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}] 🚀 Starting AI subtitle...');});
       if (_useVosk) {
         // Vosk — آفلاین + MediaProjection
         final m = kVoskModels.firstWhere((m) => m.langCode==lang || (lang=='multi'&&m.langCode=='en'),
