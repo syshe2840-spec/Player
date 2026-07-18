@@ -84,20 +84,15 @@ jobs:
             echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
             echo "=== okhttp3 added ==="
           fi
-          # Vosk: دانلود AAR + اضافه به settings.gradle
-          mkdir -p android/app/libs
-          VOSK_AAR="android/app/libs/vosk-android-0.3.50.aar"
-          # دانلود AAR با verify
-          rm -f "$VOSK_AAR" || true
-          wget -q --tries=3 -O "$VOSK_AAR" "https://alphacephei.com/maven/com/alphacephei/vosk-android/0.3.50/vosk-android-0.3.50.aar" ||             curl -L --retry 3 -o "$VOSK_AAR" "https://alphacephei.com/maven/com/alphacephei/vosk-android/0.3.50/vosk-android-0.3.50.aar"
-          # verify
-          FILE_SIZE=$(stat -c%s "$VOSK_AAR" 2>/dev/null || echo 0)
-          echo "=== vosk AAR downloaded: ${FILE_SIZE} bytes ===" 
-
-          # Vosk: فایل مستقیم — بدون repository
+          # Vosk: اضافه کردن alphacephei به settings.gradle.kts
+          SKTS="android/settings.gradle.kts"
+          if [ -f "$SKTS" ] && ! grep -q "alphacephei" "$SKTS"; then
+            sed -i 's|maven("https://storage.googleapis.com/download.flutter.io")|maven("https://storage.googleapis.com/download.flutter.io")\n        maven("https://alphacephei.com/maven/")|' "$SKTS"
+            echo "=== alphacephei added to settings.gradle.kts ==="
+          fi
           if ! grep -q "vosk" "$BAPP"; then
-            echo 'dependencies { implementation(files("libs/vosk-android-0.3.50.aar")) }' >> "$BAPP"
-            echo "=== vosk direct file dep added ==="
+            echo 'dependencies { implementation("com.alphacephei:vosk-android:0.3.50") }' >> "$BAPP"
+            echo "=== vosk-android added ==="
           fi
 
           # patch build.gradle.kts برای NDK
