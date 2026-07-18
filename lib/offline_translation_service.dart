@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -134,50 +133,65 @@ class OfflineTranslationService {
     final dir = Directory('$_kDir/${m.id}');
     await dir.create(recursive: true);
     final files = m.files.entries.toList();
-    final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(minutes: 30),
-      followRedirects: true,
-      maxRedirects: 10,
-      headers: {'User-Agent': 'Mozilla/5.0 Vezoo'},
-    ));
+
     for (int fi = 0; fi < files.length; fi++) {
       final entry = files[fi];
       final dest = File('${dir.path}/${entry.key}');
+      final tmp  = File('${dir.path}/${entry.key}.tmp');
+
+      // فایل کامل موجوده
       if (dest.existsSync() && dest.lengthSync() > 10 * 1024) {
         yield (fi + 1) / files.length;
         continue;
       }
-      if (dest.existsSync()) await dest.delete();
-      double p = 0;
-      bool done = false;
-      for (int attempt = 1; attempt <= 3 && !done; attempt++) {
-        if (dest.existsSync()) await dest.delete();
-        try {
-          final completer = Completer<void>();
-          dio.download(
-            entry.value,
-            dest.path,
-            onReceiveProgress: (rec, tot) { p = tot > 0 ? rec / tot : 0; },
-          ).then((_) => completer.complete())
-           .catchError((e) => completer.completeError(e));
-          while (!completer.isCompleted) {
-            yield (fi + p) / files.length;
-            await Future.delayed(const Duration(milliseconds: 300));
-          }
-          await completer.future;
-          done = true;
-        } catch (e) {
-          if (attempt == 3) rethrow;
-          await Future.delayed(const Duration(seconds: 3));
+
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 30);
+      try {
+        final existingBytes = tmp.existsSync() ? tmp.lengthSync() : 0;
+        final req = await client.getUrl(Uri.parse(entry.value));
+        req.headers.set('User-Agent', 'vezoo_downloader/1.0');
+        if (existingBytes > 0) req.headers.set('Range', 'bytes=$existingBytes-');
+
+        final res = await req.close();
+
+        if (res.statusCode == 416) {
+          // فایل کامل بود
+          await res.drain();
+          if (tmp.existsSync()) tmp.renameSync(dest.path);
+          yield (fi + 1) / files.length;
+          continue;
         }
+        if (res.statusCode != 200 && res.statusCode != 206) {
+          await res.drain();
+          throw Exception('HTTP ${res.statusCode} for ${entry.key}');
+        }
+
+        final isResume = res.statusCode == 206;
+        if (!isResume && tmp.existsSync()) tmp.deleteSync();
+
+        final total = isResume
+          ? existingBytes + (res.contentLength > 0 ? res.contentLength : 0)
+          : (res.contentLength > 0 ? res.contentLength : 100 * 1024 * 1024);
+
+        int recv = isResume ? existingBytes : 0;
+        final sink = tmp.openWrite(mode: isResume ? FileMode.append : FileMode.write);
+
+        await for (final chunk in res) {
+          sink.add(chunk);
+          recv += chunk.length;
+          yield (fi + recv / total) / files.length;
+        }
+        await sink.close();
+        tmp.renameSync(dest.path);
+        yield (fi + 1) / files.length;
+      } finally {
+        client.close();
       }
-      yield (fi + 1) / files.length;
     }
-    dio.close();
   }
 
-  static Future<void> deleteModel(OfflineTransModel m) async {
+    static Future<void> deleteModel(OfflineTransModel m) async {
     final dir = Directory('$_kDir/${m.id}');
     if (dir.existsSync()) await dir.delete(recursive: true);
     if (_loadedModelId == m.id) {
