@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -28,63 +27,41 @@ const _xen = 'https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main
 
 final kOfflineModels = [
   OfflineTransModel(
-    id: 'nllb_600m_q8',
-    name: 'NLLB-600M Q8',
-    desc: '200 زبان • int8 • سریع و سبک — توصیه شده',
-    sizeMb: 300, langCount: 200,
+    id: 'nllb_rtranslator',
+    name: 'NLLB-600M (RTranslator)',
+    desc: '200 زبان • int8 • بهینه شده • توصیه شده',
+    sizeMb: 400, langCount: 200,
     langCodes: _nllbLangs,
     files: {
-      'encoder.onnx': '$_gh/nllb_encoder_q8.onnx',
-      'decoder.onnx': '$_gh/nllb_decoder_q8.onnx',
-      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+      'encoder.onnx':            'https://github.com/niedev/RTranslator/releases/download/2.0.0/NLLB_encoder.onnx',
+      'decoder.onnx':            'https://github.com/niedev/RTranslator/releases/download/2.0.0/NLLB_decoder.onnx',
+      'cache_init.onnx':         'https://github.com/niedev/RTranslator/releases/download/2.0.0/NLLB_cache_initializer.onnx',
+      'embed_lm_head.onnx':      'https://github.com/niedev/RTranslator/releases/download/2.0.0/NLLB_embed_and_lm_head.onnx',
+      'tokenizer.spm':           'https://github.com/niedev/RTranslator/releases/download/2.0.0/flores200_sacrebleu_tokenizer.spm',
     },
   ),
   OfflineTransModel(
-    id: 'nllb_600m_q8_xenova',
-    name: 'NLLB-600M Q8 Alt',
+    id: 'nllb_600m_xenova_q8',
+    name: 'NLLB-600M Xenova Q8',
     desc: '200 زبان • int8 • نسخه آلترناتیو',
     sizeMb: 350, langCount: 200,
     langCodes: _nllbLangs,
     files: {
-      'encoder.onnx': '$_xen/encoder_model_quantized.onnx',
-      'decoder.onnx': '$_xen/decoder_model_quantized.onnx',
-      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+      'encoder.onnx':   'https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/encoder_model_quantized.onnx',
+      'decoder.onnx':   'https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/decoder_model_quantized.onnx',
+      'tokenizer.spm':  'https://github.com/niedev/RTranslator/releases/download/2.0.0/flores200_sacrebleu_tokenizer.spm',
     },
   ),
   OfflineTransModel(
-    id: 'nllb_600m_q4',
-    name: 'NLLB-600M Q4',
-    desc: '200 زبان • uint8 • کمترین حجم',
-    sizeMb: 200, langCount: 200,
-    langCodes: _nllbLangs,
-    files: {
-      'encoder.onnx': '$_xen/encoder_model_uint8.onnx',
-      'decoder.onnx': '$_xen/decoder_model_uint8.onnx',
-      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
-    },
-  ),
-  OfflineTransModel(
-    id: 'nllb_600m_standard',
-    name: 'NLLB-600M Standard',
-    desc: '200 زبان • float32 • کیفیت بالا',
+    id: 'nllb_600m_xenova',
+    name: 'NLLB-600M Xenova FP32',
+    desc: '200 زبان • float32 • بالاترین دقت',
     sizeMb: 1200, langCount: 200,
     langCodes: _nllbLangs,
     files: {
-      'encoder.onnx': '$_xen/encoder_model.onnx',
-      'decoder.onnx': '$_xen/decoder_model.onnx',
-      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
-    },
-  ),
-  OfflineTransModel(
-    id: 'nllb_600m_fp16',
-    name: 'NLLB-600M FP16',
-    desc: '200 زبان • float16 • بالاترین کیفیت',
-    sizeMb: 1100, langCount: 200,
-    langCodes: _nllbLangs,
-    files: {
-      'encoder.onnx': '$_xen/encoder_model_fp16.onnx',
-      'decoder.onnx': '$_xen/decoder_model_fp16.onnx',
-      'tokenizer.spm': '$_gh/flores200_sacrebleu_tokenizer.spm',
+      'encoder.onnx':   'https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/encoder_model.onnx',
+      'decoder.onnx':   'https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/decoder_model.onnx',
+      'tokenizer.spm':  'https://github.com/niedev/RTranslator/releases/download/2.0.0/flores200_sacrebleu_tokenizer.spm',
     },
   ),
 ];
@@ -123,10 +100,11 @@ class OfflineTranslationService {
   static const _kTgt   = 'offline_trans_tgt_v3';
   static const _kDir   = '/storage/emulated/0/Download/Vezoo/OfflineModels';
 
-  static OrtSession? _encoder, _decoder;
+  static OrtSession? _encoder, _decoder, _cacheInit, _embedLmHead;
   static SentencePieceTokenizer? _tokenizer;
   static String? _loadedModelId;
   static String? _lastError;
+  static bool _isRTranslator = false;
   static final _ort = OnnxRuntime();
 
   static Future<String> getSelectedModel() async =>
@@ -203,14 +181,19 @@ class OfflineTranslationService {
     if (!Directory(dir).existsSync()) return false;
     try {
       await _encoder?.close(); await _decoder?.close();
-      debugPrint('OFFLINE: loading encoder...');
+      await _cacheInit?.close(); await _embedLmHead?.close();
       _encoder = await _ort.createSession('$dir/encoder.onnx');
-      debugPrint('OFFLINE: loading decoder...');
       _decoder = await _ort.createSession('$dir/decoder.onnx');
-      debugPrint('OFFLINE: loading tokenizer...');
+      // معماری ۴ فایلی RTranslator
+      final cacheFile = File('$dir/cache_init.onnx');
+      final embedFile = File('$dir/embed_lm_head.onnx');
+      _isRTranslator = cacheFile.existsSync() && embedFile.existsSync();
+      if (_isRTranslator) {
+        _cacheInit = await _ort.createSession('$dir/cache_init.onnx');
+        _embedLmHead = await _ort.createSession('$dir/embed_lm_head.onnx');
+      }
       _tokenizer = await SentencePieceTokenizer.fromModelFile('$dir/tokenizer.spm');
       _loadedModelId = modelId;
-      debugPrint('OFFLINE: model loaded OK');
       return true;
     } catch (e) {
       _lastError = e.toString();
@@ -310,3 +293,4 @@ class OfflineTranslationService {
     if (data['tgt']   != null) await setTgtLang(data['tgt']!);
   }
 }
+
