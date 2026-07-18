@@ -61,7 +61,6 @@ jobs:
             cp android_files/WhisperV2Bridge.kt "$MAKT_DIR/WhisperV2Bridge.kt"
             cp android_files/LiveSubService.kt  "$MAKT_DIR/LiveSubService.kt"
             cp android_files/DeepgramService.kt "$MAKT_DIR/DeepgramService.kt"
-            cp android_files/OfflineTranslatorService.kt "$MAKT_DIR/OfflineTranslatorService.kt" || true
             echo "=== Kotlin files copied ==="
             MANIFEST="android/app/src/main/AndroidManifest.xml"
             if ! grep -q "LiveSubService" "$MANIFEST"; then
