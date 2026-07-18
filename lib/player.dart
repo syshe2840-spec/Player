@@ -31,6 +31,7 @@ import 'settings.dart';
 import 'main.dart' show showSnack;
 import 'l10n.dart';
 import 'deepgram_service.dart';
+import 'vosk_service.dart';
 import 'package:permission_handler/permission_handler.dart' as permission_handler;
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
@@ -60,9 +61,10 @@ class _PlayerState extends State<PlayerScreen>{
   bool _showLiveLog=true;
   bool _dgActive=false;
   String _dgText='';
-  String _dgLang='multi';
+  String _dgLang='fa';
   StreamSubscription? _dgSub;
   List<String> _aiLog=[];
+  bool _useVosk = true; // Vosk=true, Deepgram=false
   bool _isFullscreen=false;
   final List<StreamSubscription> _subs=[];
 
@@ -442,7 +444,42 @@ class _PlayerState extends State<PlayerScreen>{
         if(mounted) setState((){_dgActive=false;_dgText='Microphone permission denied';});
         return;
       }
-      await DeepgramService.start(language:lang, streamUrl:_curPath);
+      if (_useVosk) {
+        // Vosk — آفلاین + MediaProjection
+        final m = kVoskModels.firstWhere((m) => m.langCode==lang || (lang=='multi'&&m.langCode=='en'),
+          orElse: () => kVoskModels.first);
+        if (!VoskService.isDownloaded(m)) {
+          setState((){_dgActive=false;});
+          if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:Text('مدل ${m.name} دانلود نشده — به Settings > Vosk Models برو'),
+            backgroundColor:Colors.orange, duration:const Duration(seconds:4)));
+          return;
+        }
+        _dgSub=VoskService.events().listen((e){
+          final type=e['type'] as String;
+          final data=e['data'];
+          final ts=DateTime.now();
+          final tsStr='\${ts.hour.toString().padLeft(2,'0')}:\${ts.minute.toString().padLeft(2,'0')}:\${ts.second.toString().padLeft(2,'0')}';
+          if(type=='transcript'){
+            final t=(data as Map)['text'] as String;
+            final isFinal=(data)['final'] as bool;
+            if(t.isNotEmpty){
+              if(mounted)setState((){
+                _dgText=isFinal?t:'\$t...';
+                _aiLog.add('[\$tsStr] \${isFinal?"✓":"…"} \$t');
+                if(_aiLog.length>30)_aiLog.removeAt(0);
+              });
+            }
+          } else if(type=='status'){
+            if(mounted)setState((){_aiLog.add('[\$tsStr] 🔗 \$data');if(_aiLog.length>30)_aiLog.removeAt(0);});
+          } else if(type=='error'){
+            if(mounted)setState((){_dgActive=false;_dgText='';_aiLog.add('[\$tsStr] ❌ \$data');});
+          }
+        });
+        await VoskService.start(lang=='multi'?'en':lang);
+      } else {
+        await DeepgramService.start(language:lang, streamUrl:_curPath);
+      }
     }
   }
 
@@ -1137,7 +1174,7 @@ class _PlayerState extends State<PlayerScreen>{
     Store.savePos(_curPath,_position);
     for(final s in _subs)s.cancel();
     _dgSub?.cancel();
-    if(_dgActive)DeepgramService.stop();
+    if(_dgActive){ if(_useVosk) VoskService.stop(); else DeepgramService.stop(); }
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
     VezService.cleanup(_vezTempPath);
     try{_pipCh.invokeMethod('hideNotif');}catch(_){}
