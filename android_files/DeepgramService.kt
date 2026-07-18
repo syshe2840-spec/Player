@@ -48,8 +48,7 @@ class DeepgramService(
         }
         log("STEP1 OK: key=${apiKey.take(8)}...")
 
-        // nova-3 از مارس 2026 فارسی، عربی، عبری رو پشتیبانی میکنه
-        val model = "nova-3"
+        val model = if (language == "multi") "nova-2-general" else "nova-3"
         val langParam = if (language == "multi") "detect_language=true" else "language=$language"
         val wsUrl = "wss://api.deepgram.com/v1/listen?" +
             "model=$model&$langParam&" +
@@ -117,7 +116,7 @@ class DeepgramService(
             val state = recorder.state
             log("AUDIO: REMOTE_SUBMIX state=$state (1=initialized, 0=uninitialized)")
             // state=1 → initialized, state=0 → ممکن هنوز کار کنه روی بعضی دیوایس‌ها
-            if (state == AudioRecord.STATE_INITIALIZED || state == 0) {
+            if (state == AudioRecord.STATE_INITIALIZED) {
                 captureMode = "REMOTE_SUBMIX"
                 log("AUDIO: REMOTE_SUBMIX OK state=$state — capturing internal audio")
             } else {
