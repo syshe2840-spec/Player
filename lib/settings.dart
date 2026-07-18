@@ -9,7 +9,6 @@ import 'whisper_service.dart' show WhisperService;
 import 'ytdlp_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
-import 'offline_translation_screen.dart';
 import 'main.dart' show showSnack;
 
 class PlayerSettings extends StatefulWidget {
@@ -487,16 +486,7 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   Widget build(BuildContext ctx) => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // ── ترجمه آفلاین ──
-      ListTile(
-        tileColor: const Color(0xFF1A1A2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        leading: const Icon(Icons.translate_rounded, color: Color(0xFF7C3AED)),
-        title: const Text('Offline Translation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        subtitle: const Text('ML Kit — ۵ مدل — ۵۸ زبان بدون اینترنت', style: TextStyle(color: Colors.white38, fontSize: 11)),
-        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white38),
-        onTap: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const OfflineTranslationScreen()))),
-      const SizedBox(height: 12),
+
       Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: const Color(0xFF2A2A35), borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
