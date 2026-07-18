@@ -90,16 +90,11 @@ jobs:
             curl -L -o "$VOSK_AAR" "https://alphacephei.com/maven/com/alphacephei/vosk-android/0.3.50/vosk-android-0.3.50.aar"
             echo "=== vosk AAR downloaded ==="
           fi
-          # اضافه alphacephei به settings.gradle.kts (داخل dependencyResolutionManagement)
-          SKTS="android/settings.gradle.kts"
-          if [ -f "$SKTS" ] && ! grep -q "alphacephei" "$SKTS"; then
-            sed -i 's|maven("https://storage.googleapis.com/download.flutter.io")|maven("https://storage.googleapis.com/download.flutter.io")\n        maven("https://alphacephei.com/maven/")|' "$SKTS"
-            echo "=== alphacephei added to settings.gradle.kts ==="
-          fi
-          # اضافه کردن vosk dependency
-          if ! grep -q "vosk-android" "$BAPP"; then
-            echo 'dependencies { implementation("com.alphacephei:vosk-android:0.3.50") }' >> "$BAPP"
-            echo "=== vosk-android added ==="
+
+          # Vosk: فایل مستقیم — بدون repository
+          if ! grep -q "vosk" "$BAPP"; then
+            echo 'dependencies { implementation(files("libs/vosk-android-0.3.50.aar")) }' >> "$BAPP"
+            echo "=== vosk direct file dep added ==="
           fi
 
           # patch build.gradle.kts برای NDK
