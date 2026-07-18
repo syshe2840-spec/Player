@@ -1,0 +1,10 @@
+allprojects {
+    buildscript {
+        repositories {
+            maven { url = uri("https://alphacephei.com/maven/") }
+        }
+    }
+    repositories {
+        maven { url = uri("https://alphacephei.com/maven/") }
+    }
+}
