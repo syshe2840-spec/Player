@@ -121,7 +121,7 @@ jobs:
           sed -i 's/android:launchMode="singleTop"/android:launchMode="singleTop"\n            android:supportsPictureInPicture="true"/' "$M" || true
           # اضافه کردن RECORD_AUDIO permission
           if ! grep -q "RECORD_AUDIO" "$M"; then
-            sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>#' "$M"
+            sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>#' "$M"
           fi
           sed -i 's/android:label="[^"]*"/android:label="Vezoo"/g' "$M" || true
           S=android/app/src/main/res/values/strings.xml
