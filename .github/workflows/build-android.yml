@@ -87,7 +87,7 @@ jobs:
           # Vosk: اضافه dependencyResolutionManagement به settings.gradle.kts
           SKTS="android/settings.gradle.kts"
           if [ -f "$SKTS" ] && ! grep -q "alphacephei" "$SKTS"; then
-            printf '\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven { url = uri("https://alphacephei.com/maven/") }\n    }\n}\n' >> "$SKTS"
+            printf '\ndependencyResolutionManagement {\n    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)\n    repositories {\n        google()\n        mavenCentral()\n        maven { url = uri("https://alphacephei.com/maven/") }\n        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }\n    }\n}\n' >> "$SKTS"
             echo "=== alphacephei dependencyResolutionManagement added ==="
           fi
           if ! grep -q "vosk" "$BAPP"; then
