@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -132,50 +134,42 @@ class OfflineTranslationService {
     final dir = Directory('$_kDir/${m.id}');
     await dir.create(recursive: true);
     final files = m.files.entries.toList();
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(minutes: 30),
+      followRedirects: true,
+      maxRedirects: 10,
+      headers: {'User-Agent': 'Mozilla/5.0 Vezoo'},
+    ));
     for (int fi = 0; fi < files.length; fi++) {
       final entry = files[fi];
-      final dest = File('\${dir.path}/\${entry.key}');
-      if (dest.existsSync()) {
-        // بررسی که LFS pointer نباشه (فایل واقعی باید >100KB باشه)
-        if (dest.lengthSync() > 100 * 1024) {
-          yield (fi + 1) / files.length;
-          continue;
-        }
-        await dest.delete(); // حذف فایل خراب
+      final dest = File('${dir.path}/${entry.key}');
+      if (dest.existsSync() && dest.lengthSync() > 10 * 1024) {
+        yield (fi + 1) / files.length;
+        continue;
       }
-      // دانلود با follow redirect
-      var url = entry.value;
-      http.Response? res;
-      for (int r = 0; r < 5; r++) { // max 5 redirect
-        res = await http.get(Uri.parse(url));
-        if (res.statusCode == 301 || res.statusCode == 302 || res.statusCode == 307) {
-          url = res.headers['location'] ?? url;
-        } else { break; }
+      if (dest.existsSync()) await dest.delete();
+      // نشون دادن progress تخمینی حین دانلود
+      double p = 0;
+      final completer = Completer<void>();
+      dio.download(
+        entry.value,
+        dest.path,
+        onReceiveProgress: (rec, tot) {
+          p = tot > 0 ? rec / tot : 0;
+        },
+      ).then((_) => completer.complete()).catchError((e) => completer.completeError(e));
+      while (!completer.isCompleted) {
+        yield (fi + p) / files.length;
+        await Future.delayed(const Duration(milliseconds: 500));
       }
-      if (res == null || res.statusCode != 200) {
-        throw Exception('Download failed: \${res?.statusCode} for \${entry.key}');
-      }
-      // بررسی LFS pointer
-      final content = res.bodyBytes;
-      if (content.length < 1000 && String.fromCharCodes(content).startsWith('version https://git-lfs')) {
-        throw Exception('Got LFS pointer instead of file. Use GitHub Releases model.');
-      }
-      await dest.writeAsBytes(content);
+      await completer.future;
       yield (fi + 1) / files.length;
     }
+    dio.close();
   }
 
-  // ── حذف مدل ──
-  static Future<void> deleteModel(OfflineTransModel m) async {
-    final dir = Directory('$_kDir/${m.id}');
-    if (dir.existsSync()) await dir.delete(recursive: true);
-    if (_loadedModelId == m.id) {
-      _encoder = null; _decoder = null; _tokenizer = null; _loadedModelId = null;
-    }
-  }
-
-  // ── بارگذاری مدل ──
-  static Future<bool> _loadModel(String modelId) async {
+    static Future<bool> _loadModel(String modelId) async {
     if (_loadedModelId == modelId) return true;
     final dir = '$_kDir/$modelId';
     if (!Directory(dir).existsSync()) return false;
