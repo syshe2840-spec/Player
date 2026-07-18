@@ -149,21 +149,29 @@ class OfflineTranslationService {
         continue;
       }
       if (dest.existsSync()) await dest.delete();
-      // نشون دادن progress تخمینی حین دانلود
       double p = 0;
-      final completer = Completer<void>();
-      dio.download(
-        entry.value,
-        dest.path,
-        onReceiveProgress: (rec, tot) {
-          p = tot > 0 ? rec / tot : 0;
-        },
-      ).then((_) => completer.complete()).catchError((e) => completer.completeError(e));
-      while (!completer.isCompleted) {
-        yield (fi + p) / files.length;
-        await Future.delayed(const Duration(milliseconds: 500));
+      bool done = false;
+      for (int attempt = 1; attempt <= 3 && !done; attempt++) {
+        if (dest.existsSync()) await dest.delete();
+        try {
+          final completer = Completer<void>();
+          dio.download(
+            entry.value,
+            dest.path,
+            onReceiveProgress: (rec, tot) { p = tot > 0 ? rec / tot : 0; },
+          ).then((_) => completer.complete())
+           .catchError((e) => completer.completeError(e));
+          while (!completer.isCompleted) {
+            yield (fi + p) / files.length;
+            await Future.delayed(const Duration(milliseconds: 300));
+          }
+          await completer.future;
+          done = true;
+        } catch (e) {
+          if (attempt == 3) rethrow;
+          await Future.delayed(const Duration(seconds: 3));
+        }
       }
-      await completer.future;
       yield (fi + 1) / files.length;
     }
     dio.close();
