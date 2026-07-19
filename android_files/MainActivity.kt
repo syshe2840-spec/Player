@@ -144,6 +144,7 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "stop" -> { voskService?.stop(); result.success(null) }
+                    "getNextEvent" -> result.success(voskService?.getNextEvent())
                     "extractModel" -> {
                         val zipPath = call.argument<String>("zipPath") ?: ""
                         val destDir = call.argument<String>("destDir") ?: ""
