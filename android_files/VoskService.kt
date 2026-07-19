@@ -21,8 +21,6 @@ class VoskService(
     private var model: Model? = null
     private var recorder: AudioRecord? = null
     @Volatile private var running = false
-
-    // صف رویدادها — Dart با polling میخونه
     val eventQueue = ConcurrentLinkedQueue<Map<String, Any>>()
 
     companion object {
@@ -33,41 +31,59 @@ class VoskService(
     fun start(langCode: String, projection: android.media.projection.MediaProjection?) {
         if (running) return
         running = true
-        // Toast برای تست — مستقل از هر channel
-        Handler(Looper.getMainLooper()).post {
-            Toast.makeText(context, "Vosk starting... lang=$langCode", Toast.LENGTH_LONG).show()
-        }
-        Thread { doStart(langCode, projection) }.start()
+
+        // Toast 1: تأیید start() صدا زده شد
+        toast("✅ VoskService.start() called lang=$langCode")
+
+        Thread {
+            toast("✅ Thread started")
+            doStart(langCode, projection)
+        }.start()
     }
 
     private fun doStart(langCode: String, projection: android.media.projection.MediaProjection?) {
-        send("status", "VOSK START: lang=$langCode")
+        toast("✅ doStart running")
+        send("status", "STEP1: doStart lang=$langCode")
+
+        // STEP 1: پیدا کردن مدل
+        val dir = File(MODELS_DIR)
+        send("status", "STEP1: models dir exists=${dir.exists()} path=$MODELS_DIR")
+        if (dir.exists()) {
+            val contents = dir.listFiles()?.map { it.name } ?: emptyList()
+            send("status", "STEP1: dir contents=$contents")
+        }
 
         val modelPath = findModel(langCode)
         if (modelPath == null) {
-            val dir = File(MODELS_DIR)
-            send("status", "VOSK: model NOT found. dir exists=${dir.exists()} contents=${dir.listFiles()?.map{it.name}}")
-            send("error", "Model not found: $langCode")
+            toast("❌ Model NOT found for $langCode")
+            send("error", "STEP1 FAIL: model not found for $langCode")
             running = false; return
         }
-        send("status", "VOSK: model found: $modelPath")
+        toast("✅ Model found: $modelPath")
+        send("status", "STEP1 OK: model=$modelPath")
 
+        // STEP 2: بارگذاری مدل
         try {
+            toast("⏳ Loading model...")
             model = Model(modelPath)
             recognizer = Recognizer(model, SAMPLE_RATE.toFloat())
-            send("status", "VOSK: model loaded OK")
+            toast("✅ Model loaded!")
+            send("status", "STEP2 OK: model loaded")
         } catch (e: Exception) {
-            send("error", "Model load failed: ${e.message}")
+            toast("❌ Model load failed: ${e.message}")
+            send("error", "STEP2 FAIL: ${e.message}")
             running = false; return
         }
 
+        // STEP 3: شروع capture
         val buf = maxOf(AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) * 2, 3200)
+        toast("⏳ Starting audio capture...")
+        send("status", "STEP3: starting audio buf=$buf projection=${projection != null}")
 
         try {
             if (projection != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val config = AudioPlaybackCaptureConfiguration.Builder(projection)
                     .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
                     .build()
                 recorder = AudioRecord.Builder()
                     .setAudioFormat(AudioFormat.Builder()
@@ -76,21 +92,23 @@ class VoskService(
                         .setChannelMask(AudioFormat.CHANNEL_IN_MONO).build())
                     .setBufferSizeInBytes(buf)
                     .setAudioPlaybackCaptureConfig(config).build()
-                send("status", "VOSK: internal audio state=${recorder?.state}")
+                send("status", "STEP3: internal audio state=${recorder?.state}")
                 if (recorder?.state != AudioRecord.STATE_INITIALIZED) {
-                    recorder?.release(); recorder = null
-                    useMic(buf)
+                    recorder?.release(); recorder = null; useMic(buf)
                 }
             } else {
                 useMic(buf)
             }
 
             if (recorder?.state != AudioRecord.STATE_INITIALIZED) {
-                send("error", "Audio init failed"); running = false; return
+                toast("❌ Audio recorder failed")
+                send("error", "STEP3 FAIL: recorder not initialized")
+                running = false; return
             }
 
             recorder?.startRecording()
-            send("status", "VOSK: recording started")
+            toast("✅ Recording started!")
+            send("status", "STEP3 OK: recording started")
 
             val chunk = ByteArray(buf / 4)
             var total = 0L
@@ -98,25 +116,27 @@ class VoskService(
                 val read = recorder?.read(chunk, 0, chunk.size) ?: -1
                 if (read > 0) {
                     total += read
-                    if (total % (SAMPLE_RATE * 2 * 3L) < read) send("status", "VOSK: sent ${total/1024}kb")
+                    if (total % (SAMPLE_RATE * 2 * 3L) < read) send("status", "STEP4: sent ${total/1024}kb")
                     val isFinal = recognizer?.acceptWaveForm(chunk, read) ?: false
                     if (isFinal) {
                         val res = JSONObject(recognizer?.result ?: "{}").optString("text", "")
+                        send("status", "STEP4 FINAL: '$res'")
                         if (res.isNotEmpty()) send("transcript", mapOf("text" to res, "final" to true))
                     } else {
                         val p = JSONObject(recognizer?.partialResult ?: "{}").optString("partial", "")
                         if (p.isNotEmpty()) send("transcript", mapOf("text" to p, "final" to false))
                     }
-                } else if (read < 0) break
+                } else if (read < 0) { send("status", "STEP4 ERROR: read=$read"); break }
             }
         } catch (e: Exception) {
-            send("error", "${e.javaClass.simpleName}: ${e.message}")
+            toast("❌ Exception: ${e.message}")
+            send("error", "EXCEPTION: ${e.javaClass.simpleName}: ${e.message}")
         } finally { stop() }
     }
 
     private fun useMic(buf: Int) {
         recorder = AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf)
-        send("status", "VOSK: using MIC state=${recorder?.state}")
+        send("status", "STEP3: using MIC state=${recorder?.state}")
     }
 
     private fun findModel(langCode: String): String? {
@@ -127,15 +147,19 @@ class VoskService(
         }?.absolutePath
     }
 
-    // ارسال رویداد — هم به queue (polling) هم به callback channel
+    private fun toast(msg: String) {
+        android.util.Log.d("VoskService", msg)
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun send(type: String, data: Any) {
-        android.util.Log.d("VoskService", "EVENT type=$type data=$data")
+        android.util.Log.d("VoskService", "send: $type = $data")
         val event = mapOf("type" to type, "data" to data)
         eventQueue.offer(event)
         Handler(Looper.getMainLooper()).post {
-            try { callback?.invokeMethod("onVoskEvent", event) } catch (e: Exception) {
-                android.util.Log.e("VoskService", "callback error: ${e.message}")
-            }
+            try { callback?.invokeMethod("onVoskEvent", event) } catch (_: Exception) {}
         }
     }
 
@@ -147,7 +171,7 @@ class VoskService(
         try { recognizer?.close() } catch (_: Exception) {}
         try { model?.close() } catch (_: Exception) {}
         recorder = null; recognizer = null; model = null
-        send("status", "VOSK: stopped")
+        send("status", "STOPPED")
     }
 }
 
