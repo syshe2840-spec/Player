@@ -8,7 +8,7 @@ import org.vosk.Model
 import org.vosk.Recognizer
 import java.io.File
 
-class VoskService(private val context: android.content.Context) {
+class VoskService(private val context: android.content.Context, private val callback: io.flutter.plugin.common.MethodChannel? = null) {
 
     private var recognizer: Recognizer? = null
     private var model: Model? = null
