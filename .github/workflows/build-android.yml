@@ -84,6 +84,10 @@ jobs:
             echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
             echo "=== okhttp3 added ==="
           fi
+          if ! grep -q "activity-ktx" "$BAPP"; then
+            echo 'dependencies { implementation("androidx.activity:activity-ktx:1.8.0") }' >> "$BAPP"
+            echo "=== activity-ktx added ==="
+          fi
           # Vosk: اضافه dependencyResolutionManagement به settings.gradle.kts
           SKTS="android/settings.gradle.kts"
           # vosk 0.3.70 روی Maven Central هست — نیازی به repo جدید نیست
@@ -250,4 +254,3 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
