@@ -105,6 +105,7 @@ class MainActivity : FlutterActivity() {
     private var deepgramSink: io.flutter.plugin.common.EventChannel.EventSink? = null
     private var voskService: VoskService? = null
     private var voskSink: io.flutter.plugin.common.EventChannel.EventSink? = null
+    private var voskCallbackChannel: io.flutter.plugin.common.MethodChannel? = null
     private var pendingVoskLang: String? = null
     private val PROJ_REQ_VOSK = 2001
 
@@ -114,18 +115,17 @@ class MainActivity : FlutterActivity() {
         requestNotifPermission()
 
         // ── Vosk STT ──
+        // EventChannel برای backward compatibility
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_events")
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
                 override fun onListen(args: Any?, s: io.flutter.plugin.common.EventChannel.EventSink?) {
-                    voskSink = s
-                    voskService?.setSink(s)
-                    android.util.Log.d("MainActivity", "VoskSink onListen: $s")
-                }
+                    voskSink = s; voskService?.setSink(s)
+                    android.util.Log.d("VOSK_DEBUG", "EventChannel onListen sink=$s") }
                 override fun onCancel(args: Any?) {
-                    // onCancel نباید sink رو null کنه چون race condition داره
-                    android.util.Log.d("MainActivity", "VoskSink onCancel")
-                }
+                    android.util.Log.d("VOSK_DEBUG", "EventChannel onCancel") }
             })
+        // MethodChannel callback — برای ارسال رویدادها از Android به Dart
+        voskCallbackChannel = io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_callback")
 
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk")
             .setMethodCallHandler { call, result ->
