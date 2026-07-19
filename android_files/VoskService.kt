@@ -155,8 +155,11 @@ class VoskService(private val context: android.content.Context) {
         sendEvent("status", msg)
     }
     private fun sendEvent(type: String, data: Any) {
+        if (sink == null) android.util.Log.w("VoskService", "SINK IS NULL! type=$type data=$data")
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            try { sink?.success(mapOf("type" to type, "data" to data)) } catch (_: Exception) {}
+            try { sink?.success(mapOf("type" to type, "data" to data)) } catch (e: Exception) {
+                android.util.Log.e("VoskService", "sendEvent error: \${e.message}")
+            }
         }
     }
 }
