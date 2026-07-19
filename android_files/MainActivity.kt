@@ -132,8 +132,7 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "requestMediaProjection" -> {
                         val lang = call.argument<String>("lang") ?: "en"
-                        voskService = VoskService(this)
-                        voskService?.setSink(voskSink)
+                        voskService = VoskService(this, voskCallbackChannel)
                         pendingVoskLang = lang
                         val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
                         if (mgr != null) {
