@@ -1,5 +1,5 @@
-
 import 'dart:async';
+import 'dart:convert';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -35,9 +35,21 @@ const kVoskModels = [
 const _kDir = '/storage/emulated/0/Download/Vezoo/VoskModels';
 
 class VoskService {
-  static const _ch  = MethodChannel('com.vezoo.player/vosk');
-  static const _ech = EventChannel('com.vezoo.player/vosk_events');
+  static const _ch       = MethodChannel('com.vezoo.player/vosk');
+  static const _ech      = EventChannel('com.vezoo.player/vosk_events');
+  static const _callback = MethodChannel('com.vezoo.player/vosk_callback');
   static StreamSubscription? _sub;
+  static void Function(Map<String,dynamic>)? _eventHandler;
+
+  // ثبت callback handler
+  static void _initCallback() {
+    _callback.setMethodCallHandler((call) async {
+      if (call.method == 'onVoskEvent' && _eventHandler != null) {
+        final data = Map<String,dynamic>.from(call.arguments as Map);
+        _eventHandler!(data);
+      }
+    });
+  }
 
   static bool isDownloaded(VoskModel m) {
     final dir = Directory(_kDir);
@@ -101,6 +113,17 @@ class VoskService {
   }
 
   static Stream<Map<String, dynamic>> events() {
-    return _ech.receiveBroadcastStream().map((e) => Map<String, dynamic>.from(e as Map));
+    _initCallback();
+    final controller = StreamController<Map<String,dynamic>>.broadcast();
+    _eventHandler = (data) { if (!controller.isClosed) controller.add(data); };
+    // fallback: EventChannel
+    try {
+      _ech.receiveBroadcastStream().listen((e) {
+        final data = Map<String,dynamic>.from(e as Map);
+        if (!controller.isClosed) controller.add(data);
+      });
+    } catch (_) {}
+    return controller.stream;
   }
 }
+
