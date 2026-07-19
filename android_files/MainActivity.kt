@@ -115,6 +115,23 @@ class MainActivity : FlutterActivity() {
         requestNotifPermission()
 
 
+        // ── Activity Result Listener برای MediaProjection ──
+        fe.activityControlSurface.addActivityResultListener { requestCode, resultCode, data ->
+            android.widget.Toast.makeText(this, "ActivityResult req=$requestCode res=$resultCode", android.widget.Toast.LENGTH_SHORT).show()
+            if (requestCode == PROJ_REQ_VOSK && resultCode == android.app.Activity.RESULT_OK && data != null) {
+                android.widget.Toast.makeText(this, "VOSK PROJ OK!", android.widget.Toast.LENGTH_LONG).show()
+                val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+                val projection = mgr?.getMediaProjection(resultCode, data)
+                pendingVoskLang?.let { lang ->
+                    pendingVoskLang = null
+                    Thread { voskService?.start(lang, projection) }.start()
+                }
+                true
+            } else {
+                false
+            }
+        }
+
         // ── Vosk STT ──
         // EventChannel برای backward compatibility
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_events")
