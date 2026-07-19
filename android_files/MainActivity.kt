@@ -134,12 +134,8 @@ class MainActivity : FlutterActivity() {
                         val lang = call.argument<String>("lang") ?: "en"
                         voskService = VoskService(this, voskCallbackChannel)
                         pendingVoskLang = lang
-                        val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
-                        if (mgr != null) {
-                            startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
-                        } else {
-                            Thread { voskService?.start(lang, null) }.start()
-                        }
+                        // TEST: مستقیم شروع بدون dialog
+                        Thread { voskService?.start(lang, null) }.start()
                         result.success(null)
                     }
                     "stop" -> { voskService?.stop(); result.success(null) }
