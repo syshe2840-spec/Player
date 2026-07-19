@@ -449,6 +449,7 @@ class _PlayerState extends State<PlayerScreen>{
             backgroundColor:Colors.orange, duration:const Duration(seconds:4)));
           return;
         }
+        if(mounted)setState((){_aiLog.add('[debug] model downloaded, subscribing to events...');});
         _dgSub=VoskService.events().listen((e){
           final type=e['type'] as String;
           final data=e['data'];
@@ -470,7 +471,9 @@ class _PlayerState extends State<PlayerScreen>{
             if(mounted)setState((){_dgActive=false;_dgText='';_aiLog.add('[$tsStr] ❌ $data');});
           }
         });
+        if(mounted)setState((){_aiLog.add('[debug] calling VoskService.start...');});
         await VoskService.start(lang=='multi'?'en':lang);
+        if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
       } else {
         await DeepgramService.start(language:lang, streamUrl:_curPath);
       }
