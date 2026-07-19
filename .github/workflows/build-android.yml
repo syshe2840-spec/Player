@@ -254,3 +254,4 @@ jobs:
         with:
           name: subtitle-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
