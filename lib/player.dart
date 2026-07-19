@@ -61,6 +61,8 @@ class _PlayerState extends State<PlayerScreen>{
   bool _showLiveLog=true;
   bool _dgActive=false;
   String _dgText='';
+  String _dgConfirmed=''; // متن تأیید شده (final)
+  String _dgPartial='';  // متن در حال تشخیص (partial)
   String _dgLang='fa';
   StreamSubscription? _dgSub;
   List<String> _aiLog=[];
@@ -486,13 +488,39 @@ class _PlayerState extends State<PlayerScreen>{
           final tsStr = '${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}';
           if (type == 'transcript') {
             final t = (data as Map)['text'] as String;
-            final fin = (data)['final'] as bool;
-            if (t.isNotEmpty) setState(() {
-              _dgText = fin ? t : '$t...';
-              _aiLog.add('[$tsStr] ${fin?"✓":"…"} $t');
+            final fin = (data as Map)['final'] as bool;
+            if (t.isNotEmpty) {
+              setState(() {
+                if (fin) {
+                  // جمله تموم شد — به confirmed اضافه کن
+                  _dgConfirmed = (_dgConfirmed.isEmpty ? '' : '$_dgConfirmed ') + t;
+                  _dgPartial = '';
+                  // نگه داشتن حداکثر ۳ جمله آخر
+                  final words = _dgConfirmed.split(' ');
+                  if (words.length > 30) _dgConfirmed = words.sublist(words.length - 20).join(' ');
+                  _dgText = _dgConfirmed;
+                  _aiLog.add('[$tsStr] ✓ $t');
+                  if (_aiLog.length > 50) _aiLog.removeAt(0);
+                } else {
+                  // partial — فقط نشون بده
+                  _dgPartial = t;
+                }
+              });
+            }
+          } else if (type == 'status') {
+            // فقط status های مهم به log برن
+            final d = data.toString();
+            if (d.contains('STEP') || d.contains('ERROR') || d.contains('started') || d.contains('stopped')) {
+              setState(() {
+                _aiLog.add('[$tsStr] $d');
+                if (_aiLog.length > 50) _aiLog.removeAt(0);
+              });
+            }
+          } else if (type == 'error') {
+            setState(() {
+              _dgActive = false; _dgText = '';
+              _aiLog.add('[$tsStr] ❌ $data');
             });
-          } else {
-            setState(() { _aiLog.add('[$tsStr] $type: $data'); });
           }
         });
       } else {
@@ -1348,18 +1376,29 @@ class _PlayerState extends State<PlayerScreen>{
         ))),
 
         // ── Deepgram AI Subtitle ──
-        if(_dgActive&&_dgText.isNotEmpty&&!_dgText.startsWith('⏳'))Positioned(
+        if(_dgActive&&(_dgConfirmed.isNotEmpty||_dgPartial.isNotEmpty))Positioned(
           bottom:100,left:16,right:16,
           child:IgnorePointer(child:Container(
             padding:const EdgeInsets.symmetric(horizontal:16,vertical:10),
             decoration:BoxDecoration(
               color:Colors.black.withOpacity(0.85),
               borderRadius:BorderRadius.circular(10)),
-            child:Text(_dgText,
+            child:RichText(
               textAlign:TextAlign.center,
-              style:const TextStyle(color:Colors.white,fontSize:20,height:1.4,
-                fontWeight:FontWeight.w500,
-                shadows:[Shadow(color:Colors.black,blurRadius:8)]))))),
+              text:TextSpan(children:[
+                if(_dgConfirmed.isNotEmpty)TextSpan(
+                  text:_dgConfirmed,
+                  style:const TextStyle(color:Colors.white,fontSize:20,height:1.4,
+                    fontWeight:FontWeight.w500,
+                    shadows:[Shadow(color:Colors.black,blurRadius:8)])),
+                if(_dgConfirmed.isNotEmpty&&_dgPartial.isNotEmpty)
+                  const TextSpan(text:' ',style:TextStyle(fontSize:20)),
+                if(_dgPartial.isNotEmpty)TextSpan(
+                  text:_dgPartial,
+                  style:TextStyle(color:Colors.white.withOpacity(0.6),fontSize:20,height:1.4,
+                    fontWeight:FontWeight.w500,
+                    shadows:const[Shadow(color:Colors.black,blurRadius:8)])),
+              ]))))),
 
         // ── زیرنویس embedded (همون موقعیت و تنظیمات sub1) ──
         if(_embeddedSubEnabled&&_embeddedSubText!=null)Positioned(
@@ -1933,7 +1972,7 @@ class _PlayerState extends State<PlayerScreen>{
               decoration:BoxDecoration(color:Colors.red.withOpacity(0.7),borderRadius:BorderRadius.circular(6)),
               child:const Icon(Icons.clear,size:16))),
     ],
-    if(widget.isLive||widget.isOnlineUrl)...[
+    ...[
       const SizedBox(width:8),
       GestureDetector(
         onTap:()=>_toggleDeeepgram(),
