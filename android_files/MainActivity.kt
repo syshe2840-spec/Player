@@ -813,9 +813,19 @@ class MainActivity : FlutterActivity() {
             android.widget.Toast.makeText(this, "VOSK onActivityResult OK!", android.widget.Toast.LENGTH_LONG).show()
             val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
             val projection = mgr?.getMediaProjection(result, data)
+            android.widget.Toast.makeText(this, "projection=$projection service=$voskService", android.widget.Toast.LENGTH_SHORT).show()
             pendingVoskLang?.let { lang ->
                 pendingVoskLang = null
-                Thread { voskService?.start(lang, projection) }.start()
+                android.widget.Toast.makeText(this, "Starting Vosk lang=$lang", android.widget.Toast.LENGTH_SHORT).show()
+                Thread {
+                    try {
+                        voskService?.start(lang, projection)
+                    } catch (e: Throwable) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            android.widget.Toast.makeText(this, "CRASH: ${e.javaClass.simpleName}: ${e.message?.take(80)}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }.start()
             }
         }
     }
@@ -834,3 +844,4 @@ private fun genThumb(path: String, timeUs: Long): ByteArray? {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
