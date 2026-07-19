@@ -92,6 +92,11 @@ jobs:
             echo 'dependencies { implementation("net.java.dev.jna:jna:5.13.0@aar") }' >> "$BAPP"
             echo "=== vosk + JNA added ==="
           fi
+          echo "-keep class com.sun.jna.** { *; }" >> android/app/proguard-rules.pro
+          echo "-keepclassmembers class * extends com.sun.jna.** { public *; }" >> android/app/proguard-rules.pro
+          echo "-keep class org.vosk.** { *; }" >> android/app/proguard-rules.pro
+          echo "-dontwarn com.sun.jna.**" >> android/app/proguard-rules.pro
+          echo "=== JNA proguard rules added ==="
           # اضافه کردن useLegacyPackaging داخل android block موجود
           if ! grep -q "useLegacyPackaging" "$BAPP"; then
             perl -i -0pe 's/(android\s*\{)/$1\n    packaging { jniLibs { useLegacyPackaging = true } }/' "$BAPP"
