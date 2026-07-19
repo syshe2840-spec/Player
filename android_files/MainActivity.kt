@@ -1,5 +1,4 @@
 package com.vezoo.player
-import androidx.activity.result.ActivityResult
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -107,30 +106,14 @@ class MainActivity : FlutterActivity() {
     private var voskService: VoskService? = null
     private var voskSink: io.flutter.plugin.common.EventChannel.EventSink? = null
     private var voskCallbackChannel: io.flutter.plugin.common.MethodChannel? = null
-    private var pendingVoskLang2: String? = null
-
-    // روش صحیح برای Flutter — registerForActivityResult
-    private val projLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { result: ActivityResult ->
-        android.widget.Toast.makeText(this, "PROJ result=${result.resultCode}", android.widget.Toast.LENGTH_SHORT).show()
-        if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null) {
-            val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
-            val projection = mgr?.getMediaProjection(result.resultCode, result.data!!)
-            android.widget.Toast.makeText(this, "projection=$projection lang=$pendingVoskLang2", android.widget.Toast.LENGTH_LONG).show()
-            pendingVoskLang2?.let { lang ->
-                pendingVoskLang2 = null
-                Thread { voskService?.start(lang, projection) }.start()
-            }
-        }
-    }
     private var pendingVoskLang: String? = null
-    private val PROJ_REQ_VOSK = 2001
+    private val PROJ_REQ_VOSK = 9999
 
     override fun configureFlutterEngine(fe: FlutterEngine) {
         super.configureFlutterEngine(fe)
         createNotifChannel()
         requestNotifPermission()
+
 
         // ── Vosk STT ──
         // EventChannel برای backward compatibility
@@ -151,11 +134,11 @@ class MainActivity : FlutterActivity() {
                     "requestMediaProjection" -> {
                         val lang = call.argument<String>("lang") ?: "en"
                         voskService = VoskService(this, voskCallbackChannel)
-                        pendingVoskLang2 = lang
+                        pendingVoskLang = lang
                         val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
                         if (mgr != null) {
                             android.widget.Toast.makeText(this, "Launching MediaProjection...", android.widget.Toast.LENGTH_SHORT).show()
-                            projLauncher.launch(mgr.createScreenCaptureIntent())
+                            startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
                         } else {
                             Thread { voskService?.start(lang, null) }.start()
                         }
@@ -836,3 +819,4 @@ private fun genThumb(path: String, timeUs: Long): ByteArray? {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
+
