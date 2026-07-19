@@ -106,6 +106,23 @@ class MainActivity : FlutterActivity() {
     private var voskService: VoskService? = null
     private var voskSink: io.flutter.plugin.common.EventChannel.EventSink? = null
     private var voskCallbackChannel: io.flutter.plugin.common.MethodChannel? = null
+    private var pendingVoskLang2: String? = null
+
+    // روش صحیح برای Flutter — registerForActivityResult
+    private val projLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        android.widget.Toast.makeText(this, "PROJ result=${result.resultCode}", android.widget.Toast.LENGTH_SHORT).show()
+        if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null) {
+            val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+            val projection = mgr?.getMediaProjection(result.resultCode, result.data!!)
+            android.widget.Toast.makeText(this, "projection=$projection lang=$pendingVoskLang2", android.widget.Toast.LENGTH_LONG).show()
+            pendingVoskLang2?.let { lang ->
+                pendingVoskLang2 = null
+                Thread { voskService?.start(lang, projection) }.start()
+            }
+        }
+    }
     private var pendingVoskLang: String? = null
     private val PROJ_REQ_VOSK = 2001
 
@@ -133,10 +150,11 @@ class MainActivity : FlutterActivity() {
                     "requestMediaProjection" -> {
                         val lang = call.argument<String>("lang") ?: "en"
                         voskService = VoskService(this, voskCallbackChannel)
-                        pendingVoskLang = lang
+                        pendingVoskLang2 = lang
                         val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
                         if (mgr != null) {
-                            startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
+                            android.widget.Toast.makeText(this, "Launching MediaProjection...", android.widget.Toast.LENGTH_SHORT).show()
+                            projLauncher.launch(mgr.createScreenCaptureIntent())
                         } else {
                             Thread { voskService?.start(lang, null) }.start()
                         }
