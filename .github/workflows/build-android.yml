@@ -88,10 +88,14 @@ jobs:
           SKTS="android/settings.gradle.kts"
           # vosk 0.3.70 روی Maven Central هست — نیازی به repo جدید نیست
           if ! grep -q "vosk" "$BAPP"; then
-            # vosk + JNA که vosk برای native lib نیاز داره
             echo 'dependencies { implementation("com.alphacephei:vosk-android:0.3.47") }' >> "$BAPP"
             echo 'dependencies { implementation("net.java.dev.jna:jna:5.13.0@aar") }' >> "$BAPP"
             echo "=== vosk + JNA added ==="
+          fi
+          # اضافه کردن useLegacyPackaging داخل android block موجود
+          if ! grep -q "useLegacyPackaging" "$BAPP"; then
+            perl -i -0pe 's/(android\s*\{)/$1\n    packaging { jniLibs { useLegacyPackaging = true } }/' "$BAPP"
+            echo "=== useLegacyPackaging added inside android block ===" 
           fi
 
 
