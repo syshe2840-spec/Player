@@ -1,4 +1,5 @@
 package com.vezoo.player
+import androidx.activity.result.ActivityResult
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -111,7 +112,7 @@ class MainActivity : FlutterActivity() {
     // روش صحیح برای Flutter — registerForActivityResult
     private val projLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+    ) { result: ActivityResult ->
         android.widget.Toast.makeText(this, "PROJ result=${result.resultCode}", android.widget.Toast.LENGTH_SHORT).show()
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null) {
             val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
@@ -835,4 +836,3 @@ private fun genThumb(path: String, timeUs: Long): ByteArray? {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
-
