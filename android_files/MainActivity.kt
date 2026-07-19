@@ -813,16 +813,25 @@ class MainActivity : FlutterActivity() {
             android.widget.Toast.makeText(this, "VOSK onActivityResult OK!", android.widget.Toast.LENGTH_LONG).show()
             val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
             val projection = mgr?.getMediaProjection(result, data)
-            android.widget.Toast.makeText(this, "projection=$projection service=$voskService", android.widget.Toast.LENGTH_SHORT).show()
+            // Android 14+: اول foreground service رو شروع کن
+            val svcIntent = android.content.Intent(this, MediaProjectionService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(svcIntent)
+            } else {
+                startService(svcIntent)
+            }
+            android.os.SystemClock.sleep(300) // صبر کن service شروع بشه
+
+            val mgr2 = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+            val projection = mgr2?.getMediaProjection(result, data)
+            android.widget.Toast.makeText(this, "projection=$projection", android.widget.Toast.LENGTH_SHORT).show()
             pendingVoskLang?.let { lang ->
                 pendingVoskLang = null
-                android.widget.Toast.makeText(this, "Starting Vosk lang=$lang", android.widget.Toast.LENGTH_SHORT).show()
                 Thread {
-                    try {
-                        voskService?.start(lang, projection)
-                    } catch (e: Throwable) {
+                    try { voskService?.start(lang, projection) }
+                    catch (e: Throwable) {
                         android.os.Handler(android.os.Looper.getMainLooper()).post {
-                            android.widget.Toast.makeText(this, "CRASH: ${e.javaClass.simpleName}: ${e.message?.take(80)}", android.widget.Toast.LENGTH_LONG).show()
+                            android.widget.Toast.makeText(this, "ERR: ${e.message?.take(80)}", android.widget.Toast.LENGTH_LONG).show()
                         }
                     }
                 }.start()
