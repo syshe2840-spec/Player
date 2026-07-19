@@ -115,23 +115,6 @@ class MainActivity : FlutterActivity() {
         requestNotifPermission()
 
 
-        // ── Activity Result Listener برای MediaProjection ──
-        fe.activityControlSurface.addActivityResultListener { requestCode, resultCode, data ->
-            android.widget.Toast.makeText(this, "ActivityResult req=$requestCode res=$resultCode", android.widget.Toast.LENGTH_SHORT).show()
-            if (requestCode == PROJ_REQ_VOSK && resultCode == android.app.Activity.RESULT_OK && data != null) {
-                android.widget.Toast.makeText(this, "VOSK PROJ OK!", android.widget.Toast.LENGTH_LONG).show()
-                val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
-                val projection = mgr?.getMediaProjection(resultCode, data)
-                pendingVoskLang?.let { lang ->
-                    pendingVoskLang = null
-                    Thread { voskService?.start(lang, projection) }.start()
-                }
-                true
-            } else {
-                false
-            }
-        }
-
         // ── Vosk STT ──
         // EventChannel برای backward compatibility
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_events")
@@ -822,6 +805,21 @@ class MainActivity : FlutterActivity() {
     override fun onStart() { super.onStart(); if (playing) showNotif() }
     override fun onDestroy() { try { unregisterReceiver(receiver) } catch (_: Exception) {}; nm().cancel(NOTIF_ID); super.onDestroy() }
 
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(req: Int, result: Int, data: android.content.Intent?) {
+        super.onActivityResult(req, result, data)
+        android.util.Log.d("VOSK", "onActivityResult req=$req result=$result")
+        if (req == PROJ_REQ_VOSK && result == android.app.Activity.RESULT_OK && data != null) {
+            android.widget.Toast.makeText(this, "VOSK onActivityResult OK!", android.widget.Toast.LENGTH_LONG).show()
+            val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+            val projection = mgr?.getMediaProjection(result, data)
+            pendingVoskLang?.let { lang ->
+                pendingVoskLang = null
+                Thread { voskService?.start(lang, projection) }.start()
+            }
+        }
+    }
+
 private fun genThumb(path: String, timeUs: Long): ByteArray? {
         val r = MediaMetadataRetriever()
         return try {
@@ -836,4 +834,3 @@ private fun genThumb(path: String, timeUs: Long): ByteArray? {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
-
