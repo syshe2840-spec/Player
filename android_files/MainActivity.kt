@@ -135,6 +135,15 @@ class MainActivity : FlutterActivity() {
                         val lang = call.argument<String>("lang") ?: "en"
                         voskService = VoskService(this, voskCallbackChannel)
                         pendingVoskLang = lang
+                        // Android 14+: باید service قبل از dialog شروع بشه
+                        val svcIntent2 = android.content.Intent(this, MediaProjectionService::class.java)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            startForegroundService(svcIntent2)
+                        } else {
+                            startService(svcIntent2)
+                        }
+                        // صبر 500ms تا service کاملاً شروع بشه
+                        android.os.SystemClock.sleep(500)
                         val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
                         if (mgr != null) {
                             android.widget.Toast.makeText(this, "Launching MediaProjection...", android.widget.Toast.LENGTH_SHORT).show()
@@ -811,15 +820,7 @@ class MainActivity : FlutterActivity() {
         android.util.Log.d("VOSK", "onActivityResult req=$req result=$result")
         if (req == PROJ_REQ_VOSK && result == android.app.Activity.RESULT_OK && data != null) {
             android.widget.Toast.makeText(this, "VOSK onActivityResult OK!", android.widget.Toast.LENGTH_LONG).show()
-            // Android 14+: اول foreground service شروع کن
-            val svcIntent = android.content.Intent(this, MediaProjectionService::class.java)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                startForegroundService(svcIntent)
-            } else {
-                startService(svcIntent)
-            }
-            android.os.SystemClock.sleep(300)
-
+            // service قبلاً شروع شده — فقط projection بگیر
             val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
             val projection = mgr?.getMediaProjection(result, data)
             android.widget.Toast.makeText(this, "projection=$projection", android.widget.Toast.LENGTH_SHORT).show()
