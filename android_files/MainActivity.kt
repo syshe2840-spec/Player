@@ -117,8 +117,14 @@ class MainActivity : FlutterActivity() {
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_events")
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
                 override fun onListen(args: Any?, s: io.flutter.plugin.common.EventChannel.EventSink?) {
-                    voskSink = s; voskService?.setSink(s) }
-                override fun onCancel(args: Any?) { voskSink = null }
+                    voskSink = s
+                    voskService?.setSink(s)
+                    android.util.Log.d("MainActivity", "VoskSink onListen: $s")
+                }
+                override fun onCancel(args: Any?) {
+                    // onCancel نباید sink رو null کنه چون race condition داره
+                    android.util.Log.d("MainActivity", "VoskSink onCancel")
+                }
             })
 
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk")
