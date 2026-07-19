@@ -93,11 +93,7 @@ jobs:
             echo 'dependencies { implementation("net.java.dev.jna:jna:5.13.0@aar") }' >> "$BAPP"
             echo "=== vosk + JNA added ==="
           fi
-          # جلوگیری از مشکل JNA در release build
-          if ! grep -q "useLegacyPackaging" "$BAPP"; then
-            echo 'android { packagingOptions { jniLibs { useLegacyPackaging = true } } }' >> "$BAPP"
-            echo "=== useLegacyPackaging added ==="
-          fi
+
 
           # patch build.gradle.kts برای NDK
           APP=android/app/build.gradle.kts
