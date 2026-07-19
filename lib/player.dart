@@ -472,6 +472,7 @@ class _PlayerState extends State<PlayerScreen>{
           }
         });
         if(mounted)setState((){_aiLog.add('[debug] calling VoskService.start...');});
+        await Future.delayed(const Duration(milliseconds:300)); // wait for EventChannel setup
         await VoskService.start(lang=='multi'?'en':lang);
         if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
       } else {
