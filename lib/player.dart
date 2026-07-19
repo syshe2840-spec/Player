@@ -64,7 +64,8 @@ class _PlayerState extends State<PlayerScreen>{
   String _dgLang='fa';
   StreamSubscription? _dgSub;
   List<String> _aiLog=[];
-  bool _useVosk = true; // Vosk=true, Deepgram=false
+  bool _useVosk = true;
+  Timer? _voskPollTimer;
   bool _isFullscreen=false;
   final List<StreamSubscription> _subs=[];
 
@@ -475,6 +476,25 @@ class _PlayerState extends State<PlayerScreen>{
         await Future.delayed(const Duration(milliseconds:300)); // wait for EventChannel setup
         await VoskService.start(lang=='multi'?'en':lang);
         if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
+        // polling هر 200ms
+        _voskPollTimer = Timer.periodic(const Duration(milliseconds:200), (_) async {
+          final event = await VoskService.getNextEvent();
+          if (event == null || !mounted) return;
+          final type = event['type'] as String;
+          final data = event['data'];
+          final ts = DateTime.now();
+          final tsStr = '${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}';
+          if (type == 'transcript') {
+            final t = (data as Map)['text'] as String;
+            final fin = (data)['final'] as bool;
+            if (t.isNotEmpty) setState(() {
+              _dgText = fin ? t : '$t...';
+              _aiLog.add('[$tsStr] ${fin?"✓":"…"} $t');
+            });
+          } else {
+            setState(() { _aiLog.add('[$tsStr] $type: $data'); });
+          }
+        });
       } else {
         await DeepgramService.start(language:lang, streamUrl:_curPath);
       }
@@ -1172,6 +1192,7 @@ class _PlayerState extends State<PlayerScreen>{
     Store.savePos(_curPath,_position);
     for(final s in _subs)s.cancel();
     _dgSub?.cancel();
+    _voskPollTimer?.cancel(); _voskPollTimer = null;
     if(_dgActive){ if(_useVosk) VoskService.stop(); else DeepgramService.stop(); }
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
     VezService.cleanup(_vezTempPath);
@@ -2163,4 +2184,3 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
     Text(value,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.bold)),
   ]);
 }
-
