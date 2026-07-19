@@ -108,8 +108,12 @@ class VoskService {
     await _ch.invokeMethod('requestMediaProjection', {'lang': langCode});
   }
 
-  static Future<void> stop() async {
-    await _ch.invokeMethod('stop');
+  static Future<void> stop() async { await _ch.invokeMethod('stop'); }
+
+  static Future<Map<String,dynamic>?> getNextEvent() async {
+    final r = await _ch.invokeMethod<Map>('getNextEvent');
+    if (r == null) return null;
+    return Map<String,dynamic>.from(r);
   }
 
   static Stream<Map<String, dynamic>> events() {
