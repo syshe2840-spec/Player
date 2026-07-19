@@ -119,7 +119,7 @@ class MainActivity : FlutterActivity() {
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_events")
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
                 override fun onListen(args: Any?, s: io.flutter.plugin.common.EventChannel.EventSink?) {
-                    voskSink = s; voskService?.setSink(s)
+                    voskSink = s
                     android.util.Log.d("VOSK_DEBUG", "EventChannel onListen sink=$s") }
                 override fun onCancel(args: Any?) {
                     android.util.Log.d("VOSK_DEBUG", "EventChannel onCancel") }
