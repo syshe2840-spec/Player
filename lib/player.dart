@@ -460,7 +460,6 @@ class _PlayerState extends State<PlayerScreen>{
             backgroundColor:Colors.orange, duration:const Duration(seconds:4)));
           return;
         }
-        if(mounted)setState((){_aiLog.add('[debug] model downloaded, subscribing to events...');});
         _dgSub=VoskService.events().listen((e){
           final type=e['type'] as String;
           final data=e['data'];
@@ -482,13 +481,11 @@ class _PlayerState extends State<PlayerScreen>{
             if(mounted)setState((){_dgActive=false;_dgText='';_aiLog.add('[$tsStr] ❌ $data');});
           }
         });
-        if(mounted)setState((){_aiLog.add('[debug] calling VoskService.start...');});
-        await Future.delayed(const Duration(milliseconds:300)); // wait for EventChannel setup
+        await Future.delayed(const Duration(milliseconds:300));
         // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
         final finalModelId = modelId ?? VoskService.downloadedModels
             .where((m) => m.langCode == (lang == 'multi' ? 'en' : lang)).toList().firstOrNull?.id;
         await VoskService.start(lang=='multi'?'en':lang, modelId: finalModelId);
-        if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
         // polling هر 200ms
         _voskPollTimer = Timer.periodic(Duration(milliseconds:_voskPollMs), (_) async {
           final event = await VoskService.getNextEvent();
@@ -1225,9 +1222,12 @@ class _PlayerState extends State<PlayerScreen>{
   void dispose(){
     Store.savePos(_curPath,_position);
     for(final s in _subs)s.cancel();
-    _dgSub?.cancel();
     _voskPollTimer?.cancel(); _voskPollTimer = null;
-    if(_dgActive){ if(_useVosk) VoskService.stop(); else DeepgramService.stop(); }
+    _dgSub?.cancel();
+    if(_dgActive){
+      _dgActive = false;
+      if(_useVosk) { try { VoskService.stop(); } catch(_){} } else { try { DeepgramService.stop(); } catch(_){} }
+    }
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
     VezService.cleanup(_vezTempPath);
     try{_pipCh.invokeMethod('hideNotif');}catch(_){}
@@ -2496,4 +2496,3 @@ StatefulBuilder(builder: (_, ss2) {
     ],
   );
 }
-
