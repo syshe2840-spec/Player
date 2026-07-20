@@ -7,9 +7,15 @@ class YtDlpService {
   static Future<String> getStreamUrl(String url) async {
     try {
       final videoId = VideoId(url);
+      // v3.1.0 — try multiple clients for reliability
       final manifest = await _yt.videos.streams.getManifest(
         videoId,
-        ytClients: [YoutubeApiClient.ios, YoutubeApiClient.androidVr],
+        ytClients: [
+          YoutubeApiClient.safari,
+          YoutubeApiClient.androidVr,
+          YoutubeApiClient.android,
+          YoutubeApiClient.tv,
+        ],
       );
       final muxed = manifest.muxed;
       if (muxed.isNotEmpty) return muxed.sortByVideoQuality().first.url.toString();
@@ -21,3 +27,4 @@ class YtDlpService {
     }
   }
 }
+
