@@ -149,6 +149,8 @@ class VoskService {
     });
   }
 
+  static String get kDir => _kDir;
+
   static bool isDownloaded(VoskModel m) {
     if (m.id.startsWith('custom_')) return true;
     final dir = Directory(_kDir);
@@ -286,4 +288,3 @@ class VoskService {
     return Map<String,dynamic>.from(r);
   }
 }
-
