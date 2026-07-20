@@ -471,7 +471,8 @@ class _PlayerState extends State<PlayerScreen>{
       req.write('{"lines":["$escaped"],"target_lang":"$targetLang"}');
       final res = await req.close();
       final body = await res.transform(const Utf8Decoder()).join();
-      if (mounted) setState((){_aiLog.add('[translate] resp: ${body.substring(0, body.length.clamp(0,80))}');});
+      if (!mounted) return text;
+      setState((){_aiLog.add('[translate] resp: ${body.substring(0, body.length.clamp(0,80))}');});
       final json = jsonDecode(body);
       return (json['lines'] as List?)?.first?.toString() ?? text;
     } catch (e) {
@@ -604,9 +605,7 @@ class _PlayerState extends State<PlayerScreen>{
             }
           });
           _androidSttPollTimer = Timer.periodic(Duration(milliseconds: _voskPollMs), (_) async {
-            final event = await AndroidSttService.getNextEvent();
-            if (event == null || !mounted) return;
-            // events handled via callback channel
+            if (!mounted || _androidSttPollTimer == null) return;
           });
           setState(() { _dgActive = true; _dgText = ''; });
           if(mounted)setState((){_aiLog.add('[Android STT] Starting lang=$lang...');});
@@ -620,6 +619,7 @@ class _PlayerState extends State<PlayerScreen>{
         await VoskService.start(lang=='multi'?'en':lang, modelId: finalModelId);
         // polling هر 200ms
         _voskPollTimer = Timer.periodic(Duration(milliseconds:_voskPollMs), (_) async {
+          if (!mounted || _voskPollTimer == null) return;
           final event = await VoskService.getNextEvent();
           if (event == null || !mounted) return;
           final type = event['type'] as String;
@@ -1364,7 +1364,7 @@ class _PlayerState extends State<PlayerScreen>{
       else { try { DeepgramService.stop(); } catch(_){} }
     }
     // ذخیره SRT اگه چیزی ضبط شده
-    if (_voskSrtEntries.isNotEmpty) _saveVoskSrt(silent: false); // آخر با snackbar
+    if (_voskSrtEntries.isNotEmpty) _saveVoskSrt(silent: true); // dispose — بدون snackbar
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
     VezService.cleanup(_vezTempPath);
     try{_pipCh.invokeMethod('hideNotif');}catch(_){}
