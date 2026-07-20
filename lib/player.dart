@@ -451,12 +451,11 @@ class _PlayerState extends State<PlayerScreen>{
       if(mounted)setState((){_aiLog.add('[${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}] 🚀 Starting AI subtitle...');});
       if (_useVosk) {
         // Vosk — آفلاین + MediaProjection
-        final m = kVoskModels.firstWhere((m) => m.langCode==lang || (lang=='multi'&&m.langCode=='en'),
-          orElse: () => kVoskModels.first);
-        if (!VoskService.isDownloaded(m)) {
+        final effectiveLang = lang == 'multi' ? 'en' : lang;
+        if (!VoskService.hasAnyModelForLang(effectiveLang)) {
           setState((){_dgActive=false;});
           if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:Text('مدل ${m.name} دانلود نشده — به Settings > Vosk Models برو'),
+            content:Text('هیچ مدلی برای این زبان دانلود نشده — به Settings > Vosk Models برو'),
             backgroundColor:Colors.orange, duration:const Duration(seconds:4)));
           return;
         }
