@@ -2406,8 +2406,14 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
       ),
       const SizedBox(height: 12),
 
-      // ترجمه
+      // ترجمه toggle
       Row(children: [
+        const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
+        Switch(value: _translate, onChanged: (v) => setState(() => _translate = v),
+          activeColor: const Color(0xFF7C3AED)),
+      ]),
+
+      if (_translate) ...[
         const SizedBox(height: 8),
         const Align(alignment: Alignment.centerRight,
           child: Text('ترجمه به', style: TextStyle(color: Colors.white60, fontSize: 12))),
@@ -2440,4 +2446,3 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
     ],
   );
 }
-
