@@ -559,12 +559,29 @@ class _PlayerState extends State<PlayerScreen>{
           final tsStr="${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}";
           if(type=='transcript'){
             final t=(data as Map)['text'] as String;
-            final isFinal=(data)['final'] as bool;
+            final isFinal=(data as Map)['final'] as bool;
             if(t.isNotEmpty){
+              if(isFinal){
+                // SRT
+                if (_voskStartTime != null) {
+                  final now=DateTime.now();
+                  final el=now.difference(_voskStartTime!);
+                  _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length+1,el-const Duration(seconds:2),el,t));
+                  _saveVoskSrt(silent:true);
+                }
+                // ترجمه
+                if(_voskTranslate && _voskTranslateTo.isNotEmpty){
+                  setState((){_aiLog.add('[TRANS] → $_voskTranslateTo: "$t"');});
+                  _translateWithWorker(t,_voskTranslateTo).then((r){
+                    if(_mounted){
+                      setState((){_aiLog.add('[TRANS] result: "$r"');});
+                      if(r.isNotEmpty&&r!=t)setState(()=>_dgText=r);
+                    }
+                  });
+                }
+              }
               if(mounted)setState((){
                 _dgText=isFinal?t:'$t...';
-                _aiLog.add('[$tsStr] ${isFinal?"✓":"…"} $t');
-                if(_aiLog.length>30)_aiLog.removeAt(0);
               });
             }
           } else if(type=='status'){
