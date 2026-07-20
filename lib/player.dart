@@ -411,7 +411,10 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   Future<void> _saveVoskSrt({bool silent = false}) async {
-    if (_voskSrtEntries.isEmpty) return;
+    if (_voskSrtEntries.isEmpty) {
+      if (silent && _mounted) setState((){_aiLog.add('[SRT] skip — no entries');});
+      return;
+    }
 
     // تولید نام فایل
     String baseName;
@@ -445,10 +448,9 @@ class _PlayerState extends State<PlayerScreen>{
       final file = File('${dir.path}/$baseName.srt');
       await file.writeAsString(srtContent, flush: true);
       savedPath = file.path;
-      if (_mounted && silent) setState((){_aiLog.add('[SRT] saved: $baseName.srt (${_voskSrtEntries.length} entries)');});
+      if (_mounted) setState((){_aiLog.add('[SRT] ✅ saved: $baseName.srt (${_voskSrtEntries.length} lines)');});
 
     } catch (e) {
-      if (_mounted) setState((){_aiLog.add('[SRT] save error: $e');});
       return;
     }
     if (!silent && _mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -478,7 +480,6 @@ class _PlayerState extends State<PlayerScreen>{
       final json = jsonDecode(body);
       return (json['lines'] as List?)?.first?.toString() ?? text;
     } catch (e) {
-      if (_mounted) setState((){_aiLog.add('[translate] error: $e');});
       return text;
     }
   }
@@ -610,9 +611,7 @@ class _PlayerState extends State<PlayerScreen>{
             if (!mounted || _androidSttPollTimer == null) return;
           });
           setState(() { _dgActive = true; _dgText = ''; });
-          if(mounted)setState((){_aiLog.add('[Android STT] Starting lang=$lang...');});
           await AndroidSttService.start(lang);
-          if(mounted)setState((){_aiLog.add('[Android STT] Started ✅');});
           return;
         }
 
@@ -635,20 +634,31 @@ class _PlayerState extends State<PlayerScreen>{
               setState(() {
                 if (fin) {
                   _dgText = t;
-                  _aiLog.add('[$tsStr] ✓ $t');
-                  if (_aiLog.length > 50) _aiLog.removeAt(0);
-                  // ذخیره SRT
-                  final now = DateTime.now();
-                  final elapsed = now.difference(_voskStartTime ?? now);
-                  _voskSrtEntries.add(_SrtEntry(
-                    _voskSrtEntries.length + 1,
-                    elapsed - const Duration(seconds: 2),
-                    elapsed, t));
-                  _saveVoskSrt(silent: true);
+                                // ذخیره SRT
+                  if (_voskStartTime == null) {
+                    setState((){_aiLog.add('[SRT] ❌ startTime=null — SRT not saved');});
+                  } else {
+                    final now = DateTime.now();
+                    final elapsed = now.difference(_voskStartTime!);
+                    _voskSrtEntries.add(_SrtEntry(
+                      _voskSrtEntries.length + 1,
+                      elapsed - const Duration(seconds: 2),
+                      elapsed, t));
+                    setState((){_aiLog.add('[SRT] entry#${_voskSrtEntries.length} added, saving...');});
+                    _saveVoskSrt(silent: true);
+                  }
                   // ترجمه
-                  if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
+                  if (!_voskTranslate) {
+                    setState((){_aiLog.add('[TRANS] disabled');});
+                  } else if (_voskTranslateTo.isEmpty) {
+                    setState((){_aiLog.add('[TRANS] ❌ target lang empty');});
+                  } else {
+                    setState((){_aiLog.add('[TRANS] → $_voskTranslateTo: "$t"');});
                     _translateWithWorker(t, _voskTranslateTo).then((r) {
-                      if (_mounted && r.isNotEmpty && r != t) setState(() => _dgText = r);
+                      if (_mounted) {
+                        setState((){_aiLog.add('[TRANS] result: "$r"');});
+                        if (r.isNotEmpty && r != t) setState(() => _dgText = r);
+                      }
                     });
                   }
                 } else {
@@ -657,14 +667,7 @@ class _PlayerState extends State<PlayerScreen>{
               });
             }
           } else if (type == 'status') {
-            // فقط status های مهم به log برن
-            final d = data.toString();
-            if (d.contains('STEP') || d.contains('ERROR') || d.contains('started') || d.contains('stopped')) {
-              setState(() {
-                _aiLog.add('[$tsStr] $d');
-                if (_aiLog.length > 50) _aiLog.removeAt(0);
-              });
-            }
+            // status log حذف شد
           } else if (type == 'error') {
             setState(() {
               _dgActive = false; _dgText = '';
