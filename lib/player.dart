@@ -71,8 +71,12 @@ class _PlayerState extends State<PlayerScreen>{
   Timer? _voskPollTimer;
   bool _voskTranslate = false;
   String _voskTranslateTo = 'fa';
-  int _voskPollMs = 100; // polling interval
+  int _voskPollMs = 100;
   final _translator = GoogleTranslator();
+
+  // زبان‌هایی که partial رو Latin برمیگردونن — فقط final نشون بده
+  static const _nonLatinLangs = {'fa','ar','zh','ja','ko','ru','uk','hi','he','el','ka','am','bn','gu','kn','ml','mr','ne','pa','si','ta','te','ur','ky','kk','tg','mn','my','km','lo','th'};
+  bool get _voskFinalOnly => _nonLatinLangs.contains(_dgLang);
   bool _isFullscreen=false;
   final List<StreamSubscription> _subs=[];
 
