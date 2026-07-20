@@ -414,13 +414,13 @@ class _PlayerState extends State<PlayerScreen>{
     final path = _curPath ?? '';
     if (path.isEmpty) {
       final now = DateTime.now();
-      baseName = 'subtitle_\${now.year}\${now.month.toString().padLeft(2,'0')}\${now.day.toString().padLeft(2,'0')}_\${now.hour.toString().padLeft(2,'0')}\${now.minute.toString().padLeft(2,'0')}';
+      baseName = 'subtitle_${now.year}${now.month.toString().padLeft(2,"0")}_${now.day.toString().padLeft(2,"0")}_${now.hour.toString().padLeft(2,"0")}${now.minute.toString().padLeft(2,"0")}';
     } else if (path.contains('youtube') || path.contains('youtu.be')) {
       final title = path.split('/').last.split('?').first;
-      baseName = '\${title.isEmpty ? 'youtube' : title}-youtube';
+      baseName = '${title.isEmpty ? "youtube" : title}-youtube';
     } else if (path.contains('.m3u8') || path.contains('iptv') || _isLive) {
       final seg = path.split('/').lastWhere((s) => s.isNotEmpty, orElse: () => 'live');
-      baseName = '\${seg.split('.').first}-iptv';
+      baseName = '${seg.split(".").first}-iptv';
     } else {
       // فایل معمولی
       final fname = path.split('/').last;
@@ -429,18 +429,18 @@ class _PlayerState extends State<PlayerScreen>{
 
     // اضافه کردن زبان ترجمه
     if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
-      baseName += '-translated-to-\$_voskTranslateTo';
+      baseName += '-translated-to-$_voskTranslateTo';
     }
 
     // ذخیره فایل
     final srtContent = _voskSrtEntries.map((e) => e.toSrt()).join('\n');
     final dir = Directory('/storage/emulated/0/Download/Vezoo/Subtitles');
     await dir.create(recursive: true);
-    final file = File('\${dir.path}/\$baseName.srt');
+    final file = File('${dir.path}/$baseName.srt');
     await file.writeAsString(srtContent);
 
     if (!silent && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('✅ زیرنویس ذخیره شد: \$baseName.srt'),
+      content: Text('✅ زیرنویس ذخیره شد: $baseName.srt'),
       backgroundColor: const Color(0xFF7C3AED),
       duration: const Duration(seconds: 4),
       action: SnackBarAction(label: 'باز کردن', textColor: Colors.white,
