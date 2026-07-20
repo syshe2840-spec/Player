@@ -437,11 +437,13 @@ class _PlayerState extends State<PlayerScreen>{
 
     // ذخیره فایل
     final srtContent = _voskSrtEntries.map((e) => e.toSrt()).join('\n');
+    String? savedPath;
     try {
       final dir = Directory('/storage/emulated/0/Download/Vezoo/Subtitles');
       await dir.create(recursive: true);
       final file = File('${dir.path}/$baseName.srt');
       await file.writeAsString(srtContent, flush: true);
+      savedPath = file.path;
       if (mounted && silent) setState((){_aiLog.add('[SRT] saved: $baseName.srt (${_voskSrtEntries.length} entries)');});
 
     } catch (e) {
@@ -454,9 +456,8 @@ class _PlayerState extends State<PlayerScreen>{
       duration: const Duration(seconds: 4),
       action: SnackBarAction(label: 'باز کردن', textColor: Colors.white,
         onPressed: () async {
-          // باز کردن فایل در SRT editor
           Navigator.push(context, MaterialPageRoute(builder: (_) =>
-            SrtEditorScreen(srtPath: file.path)));
+            SrtEditorScreen(srtPath: savedPath!)));
         }),
     ));
   }
