@@ -418,7 +418,7 @@ class _PlayerState extends State<PlayerScreen>{
     } else if (path.contains('youtube') || path.contains('youtu.be')) {
       final title = path.split('/').last.split('?').first;
       baseName = '${title.isEmpty ? "youtube" : title}-youtube';
-    } else if (path.contains('.m3u8') || path.contains('iptv') || _isLive) {
+    } else if (path.contains('.m3u8') || path.contains('iptv') || widget.isLive) {
       final seg = path.split('/').lastWhere((s) => s.isNotEmpty, orElse: () => 'live');
       baseName = '${seg.split(".").first}-iptv';
     } else {
@@ -447,7 +447,7 @@ class _PlayerState extends State<PlayerScreen>{
         onPressed: () async {
           // باز کردن فایل در SRT editor
           Navigator.push(context, MaterialPageRoute(builder: (_) =>
-            SrtEditorScreen(filePath: file.path)));
+            SrtEditorScreen(srtPath: file.path)));
         }),
     ));
   }
