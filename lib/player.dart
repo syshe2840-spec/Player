@@ -68,10 +68,11 @@ class _PlayerState extends State<PlayerScreen>{
   String _dgLang='fa';
   StreamSubscription? _dgSub;
   List<String> _aiLog=[];
-  bool _useVosk = true; // true=Vosk, false=Deepgram
-  bool _useAndroidStt = false; // Android Built-in STT
+  bool _useVosk = true;
+  bool _useAndroidStt = false;
   Timer? _voskPollTimer;
   Timer? _androidSttPollTimer;
+  bool _mounted = true; // safe async flag
   // ── ذخیره SRT زنده ──
   List<_SrtEntry> _voskSrtEntries = [];
   DateTime? _voskStartTime;
@@ -444,13 +445,13 @@ class _PlayerState extends State<PlayerScreen>{
       final file = File('${dir.path}/$baseName.srt');
       await file.writeAsString(srtContent, flush: true);
       savedPath = file.path;
-      if (mounted && silent) setState((){_aiLog.add('[SRT] saved: $baseName.srt (${_voskSrtEntries.length} entries)');});
+      if (_mounted && silent) setState((){_aiLog.add('[SRT] saved: $baseName.srt (${_voskSrtEntries.length} entries)');});
 
     } catch (e) {
-      if (mounted) setState((){_aiLog.add('[SRT] save error: $e');});
+      if (_mounted) setState((){_aiLog.add('[SRT] save error: $e');});
       return;
     }
-    if (!silent && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    if (!silent && _mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('✅ زیرنویس ذخیره شد: $baseName.srt'),
       backgroundColor: const Color(0xFF7C3AED),
       duration: const Duration(seconds: 4),
@@ -472,12 +473,12 @@ class _PlayerState extends State<PlayerScreen>{
       req.write('{"lines":["$escaped"],"target_lang":"$targetLang"}');
       final res = await req.close();
       final body = await res.transform(const Utf8Decoder()).join();
-      if (!mounted) return text;
+      if (!_mounted) return text;
       setState((){_aiLog.add('[translate] resp: ${body.substring(0, body.length.clamp(0,80))}');});
       final json = jsonDecode(body);
       return (json['lines'] as List?)?.first?.toString() ?? text;
     } catch (e) {
-      if (mounted) setState((){_aiLog.add('[translate] error: $e');});
+      if (_mounted) setState((){_aiLog.add('[translate] error: $e');});
       return text;
     }
   }
@@ -620,9 +621,9 @@ class _PlayerState extends State<PlayerScreen>{
         await VoskService.start(lang=='multi'?'en':lang, modelId: finalModelId);
         // polling هر 200ms
         _voskPollTimer = Timer.periodic(Duration(milliseconds:_voskPollMs), (_) async {
-          if (!mounted || _voskPollTimer == null) return;
+          if (!_mounted || _voskPollTimer == null) return;
           final event = await VoskService.getNextEvent();
-          if (event == null || !mounted) return;
+          if (event == null || !_mounted) return;
           final type = event['type'] as String;
           final data = event['data'];
           final ts = DateTime.now();
@@ -633,13 +634,25 @@ class _PlayerState extends State<PlayerScreen>{
             if (t.isNotEmpty) {
               setState(() {
                 if (fin) {
-                  _dgConfirmed = t;
-                  _dgPartial = '';
                   _dgText = t;
                   _aiLog.add('[$tsStr] ✓ $t');
                   if (_aiLog.length > 50) _aiLog.removeAt(0);
+                  // ذخیره SRT
+                  final now = DateTime.now();
+                  final elapsed = now.difference(_voskStartTime ?? now);
+                  _voskSrtEntries.add(_SrtEntry(
+                    _voskSrtEntries.length + 1,
+                    elapsed - const Duration(seconds: 2),
+                    elapsed, t));
+                  _saveVoskSrt(silent: true);
+                  // ترجمه
+                  if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
+                    _translateWithWorker(t, _voskTranslateTo).then((r) {
+                      if (_mounted && r.isNotEmpty && r != t) setState(() => _dgText = r);
+                    });
+                  }
                 } else {
-                  _dgPartial = t;
+                  if (!_voskFinalOnly) _dgPartial = t;
                 }
               });
             }
@@ -1376,6 +1389,7 @@ class _PlayerState extends State<PlayerScreen>{
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
     if (_liveSubActive) cancelLiveSub();
+    _mounted = false;
     player.dispose();
     super.dispose();
   }
