@@ -123,7 +123,7 @@ const kLanguages = {
   'ht':'🇭🇹 Kreyòl ayisyen','mi':'🇳🇿 Māori','haw':'🌺 ʻŌlelo Hawaiʻi',
   'la':'🌍 Latina','eo':'🌍 Esperanto','br':'🏴 Brezhoneg',
   'fo':'🇫🇴 Føroyskt','oc':'🏴 Occitan','sa':'🌏 संस्कृत',
-  'yi':'🌍 ייִדיש','lo':'🇱🇦 ລາວ',
+  'yi':'🌍 ייִדיש',
 };
 
 /// سطح پشتیبانی هر زبان در whisper (بر اساس داده‌های منتشرشده OpenAI)
