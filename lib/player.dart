@@ -479,7 +479,7 @@ class _PlayerState extends State<PlayerScreen>{
         await VoskService.start(lang=='multi'?'en':lang);
         if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
         // polling هر 200ms
-        _voskPollTimer = Timer.periodic(const Duration(milliseconds:200), (_) async {
+        _voskPollTimer = Timer.periodic(const Duration(milliseconds:100), (_) async {
           final event = await VoskService.getNextEvent();
           if (event == null || !mounted) return;
           final type = event['type'] as String;
