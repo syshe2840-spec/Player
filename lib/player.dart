@@ -32,6 +32,7 @@ import 'main.dart' show showSnack;
 import 'l10n.dart';
 import 'deepgram_service.dart';
 import 'vosk_service.dart';
+import 'srt_editor_screen.dart';
 import 'package:permission_handler/permission_handler.dart' as permission_handler;
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
@@ -68,6 +69,10 @@ class _PlayerState extends State<PlayerScreen>{
   List<String> _aiLog=[];
   bool _useVosk = true;
   Timer? _voskPollTimer;
+  // ── ذخیره SRT زنده ──
+  List<_SrtEntry> _voskSrtEntries = [];
+  DateTime? _voskStartTime;
+  DateTime? _lastFinalTime;
   bool _voskTranslate = false;
   String _voskTranslateTo = 'fa';
   int _voskPollMs = 100;
@@ -401,6 +406,52 @@ class _PlayerState extends State<PlayerScreen>{
     if(_vs.speed!=1.0)player.setRate(_vs.speed);
   }
 
+  Future<void> _saveVoskSrt({bool silent = false}) async {
+    if (_voskSrtEntries.isEmpty) return;
+
+    // تولید نام فایل
+    String baseName;
+    final path = _curPath ?? '';
+    if (path.isEmpty) {
+      final now = DateTime.now();
+      baseName = 'subtitle_\${now.year}\${now.month.toString().padLeft(2,'0')}\${now.day.toString().padLeft(2,'0')}_\${now.hour.toString().padLeft(2,'0')}\${now.minute.toString().padLeft(2,'0')}';
+    } else if (path.contains('youtube') || path.contains('youtu.be')) {
+      final title = path.split('/').last.split('?').first;
+      baseName = '\${title.isEmpty ? 'youtube' : title}-youtube';
+    } else if (path.contains('.m3u8') || path.contains('iptv') || _isLive) {
+      final seg = path.split('/').lastWhere((s) => s.isNotEmpty, orElse: () => 'live');
+      baseName = '\${seg.split('.').first}-iptv';
+    } else {
+      // فایل معمولی
+      final fname = path.split('/').last;
+      baseName = fname.contains('.') ? fname.substring(0, fname.lastIndexOf('.')) : fname;
+    }
+
+    // اضافه کردن زبان ترجمه
+    if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
+      baseName += '-translated-to-\$_voskTranslateTo';
+    }
+
+    // ذخیره فایل
+    final srtContent = _voskSrtEntries.map((e) => e.toSrt()).join('\n');
+    final dir = Directory('/storage/emulated/0/Download/Vezoo/Subtitles');
+    await dir.create(recursive: true);
+    final file = File('\${dir.path}/\$baseName.srt');
+    await file.writeAsString(srtContent);
+
+    if (!silent && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('✅ زیرنویس ذخیره شد: \$baseName.srt'),
+      backgroundColor: const Color(0xFF7C3AED),
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(label: 'باز کردن', textColor: Colors.white,
+        onPressed: () async {
+          // باز کردن فایل در SRT editor
+          Navigator.push(context, MaterialPageRoute(builder: (_) =>
+            SrtEditorScreen(filePath: file.path)));
+        }),
+    ));
+  }
+
   Future<String> _translateWithWorker(String text, String targetLang) async {
     try {
       final client = HttpClient();
@@ -492,6 +543,9 @@ class _PlayerState extends State<PlayerScreen>{
             if(mounted)setState((){_dgActive=false;_dgText='';_aiLog.add('[$tsStr] ❌ $data');});
           }
         });
+        _voskSrtEntries = [];
+        _voskStartTime = DateTime.now();
+        _lastFinalTime = DateTime.now();
         await Future.delayed(const Duration(milliseconds:300));
         // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
         final finalModelId = modelId ?? VoskService.downloadedModels
@@ -1239,6 +1293,8 @@ class _PlayerState extends State<PlayerScreen>{
       _dgActive = false;
       if(_useVosk) { try { VoskService.stop(); } catch(_){} } else { try { DeepgramService.stop(); } catch(_){} }
     }
+    // ذخیره SRT اگه چیزی ضبط شده
+    if (_voskSrtEntries.isNotEmpty) _saveVoskSrt(silent: false); // آخر با snackbar
     _hideTimer?.cancel();_overlayTimer?.cancel();_sleepTimer?.cancel();_thumbTimer?.cancel();
     VezService.cleanup(_vezTempPath);
     try{_pipCh.invokeMethod('hideNotif');}catch(_){}
@@ -2506,4 +2562,22 @@ StatefulBuilder(builder: (_, ss2) {
         child: const Text('شروع')),
     ],
   );
+}
+
+class _SrtEntry {
+  final int idx;
+  final Duration start, end;
+  final String text;
+  _SrtEntry(this.idx, this.start, this.end, this.text);
+
+  String toSrt() {
+    String _fmt(Duration d) {
+      final h = d.inHours.toString().padLeft(2,'0');
+      final m = (d.inMinutes % 60).toString().padLeft(2,'0');
+      final s = (d.inSeconds % 60).toString().padLeft(2,'0');
+      final ms = (d.inMilliseconds % 1000).toString().padLeft(3,'0');
+      return '$h:$m:$s,$ms';
+    }
+    return '$idx\n${_fmt(start)} --> ${_fmt(end)}\n$text\n';
+  }
 }
