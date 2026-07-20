@@ -32,6 +32,7 @@ import 'main.dart' show showSnack;
 import 'l10n.dart';
 import 'deepgram_service.dart';
 import 'vosk_service.dart';
+import 'android_stt_service.dart';
 import 'srt_editor_screen.dart';
 import 'package:permission_handler/permission_handler.dart' as permission_handler;
 
@@ -67,8 +68,10 @@ class _PlayerState extends State<PlayerScreen>{
   String _dgLang='fa';
   StreamSubscription? _dgSub;
   List<String> _aiLog=[];
-  bool _useVosk = true;
+  bool _useVosk = true; // true=Vosk, false=Deepgram
+  bool _useAndroidStt = false; // Android Built-in STT
   Timer? _voskPollTimer;
+  Timer? _androidSttPollTimer;
   // ── ذخیره SRT زنده ──
   List<_SrtEntry> _voskSrtEntries = [];
   DateTime? _voskStartTime;
@@ -480,6 +483,9 @@ class _PlayerState extends State<PlayerScreen>{
       _voskTranslateTo=result['translateTo'] as String;
       _voskPollMs=result['pollMs'] as int;
       final modelId=result['modelId'] as String?;
+      final engine=result['engine'] as String? ?? 'vosk';
+      _useAndroidStt = engine == 'android';
+      _useVosk = engine == 'vosk';
       setState((){_dgActive=true;_dgLang=lang;_dgText='⏳ Connecting...';});
       _dgSub=DeepgramService.events().listen((e){
         final type=e['type'] as String;
@@ -548,6 +554,47 @@ class _PlayerState extends State<PlayerScreen>{
         _lastFinalTime = DateTime.now();
         await Future.delayed(const Duration(milliseconds:300));
         // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
+        // ── Android Built-in STT ──
+        if (_useAndroidStt) {
+          _dgSub = AndroidSttService.events().listen((e) {
+            final type = e['type'] as String;
+            final data = e['data'];
+            final tsStr = DateTime.now().toString().substring(11, 19);
+            _aiLog.add('[$tsStr] [Android] $type: $data');
+            if (_aiLog.length > 50) _aiLog.removeAt(0);
+            if (type == 'transcript') {
+              final t = (data as Map)['text'] as String;
+              final fin = (data as Map)['final'] as bool;
+              if (t.isNotEmpty) {
+                if (!fin && _voskFinalOnly) return;
+                final newText = fin ? t : '$t...';
+                if (newText != _dgText) {
+                  setState(() {
+                    _dgText = newText;
+                    if (fin && _voskTranslate) {
+                      _translateWithWorker(t, _voskTranslateTo).then((r) {
+                        if (mounted && r.isNotEmpty && r != t) setState(() => _dgText = r);
+                      });
+                    }
+                  });
+                }
+              }
+            } else if (type == 'error') {
+              setState(() { _dgActive = false; _dgText = ''; _aiLog.add('[$tsStr] ❌ $data'); });
+            }
+          });
+          _androidSttPollTimer = Timer.periodic(Duration(milliseconds: _voskPollMs), (_) async {
+            final event = await AndroidSttService.getNextEvent();
+            if (event == null || !mounted) return;
+            // events handled via callback channel
+          });
+          setState(() { _dgActive = true; _dgText = ''; });
+          if(mounted)setState((){_aiLog.add('[Android STT] Starting lang=$lang...');});
+          await AndroidSttService.start(lang);
+          if(mounted)setState((){_aiLog.add('[Android STT] Started ✅');});
+          return;
+        }
+
         final finalModelId = modelId ?? VoskService.downloadedModels
             .where((m) => m.langCode == (lang == 'multi' ? 'en' : lang)).toList().firstOrNull?.id;
         await VoskService.start(lang=='multi'?'en':lang, modelId: finalModelId);
@@ -1288,10 +1335,13 @@ class _PlayerState extends State<PlayerScreen>{
     Store.savePos(_curPath,_position);
     for(final s in _subs)s.cancel();
     _voskPollTimer?.cancel(); _voskPollTimer = null;
+    _androidSttPollTimer?.cancel(); _androidSttPollTimer = null;
     _dgSub?.cancel();
     if(_dgActive){
       _dgActive = false;
-      if(_useVosk) { try { VoskService.stop(); } catch(_){} } else { try { DeepgramService.stop(); } catch(_){} }
+      if(_useAndroidStt) { try { AndroidSttService.stop(); } catch(_){} }
+      else if(_useVosk) { try { VoskService.stop(); } catch(_){} }
+      else { try { DeepgramService.stop(); } catch(_){} }
     }
     // ذخیره SRT اگه چیزی ضبط شده
     if (_voskSrtEntries.isNotEmpty) _saveVoskSrt(silent: false); // آخر با snackbar
@@ -2300,6 +2350,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _translateTo = 'fa';
   int _pollMs = 100;
   VoskModel? _selectedModel;
+  String _engine = 'vosk'; // vosk, android
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2435,11 +2486,58 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
     backgroundColor: const Color(0xFF12121C),
     title: const Text('تنظیمات زیرنویس زنده', style: TextStyle(color: Colors.white, fontSize: 15)),
     content: SizedBox(width: 300, child: Column(mainAxisSize: MainAxisSize.min, children: [
+      // ── انتخاب موتور ──
+      Row(children: [
+        Expanded(child: GestureDetector(
+          onTap: () => setState(() => _engine = 'vosk'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: _engine == 'vosk' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
+              borderRadius: BorderRadius.circular(8)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.memory_rounded, color: _engine=='vosk' ? Colors.white : Colors.white38, size: 16),
+              const SizedBox(height: 4),
+              Text('Vosk', style: TextStyle(color: _engine=='vosk' ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+              Text('آفلاین', style: TextStyle(color: _engine=='vosk' ? Colors.white60 : Colors.white24, fontSize: 9)),
+            ])))),
+        const SizedBox(width: 8),
+        Expanded(child: GestureDetector(
+          onTap: () => setState(() => _engine = 'android'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: _engine == 'android' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
+              borderRadius: BorderRadius.circular(8)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.android_rounded, color: _engine=='android' ? Colors.white : Colors.white38, size: 16),
+              const SizedBox(height: 4),
+              Text('Android', style: TextStyle(color: _engine=='android' ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+              Text('آنلاین - بیشتر زبان', style: TextStyle(color: _engine=='android' ? Colors.white60 : Colors.white24, fontSize: 9)),
+            ])))),
+      ]),
+      const SizedBox(height: 14),
+
       // زبان مبدا
       const Align(alignment: Alignment.centerRight,
         child: Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 12))),
       const SizedBox(height: 6),
 StatefulBuilder(builder: (_, ss2) {
+        if (_engine == 'android') {
+          // Android STT — همه زبان‌های پشتیبانی شده
+          return DropdownButtonFormField<String>(
+            value: AndroidSttService.supportedLangs.containsKey(_lang) ? _lang : 'fa',
+            dropdownColor: const Color(0xFF1A1A2A),
+            decoration: InputDecoration(
+              filled: true, fillColor: const Color(0xFF1A1A2A),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+            items: AndroidSttService.supportedLangs.entries.map((e) => DropdownMenuItem(
+              value: e.key,
+              child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
+            onChanged: (v) => setState(() => _lang = v!),
+          );
+        }
         final downloaded = VoskService.downloadedModels
             .where((m) => m.langCode != 'spk').toList();
         final langCodes = downloaded.map((m) => m.langCode).toSet().toList();
@@ -2558,6 +2656,7 @@ StatefulBuilder(builder: (_, ss2) {
           'translateTo': _translateTo,
           'pollMs': _pollMs,
           'modelId': _selectedModel?.id,
+          'engine': _engine,
         }),
         child: const Text('شروع')),
     ],
