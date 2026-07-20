@@ -2370,8 +2370,9 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
         child: Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 12))),
       const SizedBox(height: 6),
 StatefulBuilder(builder: (_, ss2) {
-        final downloaded = VoskService.downloadedModels;
-        final langCodes = VoskService.downloadedLangCodes;
+        final downloaded = VoskService.downloadedModels
+            .where((m) => m.langCode != 'spk').toList();
+        final langCodes = downloaded.map((m) => m.langCode).toSet().toList();
         if (downloaded.isEmpty) {
           return Container(padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
@@ -2492,3 +2493,4 @@ StatefulBuilder(builder: (_, ss2) {
     ],
   );
 }
+
