@@ -150,6 +150,7 @@ class VoskService {
   }
 
   static bool isDownloaded(VoskModel m) {
+    if (m.id.startsWith('custom_')) return true; // custom همیشه downloaded
     final dir = Directory(_kDir);
     if (!dir.existsSync()) return false;
     final folderName = m.url.split('/').last.replaceAll('.zip', '');
@@ -157,8 +158,48 @@ class VoskService {
       e is Directory && e.path.split('/').last == folderName);
   }
 
+  // اسکن پوشه‌های custom که در لیست رسمی نیستن
+  static List<VoskModel> get customModels {
+    final dir = Directory(_kDir);
+    if (!dir.existsSync()) return [];
+    final knownFolders = kVoskModels.map((m) =>
+        m.url.split('/').last.replaceAll('.zip', '')).toSet();
+    return dir.listSync()
+      .whereType<Directory>()
+      .where((d) => !knownFolders.contains(d.path.split('/').last))
+      .map((d) {
+        final name = d.path.split('/').last;
+        // تشخیص زبان از اسم پوشه
+        final langCode = _guessLang(name);
+        return VoskModel(
+          id: 'custom_$name',
+          langCode: langCode,
+          name: name,
+          size: '?',
+          url: '', // custom — نیازی به URL نیست
+        );
+      }).toList();
+  }
+
+  static String _guessLang(String folderName) {
+    final n = folderName.toLowerCase();
+    if (n.contains('-fa-') || n.contains('-fa.') || n.endsWith('-fa') || n.contains('farsi') || n.contains('persian')) return 'fa';
+    if (n.contains('-en-') || n.contains('-en.') || n.endsWith('-en') || n.contains('english')) return 'en';
+    if (n.contains('-ar-') || n.contains('-ar.') || n.contains('arabic')) return 'ar';
+    if (n.contains('-zh-') || n.contains('-cn-') || n.contains('chinese')) return 'zh';
+    if (n.contains('-ru-') || n.contains('-ru.') || n.contains('russian')) return 'ru';
+    if (n.contains('-de-') || n.contains('-de.') || n.contains('german')) return 'de';
+    if (n.contains('-fr-') || n.contains('-fr.') || n.contains('french')) return 'fr';
+    if (n.contains('-es-') || n.contains('-es.') || n.contains('spanish')) return 'es';
+    if (n.contains('-tr-') || n.contains('-tr.') || n.contains('turkish')) return 'tr';
+    if (n.contains('-hi-') || n.contains('-hi.') || n.contains('hindi')) return 'hi';
+    if (n.contains('-ja-') || n.contains('-ja.') || n.contains('japanese')) return 'ja';
+    if (n.contains('-ko-') || n.contains('-ko.') || n.contains('korean')) return 'ko';
+    return 'custom';
+  }
+
   static List<VoskModel> get downloadedModels =>
-    kVoskModels.where((m) => isDownloaded(m)).toList();
+    [...kVoskModels.where((m) => isDownloaded(m)), ...customModels];
 
   static List<String> get downloadedLangCodes =>
     downloadedModels.map((m) => m.langCode).toSet().toList();
@@ -198,7 +239,9 @@ class VoskService {
   }
 
   static Future<void> deleteModel(VoskModel m) async {
-    final folderName = m.url.split('/').last.replaceAll('.zip', '');
+    final folderName = m.id.startsWith('custom_')
+      ? m.id.replaceFirst('custom_', '')
+      : m.url.split('/').last.replaceAll('.zip', '');
     final dir = Directory('$_kDir/$folderName');
     if (dir.existsSync()) await dir.delete(recursive: true);
   }
@@ -228,4 +271,3 @@ class VoskService {
     return Map<String,dynamic>.from(r);
   }
 }
-
