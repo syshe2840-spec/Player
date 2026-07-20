@@ -437,11 +437,17 @@ class _PlayerState extends State<PlayerScreen>{
 
     // ذخیره فایل
     final srtContent = _voskSrtEntries.map((e) => e.toSrt()).join('\n');
-    final dir = Directory('/storage/emulated/0/Download/Vezoo/Subtitles');
-    await dir.create(recursive: true);
-    final file = File('${dir.path}/$baseName.srt');
-    await file.writeAsString(srtContent);
+    try {
+      final dir = Directory('/storage/emulated/0/Download/Vezoo/Subtitles');
+      await dir.create(recursive: true);
+      final file = File('${dir.path}/$baseName.srt');
+      await file.writeAsString(srtContent, flush: true);
+      if (mounted && silent) setState((){_aiLog.add('[SRT] saved: $baseName.srt (${_voskSrtEntries.length} entries)');});
 
+    } catch (e) {
+      if (mounted) setState((){_aiLog.add('[SRT] save error: $e');});
+      return;
+    }
     if (!silent && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('✅ زیرنویس ذخیره شد: $baseName.srt'),
       backgroundColor: const Color(0xFF7C3AED),
@@ -458,15 +464,20 @@ class _PlayerState extends State<PlayerScreen>{
   Future<String> _translateWithWorker(String text, String targetLang) async {
     try {
       final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 5);
+      client.connectionTimeout = const Duration(seconds: 8);
       final req = await client.postUrl(Uri.parse('https://player.lastofanarchy.workers.dev/translate-srt'));
       req.headers.set('Content-Type', 'application/json');
-      req.write('{"lines":["${text.replaceAll('"', '\\"')}"],"target_lang":"$targetLang"}');
+      final escaped = text.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+      req.write('{"lines":["$escaped"],"target_lang":"$targetLang"}');
       final res = await req.close();
       final body = await res.transform(const Utf8Decoder()).join();
+      if (mounted) setState((){_aiLog.add('[translate] resp: ${body.substring(0, body.length.clamp(0,80))}');});
       final json = jsonDecode(body);
       return (json['lines'] as List?)?.first?.toString() ?? text;
-    } catch (_) { return text; }
+    } catch (e) {
+      if (mounted) setState((){_aiLog.add('[translate] error: $e');});
+      return text;
+    }
   }
 
   void _toggleDeeepgram()async{
@@ -486,6 +497,15 @@ class _PlayerState extends State<PlayerScreen>{
       final engine=result['engine'] as String? ?? 'vosk';
       _useAndroidStt = engine == 'android';
       _useVosk = engine == 'vosk';
+      // درخواست permission میکروفون
+      final micStatus = await permission_handler.Permission.microphone.request();
+      if (!micStatus.isGranted) {
+        setState((){_dgActive=false;});
+        if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('❌ دسترسی میکروفون لازمه'),
+          backgroundColor: Colors.red, duration: Duration(seconds: 3)));
+        return;
+      }
       setState((){_dgActive=true;_dgLang=lang;_dgText='⏳ Connecting...';});
       _dgSub=DeepgramService.events().listen((e){
         final type=e['type'] as String;
