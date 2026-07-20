@@ -104,6 +104,8 @@ class MainActivity : FlutterActivity() {
     private var deepgramService: DeepgramService? = null
     private var deepgramSink: io.flutter.plugin.common.EventChannel.EventSink? = null
     private var voskService: VoskService? = null
+    private var androidSttService: AndroidBuiltinSttService? = null
+    private var androidSttCallback: io.flutter.plugin.common.MethodChannel? = null
     private var voskSink: io.flutter.plugin.common.EventChannel.EventSink? = null
     private var voskCallbackChannel: io.flutter.plugin.common.MethodChannel? = null
     private var pendingVoskLang: String? = null
@@ -114,6 +116,24 @@ class MainActivity : FlutterActivity() {
         createNotifChannel()
         requestNotifPermission()
 
+
+        // ── Android Built-in STT ──
+        androidSttCallback = io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/android_stt_callback")
+        io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/android_stt")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "startAndroidStt" -> {
+                        val lang = call.argument<String>("lang") ?: "fa"
+                        androidSttService = AndroidBuiltinSttService(this)
+                        androidSttService?.setCallback(androidSttCallback)
+                        androidSttService?.start(lang)
+                        result.success(null)
+                    }
+                    "stopAndroidStt" -> { androidSttService?.stop(); result.success(null) }
+                    "getAndroidSttNextEvent" -> result.success(androidSttService?.getNextEvent())
+                    else -> result.notImplemented()
+                }
+            }
 
         // ── Vosk STT ──
         // EventChannel برای backward compatibility
@@ -850,4 +870,3 @@ private fun genThumb(path: String, timeUs: Long): ByteArray? {
         } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
     }
 }
-
