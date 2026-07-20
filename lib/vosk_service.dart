@@ -124,13 +124,26 @@ class VoskService {
   static bool isDownloaded(VoskModel m) {
     final dir = Directory(_kDir);
     if (!dir.existsSync()) return false;
+    // نام پوشه دقیق از URL
+    final folderName = m.url.split('/').last.replaceAll('.zip', '');
     return dir.listSync().any((e) =>
-      e is Directory && (e.path.contains('-${m.langCode}-') ||
-        e.path.contains('-${m.langCode}.') ||
-        e.path.endsWith('-${m.langCode}') ||
-        (m.id == 'en-lg' && e.path.contains('en-us-0.22')) ||
-        (m.id == 'en-sm' && e.path.contains('small-en')) ||
-        (m.isLarge && e.path.contains(m.id.split('-').first))));
+      e is Directory && e.path.split('/').last == folderName);
+  }
+
+  // لیست مدل‌های دانلود شده
+  static List<VoskModel> get downloadedModels =>
+    kVoskModels.where((m) => isDownloaded(m)).toList();
+
+  // lang code های دانلود شده (بدون تکرار)
+  static List<String> get downloadedLangCodes =>
+    downloadedModels.map((m) => m.langCode).toSet().toList();
+
+  // بهترین مدل برای یه زبان
+  static VoskModel? bestModelForLang(String langCode) {
+    final models = downloadedModels.where((m) => m.langCode == langCode).toList();
+    if (models.isEmpty) return null;
+    models.sort((a, b) => b.isLarge ? 1 : -1);
+    return models.first;
   }
 
   // دانلود و extract
