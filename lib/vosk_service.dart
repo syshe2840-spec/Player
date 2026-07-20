@@ -150,12 +150,27 @@ class VoskService {
   }
 
   static bool isDownloaded(VoskModel m) {
-    if (m.id.startsWith('custom_')) return true; // custom همیشه downloaded
+    if (m.id.startsWith('custom_')) return true;
     final dir = Directory(_kDir);
     if (!dir.existsSync()) return false;
-    final folderName = m.url.split('/').last.replaceAll('.zip', '');
-    return dir.listSync().any((e) =>
-      e is Directory && e.path.split('/').last == folderName);
+    try {
+      final folderName = m.url.split('/').last.replaceAll('.zip', '');
+      return dir.listSync().any((e) =>
+        e is Directory && e.path.split('/').last == folderName);
+    } catch (_) { return false; }
+  }
+
+  // آیا هیچ مدلی برای این lang code دانلود شده؟
+  static bool hasAnyModelForLang(String langCode) {
+    final dir = Directory(_kDir);
+    if (!dir.existsSync()) return false;
+    try {
+      // چک رسمی
+      if (downloadedModels.any((m) => m.langCode == langCode)) return true;
+      // چک مستقیم پوشه (برای مدل‌های manually placed)
+      return dir.listSync().any((e) =>
+        e is Directory && e.path.split('/').last.contains(langCode));
+    } catch (_) { return false; }
   }
 
   // اسکن پوشه‌های custom که در لیست رسمی نیستن
@@ -271,3 +286,4 @@ class VoskService {
     return Map<String,dynamic>.from(r);
   }
 }
+
