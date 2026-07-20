@@ -133,6 +133,7 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "requestMediaProjection" -> {
                         val lang = call.argument<String>("lang") ?: "en"
+                        val modelId = call.argument<String>("modelId")
                         voskService = VoskService(this, voskCallbackChannel)
                         pendingVoskLang = lang
                         // Android 14+: باید service قبل از dialog شروع بشه
@@ -149,7 +150,7 @@ class MainActivity : FlutterActivity() {
                             android.widget.Toast.makeText(this, "Launching MediaProjection...", android.widget.Toast.LENGTH_SHORT).show()
                             startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
                         } else {
-                            Thread { voskService?.start(lang, null) }.start()
+                            Thread { voskService?.start(lang, null, modelId) }.start()
                         }
                         result.success(null)
                     }
@@ -423,6 +424,7 @@ class MainActivity : FlutterActivity() {
                     val ctx = (call.argument<Number>("ctx") ?: 0).toLong()
                     val wavPath = call.argument<String>("wavPath") ?: run { result.error("NO_WAV","",null); return@setMethodCallHandler }
                     val lang = call.argument<String>("lang") ?: "en"
+                        val modelId = call.argument<String>("modelId")
                     val threads = call.argument<Int>("threads") ?: 4
                     val translate = call.argument<Boolean>("translate") ?: false
                     executor.execute {
@@ -827,7 +829,7 @@ class MainActivity : FlutterActivity() {
             pendingVoskLang?.let { lang ->
                 pendingVoskLang = null
                 Thread {
-                    try { voskService?.start(lang, projection) }
+                    try { voskService?.start(lang, projection, null) }
                     catch (e: Throwable) {
                         android.os.Handler(android.os.Looper.getMainLooper()).post {
                             android.widget.Toast.makeText(this, "ERR: ${e.message?.take(80)}", android.widget.Toast.LENGTH_LONG).show()
