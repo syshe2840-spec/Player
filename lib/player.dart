@@ -2446,3 +2446,4 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
     ],
   );
 }
+
