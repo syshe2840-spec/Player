@@ -485,7 +485,8 @@ class _PlayerState extends State<PlayerScreen>{
         if(mounted)setState((){_aiLog.add('[debug] calling VoskService.start...');});
         await Future.delayed(const Duration(milliseconds:300)); // wait for EventChannel setup
         // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
-        final finalModelId = modelId ?? availableModels.first.id;
+        final finalModelId = modelId ?? VoskService.downloadedModels
+            .where((m) => m.langCode == (lang == 'multi' ? 'en' : lang)).toList().firstOrNull?.id;
         await VoskService.start(lang=='multi'?'en':lang, modelId: finalModelId);
         if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
         // polling هر 200ms
