@@ -121,9 +121,9 @@ class MainActivity : FlutterActivity() {
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
                 override fun onListen(args: Any?, s: io.flutter.plugin.common.EventChannel.EventSink?) {
                     voskSink = s
-                    android.util.Log.d("VOSK_DEBUG", "EventChannel onListen sink=$s") }
+ }
                 override fun onCancel(args: Any?) {
-                    android.util.Log.d("VOSK_DEBUG", "EventChannel onCancel") }
+ }
             })
         // MethodChannel callback — برای ارسال رویدادها از Android به Dart
         voskCallbackChannel = io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_callback")
@@ -147,7 +147,6 @@ class MainActivity : FlutterActivity() {
                         android.os.SystemClock.sleep(500)
                         val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
                         if (mgr != null) {
-                            android.widget.Toast.makeText(this, "Launching MediaProjection...", android.widget.Toast.LENGTH_SHORT).show()
                             startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
                         } else {
                             Thread { voskService?.start(lang, null, modelId) }.start()
@@ -819,13 +818,10 @@ class MainActivity : FlutterActivity() {
     @Suppress("DEPRECATION")
     override fun onActivityResult(req: Int, result: Int, data: android.content.Intent?) {
         super.onActivityResult(req, result, data)
-        android.util.Log.d("VOSK", "onActivityResult req=$req result=$result")
         if (req == PROJ_REQ_VOSK && result == android.app.Activity.RESULT_OK && data != null) {
-            android.widget.Toast.makeText(this, "VOSK onActivityResult OK!", android.widget.Toast.LENGTH_LONG).show()
             // service قبلاً شروع شده — فقط projection بگیر
             val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
             val projection = mgr?.getMediaProjection(result, data)
-            android.widget.Toast.makeText(this, "projection=$projection", android.widget.Toast.LENGTH_SHORT).show()
             pendingVoskLang?.let { lang ->
                 pendingVoskLang = null
                 Thread {
