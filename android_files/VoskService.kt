@@ -139,9 +139,16 @@ class VoskService(
         send("status", "STEP3: using MIC state=${recorder?.state}")
     }
 
-    private fun findModel(langCode: String): String? {
+    private fun findModel(langCode: String, modelId: String? = null): String? {
         val dir = File(MODELS_DIR)
         if (!dir.exists()) return null
+        // اگه modelId مشخص شده، پوشه دقیق رو پیدا کن
+        if (modelId != null) {
+            val exact = dir.listFiles()?.firstOrNull { f ->
+                f.isDirectory && f.name.contains(modelId.replace("-sm","").replace("-lg","").replace("-in",""))
+            }
+            if (exact != null) return exact.absolutePath
+        }
         return dir.listFiles()?.firstOrNull { f ->
             f.isDirectory && (f.name.contains("-$langCode-") || f.name.contains("-$langCode.") || f.name.endsWith("-$langCode"))
         }?.absolutePath
