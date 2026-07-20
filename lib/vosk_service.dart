@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -189,8 +188,8 @@ class VoskService {
     return controller.stream;
   }
 
-  static Future<void> start(String langCode) async {
-    await _ch.invokeMethod('requestMediaProjection', {'lang': langCode});
+  static Future<void> start(String langCode, {String? modelId}) async {
+    await _ch.invokeMethod('requestMediaProjection', {'lang': langCode, 'modelId': modelId});
   }
 
   static Future<void> stop() async { await _ch.invokeMethod('stop'); }
@@ -201,3 +200,4 @@ class VoskService {
     return Map<String,dynamic>.from(r);
   }
 }
+
