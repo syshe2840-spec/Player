@@ -32,6 +32,7 @@ import 'main.dart' show showSnack;
 import 'l10n.dart';
 import 'deepgram_service.dart';
 import 'vosk_service.dart';
+import 'package:translator/translator.dart';
 import 'package:permission_handler/permission_handler.dart' as permission_handler;
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
@@ -68,6 +69,9 @@ class _PlayerState extends State<PlayerScreen>{
   List<String> _aiLog=[];
   bool _useVosk = true;
   Timer? _voskPollTimer;
+  bool _voskTranslate = false;    // ترجمه real-time
+  String _voskTranslateTo = 'fa'; // زبان مقصد
+  final _translator = GoogleTranslator();
   bool _isFullscreen=false;
   final List<StreamSubscription> _subs=[];
 
@@ -400,15 +404,12 @@ class _PlayerState extends State<PlayerScreen>{
       _dgSub?.cancel();
       setState((){_dgActive=false;_dgText='';});
     } else {
-      // انتخاب زبان
-      final lang=await showDialog<String>(context:context,builder:(_)=>AlertDialog(
-        backgroundColor:const Color(0xFF12121C),
-        title:const Text('Deepgram Language',style:TextStyle(color:Colors.white,fontSize:14)),
-        content:SizedBox(width:280,height:300,child:ListView(children:
-          DeepgramService.languages.entries.map((e)=>ListTile(dense:true,
-            title:Text(e.value,style:const TextStyle(color:Colors.white,fontSize:13)),
-            onTap:()=>Navigator.pop(context,e.key))).toList()))));
-      if(lang==null)return;
+      // انتخاب زبان + تنظیمات ترجمه
+      final result=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>_VoskSettingsDialog());
+      if(result==null)return;
+      final lang=result['lang'] as String;
+      _voskTranslate=result['translate'] as bool;
+      _voskTranslateTo=result['translateTo'] as String;
       setState((){_dgActive=true;_dgLang=lang;_dgText='⏳ Connecting...';});
       _dgSub=DeepgramService.events().listen((e){
         final type=e['type'] as String;
@@ -1372,17 +1373,19 @@ class _PlayerState extends State<PlayerScreen>{
 
         // ── Deepgram AI Subtitle ──
         if(_dgActive&&_dgText.isNotEmpty&&!_dgText.startsWith('⏳'))Positioned(
-          bottom:100,left:16,right:16,
+          bottom:_vs.bottomPadding+navBottom+80,left:16,right:16,
           child:IgnorePointer(child:Container(
-            padding:const EdgeInsets.symmetric(horizontal:16,vertical:10),
+            padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
             decoration:BoxDecoration(
-              color:Colors.black.withOpacity(0.85),
+              color:Color(_vs.bgColor).withOpacity(_vs.bgOpacity.clamp(0.5,0.95)),
               borderRadius:BorderRadius.circular(10)),
             child:Text(_dgText,
               textAlign:TextAlign.center,
-              style:const TextStyle(color:Colors.white,fontSize:20,height:1.4,
-                fontWeight:FontWeight.w500,
-                shadows:[Shadow(color:Colors.black,blurRadius:8)]))))),
+              style:TextStyle(
+                color:Color(_vs.textColor),
+                fontSize:_vs.fontSize,height:1.4,
+                fontWeight:_vs.bold?FontWeight.bold:FontWeight.w500,
+                shadows:[Shadow(color:Colors.black,blurRadius:_vs.shadowSize*2+4)]))))),
 
         // ── زیرنویس embedded (همون موقعیت و تنظیمات sub1) ──
         if(_embeddedSubEnabled&&_embeddedSubText!=null)Positioned(
@@ -2208,3 +2211,206 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
   ]);
 }
 
+
+// ── دیالوگ تنظیمات Vosk ──
+class _VoskSettingsDialog extends StatefulWidget {
+  @override State<_VoskSettingsDialog> createState() => _VoskSettingsDialogState();
+}
+
+class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
+  String _lang = 'fa';
+  bool _translate = false;
+  String _translateTo = 'fa';
+
+  static const _langs = {
+    'auto': '🌐 تشخیص خودکار',
+    'fa': '🇮🇷 فارسی',
+    'en': '🇺🇸 English',
+    'ar': '🇸🇦 العربية',
+    'zh': '🇨🇳 中文',
+    'ru': '🇷🇺 Русский',
+    'es': '🇪🇸 Español',
+    'fr': '🇫🇷 Français',
+    'de': '🇩🇪 Deutsch',
+    'tr': '🇹🇷 Türkçe',
+    'hi': '🇮🇳 हिन्दी',
+    'ja': '🇯🇵 日本語',
+    'ko': '🇰🇷 한국어',
+    'it': '🇮🇹 Italiano',
+    'pt': '🇧🇷 Português',
+    'uk': '🇺🇦 Українська',
+  };
+
+  static const _transLangs = {
+    'fa': '🇮🇷 فارسی',
+    'en': '🇺🇸 English',
+    'ar': '🇸🇦 العربية',
+    'zh-cn': '🇨🇳 中文 (ساده)',
+    'zh-tw': '🇹🇼 中文 (سنتی)',
+    'ru': '🇷🇺 Русский',
+    'es': '🇪🇸 Español',
+    'fr': '🇫🇷 Français',
+    'de': '🇩🇪 Deutsch',
+    'tr': '🇹🇷 Türkçe',
+    'hi': '🇮🇳 हिन्दी',
+    'ja': '🇯🇵 日本語',
+    'ko': '🇰🇷 한국어',
+    'it': '🇮🇹 Italiano',
+    'pt': '🇧🇷 Português',
+    'nl': '🇳🇱 Nederlands',
+    'pl': '🇵🇱 Polski',
+    'uk': '🇺🇦 Українська',
+    'vi': '🇻🇳 Tiếng Việt',
+    'id': '🇮🇩 Indonesia',
+    'th': '🇹🇭 ภาษาไทย',
+    'he': '🇮🇱 עברית',
+    'sv': '🇸🇪 Svenska',
+    'da': '🇩🇰 Dansk',
+    'fi': '🇫🇮 Suomi',
+    'no': '🇳🇴 Norsk',
+    'cs': '🇨🇿 Čeština',
+    'ro': '🇷🇴 Română',
+    'hu': '🇭🇺 Magyar',
+    'el': '🇬🇷 Ελληνικά',
+    'bg': '🇧🇬 Български',
+    'hr': '🇭🇷 Hrvatski',
+    'sk': '🇸🇰 Slovenčina',
+    'lt': '🇱🇹 Lietuvių',
+    'lv': '🇱🇻 Latviešu',
+    'et': '🇪🇪 Eesti',
+    'sl': '🇸🇮 Slovenščina',
+    'sr': '🇷🇸 Српски',
+    'ca': '🏴 Català',
+    'af': '🇿🇦 Afrikaans',
+    'sq': '🇦🇱 Shqip',
+    'am': '🇪🇹 አማርኛ',
+    'az': '🇦🇿 Azərbaycan',
+    'eu': '🏴 Euskara',
+    'be': '🇧🇾 Беларуская',
+    'bn': '🇧🇩 বাংলা',
+    'bs': '🇧🇦 Bosanski',
+    'ceb': '🇵🇭 Cebuano',
+    'ny': '🇲🇼 Chichewa',
+    'co': '🏴 Corsu',
+    'cy': '🏴󠁧󠁢󠁷󠁬󠁳󠁿 Cymraeg',
+    'eo': '🌍 Esperanto',
+    'tl': '🇵🇭 Filipino',
+    'fy': '🏴 Frysk',
+    'gl': '🏴 Galego',
+    'ka': '🇬🇪 ქართული',
+    'gu': '🇮🇳 ગુજરાતી',
+    'ht': '🇭🇹 Kreyòl ayisyen',
+    'ha': '🌍 Hausa',
+    'haw': '🌺 ʻŌlelo Hawaiʻi',
+    'iw': '🇮🇱 עברית (alt)',
+    'hmn': '🌏 Hmong',
+    'is': '🇮🇸 Íslenska',
+    'ig': '🌍 Igbo',
+    'ga': '🇮🇪 Gaeilge',
+    'jw': '🇮🇩 Jawa',
+    'kn': '🇮🇳 ಕನ್ನಡ',
+    'kk': '🇰🇿 Қазақ',
+    'km': '🇰🇭 ភាសាខ្មែរ',
+    'rw': '🇷🇼 Kinyarwanda',
+    'ku': '🌍 Kurdî',
+    'ky': '🇰🇬 Кыргызча',
+    'lo': '🇱🇦 ລາວ',
+    'la': '🌍 Latina',
+    'lb': '🇱🇺 Lëtzebuergesch',
+    'mk': '🇲🇰 Македонски',
+    'mg': '🇲🇬 Malagasy',
+    'ms': '🇲🇾 Melayu',
+    'ml': '🇮🇳 മലയാളം',
+    'mt': '🇲🇹 Malti',
+    'mi': '🇳🇿 Māori',
+    'mr': '🇮🇳 मराठी',
+    'mn': '🇲🇳 Монгол',
+    'my': '🇲🇲 မြန်မာ',
+    'ne': '🇳🇵 नेपाली',
+    'ps': '🇦🇫 پښتو',
+    'pa': '🇮🇳 ਪੰਜਾਬੀ',
+    'sm': '🇼🇸 Samoa',
+    'gd': '🏴󠁧󠁢󠁳󠁣󠁴󠁿 Gàidhlig',
+    'st': '🇿🇦 Sesotho',
+    'sn': '🌍 Shona',
+    'sd': '🇵🇰 سنڌي',
+    'si': '🇱🇰 සිංහල',
+    'so': '🇸🇴 Soomaali',
+    'su': '🌏 Sunda',
+    'sw': '🌍 Kiswahili',
+    'tg': '🇹🇯 Тоҷикӣ',
+    'ta': '🇮🇳 தமிழ்',
+    'tt': '🇷🇺 Татар',
+    'te': '🇮🇳 తెలుగు',
+    'ur': '🇵🇰 اردو',
+    'ug': '🌏 ئۇيغۇر',
+    'uz': '🇺🇿 Ozbek',
+    'xh': '🇿🇦 isiXhosa',
+    'yi': '🌍 ייִדיש',
+    'yo': '🌍 Yorùbá',
+    'zu': '🇿🇦 isiZulu',
+  };
+
+  @override
+  Widget build(BuildContext ctx) => AlertDialog(
+    backgroundColor: const Color(0xFF12121C),
+    title: const Text('تنظیمات زیرنویس زنده', style: TextStyle(color: Colors.white, fontSize: 15)),
+    content: SizedBox(width: 300, child: Column(mainAxisSize: MainAxisSize.min, children: [
+      // زبان مبدا
+      const Align(alignment: Alignment.centerRight,
+        child: Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 12))),
+      const SizedBox(height: 6),
+      DropdownButtonFormField<String>(
+        value: _lang,
+        dropdownColor: const Color(0xFF1A1A2A),
+        decoration: InputDecoration(
+          filled: true, fillColor: const Color(0xFF1A1A2A),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+        items: _langs.entries.map((e) => DropdownMenuItem(
+          value: e.key,
+          child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
+        onChanged: (v) => setState(() => _lang = v!),
+      ),
+      const SizedBox(height: 16),
+
+      // ترجمه
+      Row(children: [
+        const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
+        Switch(value: _translate, onChanged: (v) => setState(() => _translate = v),
+          activeColor: const Color(0xFF7C3AED)),
+      ]),
+
+      // زبان مقصد
+      if (_translate) ...[
+        const SizedBox(height: 8),
+        const Align(alignment: Alignment.centerRight,
+          child: Text('ترجمه به', style: TextStyle(color: Colors.white60, fontSize: 12))),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: _translateTo,
+          dropdownColor: const Color(0xFF1A1A2A),
+          decoration: InputDecoration(
+            filled: true, fillColor: const Color(0xFF1A1A2A),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+          items: _transLangs.entries.map((e) => DropdownMenuItem(
+            value: e.key,
+            child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
+          onChanged: (v) => setState(() => _translateTo = v!),
+        ),
+      ],
+    ])),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لغو')),
+      FilledButton(
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
+        onPressed: () => Navigator.pop(ctx, {
+          'lang': _lang == 'auto' ? 'multi' : _lang,
+          'translate': _translate,
+          'translateTo': _translateTo,
+        }),
+        child: const Text('شروع')),
+    ],
+  );
+}
