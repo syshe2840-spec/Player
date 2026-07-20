@@ -83,16 +83,61 @@ WhisperModelDef _recommendModelByRam(int ramMb) {
 }
 
 const kLanguages = {
-  'auto':'auto',
-  'fa':'فارسی','en':'English','ar':'Arabic','tr':'Turkish','fr':'French',
-  'de':'German','es':'Spanish','zh':'Chinese','ja':'Japanese','ru':'Russian','ko':'Korean',
+  'auto':'🌐 Auto Detect',
+  // ── پرکاربردترین ──
+  'fa':'🇮🇷 فارسی','en':'🇺🇸 English','ar':'🇸🇦 العربية','zh':'🇨🇳 中文',
+  'ru':'🇷🇺 Русский','es':'🇪🇸 Español','fr':'🇫🇷 Français','de':'🇩🇪 Deutsch',
+  'tr':'🇹🇷 Türkçe','hi':'🇮🇳 Hindi','ja':'🇯🇵 日本語','ko':'🇰🇷 한국어',
+  'it':'🇮🇹 Italiano','pt':'🇧🇷 Português','nl':'🇳🇱 Nederlands',
+  // ── اروپایی ──
+  'pl':'🇵🇱 Polski','sv':'🇸🇪 Svenska','da':'🇩🇰 Dansk','fi':'🇫🇮 Suomi',
+  'no':'🇳🇴 Norwegian','uk':'🇺🇦 Українська','cs':'🇨🇿 Čeština',
+  'ro':'🇷🇴 Română','hu':'🇭🇺 Magyar','el':'🇬🇷 Ελληνικά','hr':'🇭🇷 Hrvatski',
+  'sk':'🇸🇰 Slovenčina','bg':'🇧🇬 Български','sr':'🇷🇸 Srpski',
+  'lt':'🇱🇹 Lietuvių','lv':'🇱🇻 Latviešu','sl':'🇸🇮 Slovenščina',
+  'et':'🇪🇪 Eesti','be':'🇧🇾 Беларуская','mk':'🇲🇰 Македонски',
+  'cy':'🏴󠁧󠁢󠁷󠁬󠁳󠁿 Cymraeg','ga':'🇮🇪 Gaeilge','lb':'🇱🇺 Lëtzebuergesch',
+  'mt':'🇲🇹 Malti','is':'🇮🇸 Íslenska','af':'🇿🇦 Afrikaans',
+  'ca':'🏴 Català','eu':'🏴 Euskara','gl':'🏴 Galego',
+  'sq':'🇦🇱 Shqip','bs':'🇧🇦 Bosanski','hy':'🇦🇲 Հայերեն',
+  'ka':'🇬🇪 ქართული','az':'🇦🇿 Azərbaycan','kk':'🇰🇿 Қазақ',
+  'uz':'🇺🇿 Ozbek','ky':'🇰🇬 Кыргызча','tg':'🇹🇯 Тоҷикӣ',
+  'tk':'🇹🇲 Türkmen','tt':'🇷🇺 Татар','mn':'🇲🇳 Монгол',
+  // ── خاورمیانه و آفریقا ──
+  'he':'🇮🇱 עברית','ur':'🇵🇰 اردو','ps':'🇦🇫 پښتو',
+  'sw':'🌍 Kiswahili','am':'🇪🇹 አማርኛ','so':'🇸🇴 Soomaali',
+  'ha':'🌍 Hausa','yo':'🌍 Yorùbá','sn':'🌍 Shona','ny':'🇲🇼 Chichewa',
+  'st':'🇿🇦 Sesotho','lg':'🇺🇬 Luganda','ln':'🌍 Lingala',
+  // ── آسیای جنوبی ──
+  'bn':'🇧🇩 বাংলা','pa':'🇮🇳 ਪੰਜਾਬੀ','gu':'🇮🇳 ગુજરાતી',
+  'mr':'🇮🇳 मराठी','ta':'🇮🇳 தமிழ்','te':'🇮🇳 తెలుగు',
+  'kn':'🇮🇳 ಕನ್ನಡ','ml':'🇮🇳 മലയാളം','si':'🇱🇰 සිංහල',
+  'ne':'🇳🇵 नेपाली','my':'🇲🇲 မြန်မာ',
+  // ── آسیای جنوب شرقی ──
+  'th':'🇹🇭 ภาษาไทย','vi':'🇻🇳 Tiếng Việt','id':'🇮🇩 Indonesia',
+  'ms':'🇲🇾 Melayu','tl':'🇵🇭 Filipino','km':'🇰🇭 ភាសាខ្មែរ',
+  'lo':'🇱🇦 ລາວ','jw':'🌏 Jawa','su':'🌏 Sunda',
+  // ── شرق آسیا ──
+  'yue':'🇭🇰 粵語','bo':'🌏 བོད་སྐད།',
+  // ── آمریکا و اقیانوسیه ──
+  'ht':'🇭🇹 Kreyòl ayisyen','mi':'🇳🇿 Māori','haw':'🌺 ʻŌlelo Hawaiʻi',
+  'la':'🌍 Latina','eo':'🌍 Esperanto','br':'🏴 Brezhoneg',
+  'fo':'🇫🇴 Føroyskt','oc':'🏴 Occitan','sa':'🌏 संस्कृत',
+  'yi':'🌍 ייִדיש','lo':'🇱🇦 ລາວ',
 };
 
 /// سطح پشتیبانی هر زبان در whisper (بر اساس داده‌های منتشرشده OpenAI)
 /// 2=بهترین (انگلیسی) 1=خوب 0=متوسط (زبان‌های با منابع آموزشی کمتر)
 const _kLangSupport = {
-  'en':2, 'es':1,'fr':1,'de':1,'ru':1,'ja':1,'ko':1,'zh':1,'auto':1,
-  'fa':0,'ar':0,'tr':0,
+  'auto':1,
+  // کیفیت 2 (عالی)
+  'en':2,'de':2,'fr':2,'es':2,'it':2,'pt':2,'nl':2,'pl':2,
+  'ru':2,'ja':2,'zh':2,'ko':2,'sv':2,'da':2,'fi':2,'no':2,
+  // کیفیت 1 (خوب)
+  'fa':1,'ar':1,'tr':1,'hi':1,'uk':1,'cs':1,'ro':1,'hu':1,
+  'el':1,'hr':1,'bg':1,'sk':1,'lt':1,'lv':1,'sl':1,'ca':1,
+  'he':1,'vi':1,'id':1,'ms':1,'th':1,'bn':1,'tl':1,
+  // کیفیت 0 (متوسط — زبان‌های کم‌منبع)
 };
 
 /// تخمین کیفیت/دقت بر اساس مدل انتخابی + زبان — فقط یک راهنمای کلی است
