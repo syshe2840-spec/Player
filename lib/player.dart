@@ -416,6 +416,7 @@ class _PlayerState extends State<PlayerScreen>{
       _voskTranslate=result['translate'] as bool;
       _voskTranslateTo=result['translateTo'] as String;
       _voskPollMs=result['pollMs'] as int;
+      final modelId=result['modelId'] as String?;
       setState((){_dgActive=true;_dgLang=lang;_dgText='⏳ Connecting...';});
       _dgSub=DeepgramService.events().listen((e){
         final type=e['type'] as String;
@@ -483,7 +484,7 @@ class _PlayerState extends State<PlayerScreen>{
         });
         if(mounted)setState((){_aiLog.add('[debug] calling VoskService.start...');});
         await Future.delayed(const Duration(milliseconds:300)); // wait for EventChannel setup
-        await VoskService.start(lang=='multi'?'en':lang);
+        await VoskService.start(lang=='multi'?'en':lang, modelId: modelId);
         if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
         // polling هر 200ms
         _voskPollTimer = Timer.periodic(Duration(milliseconds:_voskPollMs), (_) async {
@@ -2228,6 +2229,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   bool _translate = false;
   String _translateTo = 'fa';
   int _pollMs = 100;
+  VoskModel? _selectedModel;
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2367,18 +2369,57 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
       const Align(alignment: Alignment.centerRight,
         child: Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 12))),
       const SizedBox(height: 6),
-      DropdownButtonFormField<String>(
-        value: _lang,
-        dropdownColor: const Color(0xFF1A1A2A),
-        decoration: InputDecoration(
-          filled: true, fillColor: const Color(0xFF1A1A2A),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-        items: _langs.entries.map((e) => DropdownMenuItem(
-          value: e.key,
-          child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
-        onChanged: (v) => setState(() => _lang = v!),
-      ),
+StatefulBuilder(builder: (_, ss2) {
+        final downloaded = VoskService.downloadedModels;
+        final langCodes = VoskService.downloadedLangCodes;
+        if (downloaded.isEmpty) {
+          return Container(padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Text('هیچ مدلی دانلود نشده\nبه Settings > Vosk Models برو',
+              style: TextStyle(color: Colors.orange, fontSize: 12), textAlign: TextAlign.center));
+        }
+        // اگه زبان انتخابی دیگه موجود نیست، اولی رو انتخاب کن
+        if (!langCodes.contains(_lang)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => ss2(()=> _lang = langCodes.first));
+        }
+        final modelsForLang = downloaded.where((m) => m.langCode == _lang).toList();
+        if (_selectedModel == null || _selectedModel!.langCode != _lang) {
+          _selectedModel = modelsForLang.isNotEmpty ? modelsForLang.first : null;
+        }
+        return Column(children: [
+          DropdownButtonFormField<String>(
+            value: langCodes.contains(_lang) ? _lang : langCodes.first,
+            dropdownColor: const Color(0xFF1A1A2A),
+            decoration: InputDecoration(filled: true, fillColor: const Color(0xFF1A1A2A),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+            items: langCodes.map((code) {
+              final models = downloaded.where((m) => m.langCode == code).toList();
+              final name = models.first.name.split(' ').first;
+              return DropdownMenuItem(value: code,
+                child: Text('$name ($code)', style: const TextStyle(color: Colors.white, fontSize: 13)));
+            }).toList(),
+            onChanged: (v) => ss2(() { _lang = v!; _selectedModel = null; }),
+          ),
+          if (modelsForLang.length > 1) ...[
+            const SizedBox(height: 8),
+            const Align(alignment: Alignment.centerRight,
+              child: Text('انتخاب مدل', style: TextStyle(color: Colors.white60, fontSize: 12))),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<VoskModel>(
+              value: _selectedModel,
+              dropdownColor: const Color(0xFF1A1A2A),
+              decoration: InputDecoration(filled: true, fillColor: const Color(0xFF1A1A2A),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+              items: modelsForLang.map((m) => DropdownMenuItem(value: m,
+                child: Text('${m.isLarge ? "Large" : "Small"} — ${m.size}',
+                  style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
+              onChanged: (v) => ss2(() => _selectedModel = v),
+            ),
+          ],
+        ]);
+      }),
       const SizedBox(height: 16),
 
       Row(children: [
@@ -2445,6 +2486,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           'translate': _translate,
           'translateTo': _translateTo,
           'pollMs': _pollMs,
+          'modelId': _selectedModel?.id,
         }),
         child: const Text('شروع')),
     ],
