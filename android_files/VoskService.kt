@@ -28,7 +28,7 @@ class VoskService(
         const val SAMPLE_RATE = 16000
     }
 
-    fun start(langCode: String, projection: android.media.projection.MediaProjection?) {
+    fun start(langCode: String, projection: android.media.projection.MediaProjection?, modelId: String? = null) {
         if (running) return
         running = true
 
@@ -41,7 +41,7 @@ class VoskService(
         }.start()
     }
 
-    private fun doStart(langCode: String, projection: android.media.projection.MediaProjection?) {
+    private fun doStart(langCode: String, projection: android.media.projection.MediaProjection?, modelId: String? = null) {
         toast("✅ doStart running")
         send("status", "STEP1: doStart lang=$langCode")
 
@@ -53,7 +53,7 @@ class VoskService(
             send("status", "STEP1: dir contents=$contents")
         }
 
-        val modelPath = findModel(langCode)
+        val modelPath = findModel(langCode, modelId)
         if (modelPath == null) {
             toast("❌ Model NOT found for $langCode")
             send("error", "STEP1 FAIL: model not found for $langCode")
