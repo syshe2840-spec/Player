@@ -55,16 +55,50 @@ class _State extends State<VoskModelsScreen> {
             style: TextStyle(color: Colors.white54, fontSize: 11))),
         ])),
       // لیست
-      Expanded(child: ListView.builder(
+      Expanded(child: ListView(
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-        itemCount: _grouped.length,
-        itemBuilder: (ctx, i) {
-          final langCode = _grouped.keys.elementAt(i);
-          final models = _grouped[langCode]!;
-          return _langGroup(langCode, models);
-        })),
+        children: [
+          ..._grouped.entries.map((e) => _langGroup(e.key, e.value)),
+          // ── مدل‌های Custom ──
+          if (VoskService.customModels.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A2A),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withOpacity(0.3))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(2, 0, 2, 8),
+                  child: Row(children: [
+                    Icon(Icons.folder_special_rounded, color: Colors.orange, size: 16),
+                    SizedBox(width: 8),
+                    Text('مدل‌های Custom', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)),
+                    SizedBox(width: 8),
+                    Text('(دانلود دستی)', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                  ])),
+                ...VoskService.customModels.map((m) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(children: [
+                    const Icon(Icons.folder_rounded, color: Colors.white38, size: 14),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(m.name, style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+                      child: const Text('Custom', style: TextStyle(color: Colors.orange, fontSize: 9))),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _confirmDelete(m),
+                      child: const Icon(Icons.delete_outline_rounded, color: Colors.white24, size: 16)),
+                  ]))),
+              ])),
+          ],
+        ])),
     ]));
 
   Widget _langGroup(String langCode, List<VoskModel> models) {
