@@ -32,7 +32,6 @@ import 'main.dart' show showSnack;
 import 'l10n.dart';
 import 'deepgram_service.dart';
 import 'vosk_service.dart';
-import 'package:translator/translator.dart';
 import 'package:permission_handler/permission_handler.dart' as permission_handler;
 
 enum _GMode{none,seek,brightness,volume,zoom,pan,subtitlePos}
@@ -72,7 +71,6 @@ class _PlayerState extends State<PlayerScreen>{
   bool _voskTranslate = false;
   String _voskTranslateTo = 'fa';
   int _voskPollMs = 100;
-  final _translator = GoogleTranslator();
 
   // زبان‌هایی که partial رو Latin برمیگردونن — فقط final نشون بده
   static const _nonLatinLangs = {'fa','ar','zh','ja','ko','ru','uk','hi','he','el','ka','am','bn','gu','kn','ml','mr','ne','pa','si','ta','te','ur','ky','kk','tg','mn','my','km','lo','th'};
@@ -401,6 +399,20 @@ class _PlayerState extends State<PlayerScreen>{
     final sub=matchSubtitle(_curPath);
     if(sub!=null)await _loadSub(sub,secondary:false);
     if(_vs.speed!=1.0)player.setRate(_vs.speed);
+  }
+
+  Future<String> _translateWithWorker(String text, String targetLang) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 5);
+      final req = await client.postUrl(Uri.parse('https://player.lastofanarchy.workers.dev/translate-srt'));
+      req.headers.set('Content-Type', 'application/json');
+      req.write('{"lines":["${text.replaceAll('"', '\\"')}"],"target_lang":"$targetLang"}');
+      final res = await req.close();
+      final body = await res.transform(const Utf8Decoder()).join();
+      final json = jsonDecode(body);
+      return (json['lines'] as List?)?.first?.toString() ?? text;
+    } catch (_) { return text; }
   }
 
   void _toggleDeeepgram()async{
