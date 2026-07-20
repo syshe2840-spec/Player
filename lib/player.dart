@@ -1371,17 +1371,14 @@ class _PlayerState extends State<PlayerScreen>{
         ))),
 
         // ── Deepgram AI Subtitle ──
-        if(_dgActive&&(_dgConfirmed.isNotEmpty||_dgPartial.isNotEmpty)&&!_dgText.startsWith('⏳'))Positioned(
+        if(_dgActive&&_dgText.isNotEmpty&&!_dgText.startsWith('⏳'))Positioned(
           bottom:100,left:16,right:16,
           child:IgnorePointer(child:Container(
             padding:const EdgeInsets.symmetric(horizontal:16,vertical:10),
             decoration:BoxDecoration(
               color:Colors.black.withOpacity(0.85),
               borderRadius:BorderRadius.circular(10)),
-            child:Text(
-              (_dgConfirmed.isNotEmpty&&_dgPartial.isNotEmpty)
-                ? '$_dgConfirmed $_dgPartial'
-                : _dgConfirmed.isNotEmpty ? _dgConfirmed : _dgPartial,
+            child:Text(_dgText,
               textAlign:TextAlign.center,
               style:const TextStyle(color:Colors.white,fontSize:20,height:1.4,
                 fontWeight:FontWeight.w500,
