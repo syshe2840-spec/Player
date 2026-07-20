@@ -69,8 +69,9 @@ class _PlayerState extends State<PlayerScreen>{
   List<String> _aiLog=[];
   bool _useVosk = true;
   Timer? _voskPollTimer;
-  bool _voskTranslate = false;    // ترجمه real-time
-  String _voskTranslateTo = 'fa'; // زبان مقصد
+  bool _voskTranslate = false;
+  String _voskTranslateTo = 'fa';
+  int _voskPollMs = 100; // polling interval
   final _translator = GoogleTranslator();
   bool _isFullscreen=false;
   final List<StreamSubscription> _subs=[];
@@ -410,6 +411,7 @@ class _PlayerState extends State<PlayerScreen>{
       final lang=result['lang'] as String;
       _voskTranslate=result['translate'] as bool;
       _voskTranslateTo=result['translateTo'] as String;
+      _voskPollMs=result['pollMs'] as int;
       setState((){_dgActive=true;_dgLang=lang;_dgText='⏳ Connecting...';});
       _dgSub=DeepgramService.events().listen((e){
         final type=e['type'] as String;
@@ -480,7 +482,7 @@ class _PlayerState extends State<PlayerScreen>{
         await VoskService.start(lang=='multi'?'en':lang);
         if(mounted)setState((){_aiLog.add('[debug] VoskService.start returned');});
         // polling هر 200ms
-        _voskPollTimer = Timer.periodic(const Duration(milliseconds:100), (_) async {
+        _voskPollTimer = Timer.periodic(Duration(milliseconds:_voskPollMs), (_) async {
           final event = await VoskService.getNextEvent();
           if (event == null || !mounted) return;
           final type = event['type'] as String;
@@ -2221,6 +2223,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _lang = 'fa';
   bool _translate = false;
   String _translateTo = 'fa';
+  int _pollMs = 100;
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2374,15 +2377,37 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
       ),
       const SizedBox(height: 16),
 
-      // ترجمه
       Row(children: [
         const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
         Switch(value: _translate, onChanged: (v) => setState(() => _translate = v),
           activeColor: const Color(0xFF7C3AED)),
       ]),
 
-      // زبان مقصد
-      if (_translate) ...[
+      // سرعت polling
+      const SizedBox(height: 12),
+      const Align(alignment: Alignment.centerRight,
+        child: Text('سرعت بروزرسانی', style: TextStyle(color: Colors.white60, fontSize: 12))),
+      const SizedBox(height: 6),
+      DropdownButtonFormField<int>(
+        value: _pollMs,
+        dropdownColor: const Color(0xFF1A1A2A),
+        decoration: InputDecoration(
+          filled: true, fillColor: const Color(0xFF1A1A2A),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+        items: const [
+          DropdownMenuItem(value: 50,  child: Text('50ms — بیشترین سرعت',  style: TextStyle(color: Colors.white, fontSize: 13))),
+          DropdownMenuItem(value: 100, child: Text('100ms — سریع (پیش‌فرض)', style: TextStyle(color: Colors.white, fontSize: 13))),
+          DropdownMenuItem(value: 200, child: Text('200ms — متوسط',         style: TextStyle(color: Colors.white, fontSize: 13))),
+          DropdownMenuItem(value: 300, child: Text('300ms — آرام',           style: TextStyle(color: Colors.white, fontSize: 13))),
+          DropdownMenuItem(value: 500, child: Text('500ms — کمترین باری',   style: TextStyle(color: Colors.white, fontSize: 13))),
+        ],
+        onChanged: (v) => setState(() => _pollMs = v!),
+      ),
+      const SizedBox(height: 12),
+
+      // ترجمه
+      Row(children: [
         const SizedBox(height: 8),
         const Align(alignment: Alignment.centerRight,
           child: Text('ترجمه به', style: TextStyle(color: Colors.white60, fontSize: 12))),
@@ -2409,8 +2434,10 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           'lang': _lang == 'auto' ? 'multi' : _lang,
           'translate': _translate,
           'translateTo': _translateTo,
+          'pollMs': _pollMs,
         }),
         child: const Text('شروع')),
     ],
   );
 }
+
