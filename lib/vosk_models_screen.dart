@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'vosk_service.dart';
 
@@ -14,6 +15,7 @@ class VoskModelsScreen extends StatefulWidget {
 class _State extends State<VoskModelsScreen> {
   final Map<String, double> _progress = {};
   final Map<String, String> _log = {};
+  final Map<String, bool> _cancelled = {};
   final _scroll = ScrollController();
 
   // گروه‌بندی مدل‌ها بر اساس langCode
@@ -164,8 +166,14 @@ class _State extends State<VoskModelsScreen> {
           const Spacer(),
           // دکمه
           if (isLoading)
-            SizedBox(width: 32, height: 32,
-              child: CircularProgressIndicator(value: prog, strokeWidth: 2.5, color: _acc))
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              SizedBox(width: 32, height: 32,
+                child: CircularProgressIndicator(value: prog, strokeWidth: 2.5, color: _acc)),
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () => setState(() => _cancelled[m.id] = true),
+                child: const Icon(Icons.cancel_rounded, color: Colors.red, size: 20)),
+            ])
           else if (isDl)
             GestureDetector(
               onTap: () => _confirmDelete(m),
@@ -218,16 +226,24 @@ class _State extends State<VoskModelsScreen> {
   }
 
   Future<void> _download(VoskModel m) async {
-    setState(() { _progress[m.id] = 0.001; _log.remove(m.id); });
+    setState(() { _progress[m.id] = 0.001; _log.remove(m.id); _cancelled[m.id] = false; });
     try {
       await for (final p in VoskService.downloadModel(m)) {
         if (!mounted) return;
+        if (_cancelled[m.id] == true) {
+          // حذف فایل ناقص
+          try {
+            final zipFile = File('/storage/emulated/0/Download/Vezoo/VoskModels/${m.id}.zip');
+            if (zipFile.existsSync()) zipFile.deleteSync();
+          } catch (_) {}
+          if (mounted) setState(() { _progress.remove(m.id); _cancelled.remove(m.id); _log[m.id] = 'دانلود لغو شد'; });
+          return;
+        }
         setState(() => _progress[m.id] = p);
       }
-      if (mounted) setState(() { _progress.remove(m.id); });
+      if (mounted) setState(() { _progress.remove(m.id); _cancelled.remove(m.id); });
     } catch (e) {
-      if (mounted) setState(() { _progress.remove(m.id); _log[m.id] = 'خطا: $e'; });
+      if (mounted) setState(() { _progress.remove(m.id); _cancelled.remove(m.id); _log[m.id] = 'خطا: $e'; });
     }
   }
 }
-
