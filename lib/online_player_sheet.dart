@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'ytdlp_service.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:flutter_go_torrent_streamer/flutter_go_torrent_streamer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,7 +48,114 @@ class _State extends State<OnlinePlayerSheet> {
   static const _kKey = 'online_recent_urls';
   static const _savePath = '/storage/emulated/0/Download/Vezoo';
 
-  @override void initState() { super.initState(); _loadRecent(); }
+  @override void initState() { super.initState(); _loadRecent(); _checkCookies(); }
+  void _checkCookies() => setState(() => _hasCookies = YtDlpService.hasCookies());
+
+  Future<void> _showCookieSheet(BuildContext ctx) async {
+    showModalBottomSheet(context: ctx, isScrollControlled: true, backgroundColor: const Color(0xFF12121C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(builder: (ctx2, ss) => DraggableScrollableSheet(
+        initialChildSize: 0.75, maxChildSize: 0.95, minChildSize: 0.5, expand: false,
+        builder: (_, sc) => ListView(controller: sc, padding: const EdgeInsets.all(20), children: [
+          Row(children: [
+            const Icon(Icons.cookie_rounded, color: Color(0xFF7C3AED), size: 20),
+            const SizedBox(width: 8),
+            const Text('مدیریت Cookie', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            const Spacer(),
+            TextButton(onPressed: () => Navigator.pop(ctx2), child: const Text('بستن')),
+          ]),
+          const SizedBox(height: 8),
+          // وضعیت
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _hasCookies ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _hasCookies ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3))),
+            child: Row(children: [
+              Icon(_hasCookies ? Icons.check_circle_rounded : Icons.warning_rounded,
+                color: _hasCookies ? Colors.green : Colors.orange, size: 18),
+              const SizedBox(width: 8),
+              Text(_hasCookies ? '✅ Cookie فعال است' : '⚠️ Cookie تنظیم نشده',
+                style: TextStyle(color: _hasCookies ? Colors.green : Colors.orange, fontSize: 13)),
+            ])),
+          const SizedBox(height: 16),
+          // دکمه‌ها
+          FilledButton.icon(
+            onPressed: () async {
+              final r = await FilePicker.platform.pickFiles(
+                type: FileType.custom, allowedExtensions: ['txt'],
+                dialogTitle: 'انتخاب فایل cookies.txt');
+              if (r == null || r.files.isEmpty) return;
+              final content = File(r.files.first.path!).readAsStringSync();
+              await YtDlpService.saveCookies(content);
+              setState(() => _hasCookies = true);
+              ss(() {});
+            },
+            icon: const Icon(Icons.upload_file_rounded, size: 18),
+            label: const Text('ایمپورت cookies.txt'),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED))),
+          const SizedBox(height: 8),
+          if (_hasCookies) OutlinedButton.icon(
+            onPressed: () async {
+              await YtDlpService.deleteCookies();
+              setState(() => _hasCookies = false);
+              ss(() {});
+            },
+            icon: const Icon(Icons.delete_rounded, size: 18, color: Colors.red),
+            label: const Text('حذف Cookie', style: TextStyle(color: Colors.red)),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red))),
+          const SizedBox(height: 20),
+          // راهنما
+          const Text('📖 راهنمای دریافت Cookie', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 12),
+          _cookieMethod('1️⃣ Chrome Extension (آسان‌ترین)', [
+            'نصب افزونه "Get cookies.txt LOCALLY" از Chrome Web Store',
+            'باز کردن سایت مورد نظر (اینستا، TikTok...)',
+            'کلیک روی آیکون افزونه',
+            'انتخاب "Export" → دانلود cookies.txt',
+            'ایمپورت فایل در Vezoo',
+          ]),
+          const SizedBox(height: 12),
+          _cookieMethod('2️⃣ Firefox Extension', [
+            'نصب "cookies.txt" addon از Firefox Add-ons',
+            'ورود به سایت',
+            'کلیک روی addon → "Current Site"',
+            'ذخیره فایل و ایمپورت',
+          ]),
+          const SizedBox(height: 12),
+          _cookieMethod('3️⃣ DevTools (پیشرفته)', [
+            'F12 در مرورگر → Application → Cookies',
+            'انتخاب سایت → کپی value ها',
+            'ساخت فایل Netscape Cookie Format',
+            'هدر: # Netscape HTTP Cookie File',
+          ]),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Text(
+              '💡 نکته: Cookie باید از مرورگری باشه که به اون سایت login کردی.
+'
+              'بعد از import، اینستا، TikTok و سایت‌های نیاز به login کار میکنن.',
+              style: TextStyle(color: Colors.white60, fontSize: 11))),
+          const SizedBox(height: 20),
+        ]))));
+  }
+
+  Widget _cookieMethod(String title, List<String> steps) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(10)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+      const SizedBox(height: 8),
+      ...steps.asMap().entries.map((e) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${e.key+1}. ', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 11, fontWeight: FontWeight.bold)),
+          Expanded(child: Text(e.value, style: const TextStyle(color: Colors.white60, fontSize: 11))),
+        ]))),
+    ]));
 
   void _showSupportedSites(BuildContext ctx) {
     showDialog(context: ctx, builder: (_) => AlertDialog(
@@ -282,6 +391,20 @@ class _State extends State<OnlinePlayerSheet> {
               tooltip: 'سایت‌های پشتیبانی شده',
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints()),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () => _showCookieSheet(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _hasCookies ? Colors.green.withOpacity(0.2) : Colors.white12,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: _hasCookies ? Colors.green : Colors.white24)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.cookie_rounded, size: 13, color: _hasCookies ? Colors.green : Colors.white38),
+                  const SizedBox(width: 4),
+                  Text(_hasCookies ? 'Cookie ✓' : 'Cookie', style: TextStyle(fontSize: 11, color: _hasCookies ? Colors.green : Colors.white38)),
+                ]))),
             const SizedBox(width: 4),
             Expanded(child: TextField(controller: _ctrl,
               style: const TextStyle(color: Colors.white, fontSize: 13),
