@@ -21,10 +21,16 @@ class SubtitleStorage {
   static String _baseName(String videoPath) {
     if (_isUrl(videoPath)) {
       final uri = Uri.parse(videoPath);
-      return p.basenameWithoutExtension(
-        uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => 'video'));
+      // برای یوتوب و URL های بلند — از timestamp استفاده کن
+      final seg = uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => '');
+      if (seg.isEmpty || seg == 'videoplayback' || seg.length > 60) {
+        return 'video_${DateTime.now().millisecondsSinceEpoch}';
+      }
+      return p.basenameWithoutExtension(seg);
     }
-    return p.basenameWithoutExtension(videoPath);
+    final base = p.basenameWithoutExtension(videoPath);
+    // sanitize نام فایل
+    return base.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_').substring(0, base.length.clamp(0, 80));
   }
 
   static String _clean(String s) =>
