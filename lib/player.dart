@@ -70,6 +70,7 @@ class _PlayerState extends State<PlayerScreen>{
   List<String> _aiLog=[];
   bool _useVosk = true;
   bool _useAndroidStt = false;
+  String? _title; // عنوان ویدیوی جاری
   Timer? _voskPollTimer;
   Timer? _androidSttPollTimer;
   bool _mounted = true; // safe async flag
@@ -417,6 +418,13 @@ class _PlayerState extends State<PlayerScreen>{
     }
 
     // تولید نام فایل
+    // تمیز کردن نام فایل از کاراکترهای غیرمجاز
+    String _sanitize(String s) {
+      return s.replaceAll(RegExp(r'[<>:"/\|?* -]'), '_')
+              .replaceAll(RegExp(r'_{2,}'), '_')
+              .substring(0, s.length.clamp(0, 60));
+    }
+
     String baseName;
     final path = _curPath ?? '';
     if (path.isEmpty) {
@@ -430,8 +438,8 @@ class _PlayerState extends State<PlayerScreen>{
       baseName = '${seg.split(".").first}-iptv';
     } else {
       // فایل معمولی
-      final fname = path.split('/').last;
-      baseName = fname.contains('.') ? fname.substring(0, fname.lastIndexOf('.')) : fname;
+      final fname = path.split('/').last.split('?').first;
+      baseName = _sanitize(fname.contains('.') ? fname.substring(0, fname.lastIndexOf('.')) : fname);
     }
 
     // اضافه کردن زبان ترجمه
