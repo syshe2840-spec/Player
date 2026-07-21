@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'dart:io' as dart;
 
 /// سرویس yt-dlp — پشتیبانی از ۱۰۰۰+ سایت
 class YtDlpService {
@@ -15,10 +16,27 @@ class YtDlpService {
     '+ بیش از ۱۰۰۰ سایت دیگر...',
   ];
 
+  static const _cookiePath = '/storage/emulated/0/Download/Vezoo/cookies.txt';
+
+  static bool hasCookies() => dart.io.File(_cookiePath).existsSync();
+
+  static Future<void> deleteCookies() async {
+    final f = dart.io.File(_cookiePath);
+    if (f.existsSync()) await f.delete();
+  }
+
+  static Future<void> saveCookies(String content) async {
+    final dir = dart.io.Directory('/storage/emulated/0/Download/Vezoo');
+    await dir.create(recursive: true);
+    await dart.io.File(_cookiePath).writeAsString(content);
+  }
+
   /// گرفتن stream URL مستقیم
   static Future<Map<String, dynamic>> getStreamUrl(String url) async {
     try {
-      final result = await _ch.invokeMethod<Map>('getStreamUrl', {'url': url});
+      final args = <String, dynamic>{'url': url};
+      if (hasCookies()) args['cookiePath'] = _cookiePath;
+      final result = await _ch.invokeMethod<Map>('getStreamUrl', args);
       return Map<String, dynamic>.from(result ?? {});
     } on PlatformException catch (e) {
       throw Exception('yt-dlp error: ${e.message}');
@@ -73,3 +91,4 @@ class YtDlpService {
     }
   }
 }
+
