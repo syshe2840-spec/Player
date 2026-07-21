@@ -50,5 +50,26 @@ class YtDlpService {
     if (url.isEmpty) return false;
     return url.startsWith('http://') || url.startsWith('https://');
   }
-}
 
+  /// گرفتن نسخه yt-dlp
+  static Future<String> getVersion() async {
+    try {
+      final r = await _ch.invokeMethod<String>('getVersion');
+      return r ?? 'نامشخص';
+    } catch (_) { return 'نامشخص'; }
+  }
+
+  /// آپدیت با progress callback
+  static Future<String> updateWithProgress(
+      void Function(String status) onProgress) async {
+    try {
+      onProgress('⏳ در حال بررسی آپدیت...');
+      final r = await _ch.invokeMethod<String>('updateYtDlp');
+      onProgress('✅ ${r ?? "آپدیت انجام شد"}');
+      return r ?? 'OK';
+    } catch (e) {
+      onProgress('❌ خطا: $e');
+      return 'ERROR';
+    }
+  }
+}
