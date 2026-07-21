@@ -36,7 +36,7 @@ class OnlinePlayerSheet extends StatefulWidget {
 class _State extends State<OnlinePlayerSheet> {
   final _ctrl = TextEditingController();
   final _yt = YoutubeExplode();
-  bool _loading = false, _cancelled = false;
+  bool _loading = false, _cancelled = false, _hasCookies = false;
   String? _error, _title;
   List<_Quality> _qualities = [];
   List<String> _recentUrls = [];
@@ -135,8 +135,7 @@ class _State extends State<OnlinePlayerSheet> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
             child: const Text(
-              '💡 نکته: Cookie باید از مرورگری باشه که به اون سایت login کردی.
-'
+              '💡 نکته: Cookie باید از مرورگری باشه که به اون سایت login کردی. '
               'بعد از import، اینستا، TikTok و سایت‌های نیاز به login کار میکنن.',
               style: TextStyle(color: Colors.white60, fontSize: 11))),
           const SizedBox(height: 20),
