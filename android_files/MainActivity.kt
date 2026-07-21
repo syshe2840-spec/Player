@@ -119,6 +119,10 @@ class MainActivity : FlutterActivity() {
 
         // ── yt-dlp ──
         YtDlpService.init(this)
+        // آپدیت خودکار yt-dlp در background
+        YtDlpService.update(this) { status ->
+            android.util.Log.d("YtDlp", "Update: $status")
+        }
         val ytDlpService = YtDlpService(this)
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp")
             .setMethodCallHandler { call, result ->
