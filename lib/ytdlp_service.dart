@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'dart:io' as dart;
+import 'dart:io';
 
 /// سرویس yt-dlp — پشتیبانی از ۱۰۰۰+ سایت
 class YtDlpService {
@@ -18,17 +18,17 @@ class YtDlpService {
 
   static const _cookiePath = '/storage/emulated/0/Download/Vezoo/cookies.txt';
 
-  static bool hasCookies() => dart.io.File(_cookiePath).existsSync();
+  static bool hasCookies() => File(_cookiePath).existsSync();
 
   static Future<void> deleteCookies() async {
-    final f = dart.io.File(_cookiePath);
+    final f = File(_cookiePath);
     if (f.existsSync()) await f.delete();
   }
 
   static Future<void> saveCookies(String content) async {
-    final dir = dart.io.Directory('/storage/emulated/0/Download/Vezoo');
+    final dir = Directory('/storage/emulated/0/Download/Vezoo');
     await dir.create(recursive: true);
-    await dart.io.File(_cookiePath).writeAsString(content);
+    await File(_cookiePath).writeAsString(content);
   }
 
   /// گرفتن stream URL مستقیم
