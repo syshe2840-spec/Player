@@ -107,6 +107,9 @@ jobs:
             echo "=== vosk + JNA added ==="
           fi
           echo "-keep class com.sun.jna.** { *; }" >> android/app/proguard-rules.pro
+          echo "-keep class com.yausername.** { *; }" >> android/app/proguard-rules.pro
+          echo "-keep class org.schabi.** { *; }" >> android/app/proguard-rules.pro
+          echo "-dontwarn com.yausername.**" >> android/app/proguard-rules.pro
           echo "-keepclassmembers class * extends com.sun.jna.** { public *; }" >> android/app/proguard-rules.pro
           echo "-keep class org.vosk.** { *; }" >> android/app/proguard-rules.pro
           echo "-dontwarn com.sun.jna.**" >> android/app/proguard-rules.pro
