@@ -1,30 +1,54 @@
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:flutter/services.dart';
 
-/// سرویس پخش آنلاین — فقط YouTube
+/// سرویس yt-dlp — پشتیبانی از ۱۰۰۰+ سایت
 class YtDlpService {
-  static final _yt = YoutubeExplode();
+  static const _ch = MethodChannel('com.vezoo.player/ytdlp');
 
-  static Future<String> getStreamUrl(String url) async {
+  // ۱۰۰۰+ سایت پشتیبانی شده (نمونه‌ای از مهم‌ترین‌ها)
+  static const supportedSites = [
+    '🎬 YouTube', '📘 Facebook', '🐦 Twitter/X', '📸 Instagram',
+    '🎵 TikTok', '🎮 Twitch', '📺 Dailymotion', '🎥 Vimeo',
+    '📡 Bilibili', '🎵 SoundCloud', '📰 Reddit', '🎬 Rumble',
+    '📺 Odysee/LBRY', '🎮 Kick', '📺 Niconico', '🎬 Veoh',
+    '🎬 9GAG', '📺 VK', '🎵 Bandcamp', '📺 Twitch Clips',
+    '🎬 Metacafe', '📺 Dailymotion', '🎬 Break', '📺 IMDb',
+    '+ بیش از ۱۰۰۰ سایت دیگر...',
+  ];
+
+  /// گرفتن stream URL مستقیم
+  static Future<Map<String, dynamic>> getStreamUrl(String url) async {
     try {
-      final videoId = VideoId(url);
-      // v3.1.0 — try multiple clients for reliability
-      final manifest = await _yt.videos.streams.getManifest(
-        videoId,
-        ytClients: [
-          YoutubeApiClient.safari,
-          YoutubeApiClient.androidVr,
-          YoutubeApiClient.android,
-          YoutubeApiClient.tv,
-        ],
-      );
-      final muxed = manifest.muxed;
-      if (muxed.isNotEmpty) return muxed.sortByVideoQuality().first.url.toString();
-      final video = manifest.videoOnly;
-      if (video.isNotEmpty) return video.sortByVideoQuality().first.url.toString();
-      throw Exception('No stream found');
-    } catch (e) {
-      throw Exception('YouTube error: $e');
+      final result = await _ch.invokeMethod<Map>('getStreamUrl', {'url': url});
+      return Map<String, dynamic>.from(result ?? {});
+    } on PlatformException catch (e) {
+      throw Exception('yt-dlp error: ${e.message}');
     }
+  }
+
+  /// گرفتن لیست format ها
+  static Future<Map<String, dynamic>> getFormats(String url) async {
+    try {
+      final result = await _ch.invokeMethod<Map>('getFormats', {'url': url});
+      return Map<String, dynamic>.from(result ?? {});
+    } on PlatformException catch (e) {
+      throw Exception('yt-dlp error: ${e.message}');
+    }
+  }
+
+  /// آپدیت yt-dlp
+  static Future<String> update() async {
+    try {
+      final result = await _ch.invokeMethod<String>('updateYtDlp');
+      return result ?? 'Updated';
+    } catch (e) {
+      return 'Update failed: $e';
+    }
+  }
+
+  /// چک کردن اینکه URL پشتیبانی میشه (yt-dlp همه رو امتحان میکنه)
+  static bool isLikelySupported(String url) {
+    if (url.isEmpty) return false;
+    return url.startsWith('http://') || url.startsWith('https://');
   }
 }
 
