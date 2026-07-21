@@ -39,6 +39,32 @@ class _State extends State<OnlinePlayerSheet> {
   static const _savePath = '/storage/emulated/0/Download/Vezoo';
 
   @override void initState() { super.initState(); _loadRecent(); }
+
+  void _showSupportedSites(BuildContext ctx) {
+    showDialog(context: ctx, builder: (_) => AlertDialog(
+      backgroundColor: const Color(0xFF12121C),
+      title: Row(children: [
+        const Icon(Icons.public_rounded, color: Color(0xFF7C3AED), size: 18),
+        const SizedBox(width: 8),
+        const Text('سایت‌های پشتیبانی شده', style: TextStyle(color: Colors.white, fontSize: 14)),
+        const Spacer(),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(color: const Color(0xFF7C3AED), borderRadius: BorderRadius.circular(12)),
+          child: const Text('۱۰۰۰+ سایت', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
+      ]),
+      content: SizedBox(width: 280, height: 350,
+        child: ListView.separated(
+          itemCount: YtDlpService.supportedSites.length,
+          separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.white10),
+          itemBuilder: (_, i) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(YtDlpService.supportedSites[i],
+              style: const TextStyle(color: Colors.white70, fontSize: 13))))),
+      actions: [TextButton(
+        onPressed: () => Navigator.pop(ctx),
+        child: const Text('بستن', style: TextStyle(color: Color(0xFF7C3AED))))],
+    ));
+  }
   @override void dispose() { _ctrl.dispose(); _yt.close(); super.dispose(); }
 
   Future<void> _loadRecent() async {
