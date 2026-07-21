@@ -1,3 +1,4 @@
+
 package com.vezoo.player
 
 import android.app.NotificationChannel
@@ -34,7 +35,6 @@ import java.security.KeyStore
 import java.util.concurrent.Executors
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
-import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -58,7 +58,6 @@ class MainActivity : FlutterActivity() {
     private var whisperCh: MethodChannel? = null
     private var aiCancelSink: io.flutter.plugin.common.EventChannel.EventSink? = null
 
-    // ── ثابت‌های کریپتو ──
     private val APP_HALF = byteArrayOf(
         0x56,0x45,0x5A,0x4F,0x4F,0x5F,0x41,0x50,
         0x50,0x5F,0x48,0x41,0x4C,0x46,0x5F,0x32,
@@ -68,7 +67,6 @@ class MainActivity : FlutterActivity() {
     companion object {
         init { System.loadLibrary("vezoo") }
     }
-    // ── JNI توابع C ──
     private external fun nativeGcmDecrypt(key: ByteArray, data: ByteArray): ByteArray?
     private external fun nativeGcmEncrypt(key: ByteArray, data: ByteArray): ByteArray?
     private external fun nativeHkdf(ikm: ByteArray, salt: ByteArray, info: ByteArray, outLen: Int): ByteArray?
@@ -101,41 +99,38 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private var deepgramService: DeepgramService? = null
-    private var deepgramSink: io.flutter.plugin.common.EventChannel.EventSink? = null
+    // ── Vosk ──
     private var voskService: VoskService? = null
-    private var androidSttService: AndroidBuiltinSttService? = null
-    private var androidSttCallback: io.flutter.plugin.common.MethodChannel? = null
     private var voskSink: io.flutter.plugin.common.EventChannel.EventSink? = null
     private var voskCallbackChannel: io.flutter.plugin.common.MethodChannel? = null
     private var pendingVoskLang: String? = null
     private val PROJ_REQ_VOSK = 9999
+
+    // ── Android STT ──
+    private var androidSttService: AndroidBuiltinSttService? = null
+    private var androidSttCallback: io.flutter.plugin.common.MethodChannel? = null
 
     override fun configureFlutterEngine(fe: FlutterEngine) {
         super.configureFlutterEngine(fe)
         createNotifChannel()
         requestNotifPermission()
 
-
         // ── yt-dlp ──
         YtDlpService.init(this)
-        // آپدیت خودکار yt-dlp در background
-        YtDlpService.update(this) { status ->
-            android.util.Log.d("YtDlp", "Update: $status")
-        }
+        YtDlpService.update(this) { status -> android.util.Log.d("YtDlp", "Update: $status") }
         val ytDlpService = YtDlpService(this)
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "getStreamUrl" -> {
-                        val url = call.argument<String>("url") ?: ""
-                        ytDlpService.getStreamUrl(url, result)
+                    "getStreamUrl" -> ytDlpService.getStreamUrl(call.argument<String>("url") ?: "", result)
+                    "getFormats"   -> ytDlpService.getFormats(call.argument<String>("url") ?: "", result)
+                    "updateYtDlp"  -> ytDlpService.updateYtDlp(result)
+                    "getVersion"   -> {
+                        try {
+                            val v = com.yausername.youtubedl_android.YoutubeDL.getInstance().version(this)
+                            result.success(v ?: "نامشخص")
+                        } catch(e: Exception) { result.success("نامشخص") }
                     }
-                    "getFormats" -> {
-                        val url = call.argument<String>("url") ?: ""
-                        ytDlpService.getFormats(url, result)
-                    }
-                    "updateYtDlp" -> ytDlpService.updateYtDlp(result)
                     else -> result.notImplemented()
                 }
             }
@@ -159,16 +154,12 @@ class MainActivity : FlutterActivity() {
             }
 
         // ── Vosk STT ──
-        // EventChannel برای backward compatibility
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_events")
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
                 override fun onListen(args: Any?, s: io.flutter.plugin.common.EventChannel.EventSink?) {
-                    voskSink = s
- }
-                override fun onCancel(args: Any?) {
- }
+                    voskSink = s }
+                override fun onCancel(args: Any?) {}
             })
-        // MethodChannel callback — برای ارسال رویدادها از Android به Dart
         voskCallbackChannel = io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk_callback")
 
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/vosk")
@@ -179,21 +170,13 @@ class MainActivity : FlutterActivity() {
                         val modelId = call.argument<String>("modelId")
                         voskService = VoskService(this, voskCallbackChannel)
                         pendingVoskLang = lang
-                        // Android 14+: باید service قبل از dialog شروع بشه
-                        val svcIntent2 = android.content.Intent(this, MediaProjectionService::class.java)
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            startForegroundService(svcIntent2)
-                        } else {
-                            startService(svcIntent2)
-                        }
-                        // صبر 500ms تا service کاملاً شروع بشه
+                        val svcIntent = android.content.Intent(this, MediaProjectionService::class.java)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+                            startForegroundService(svcIntent) else startService(svcIntent)
                         android.os.SystemClock.sleep(500)
                         val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
-                        if (mgr != null) {
-                            startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
-                        } else {
-                            Thread { voskService?.start(lang, null, modelId) }.start()
-                        }
+                        if (mgr != null) startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_VOSK)
+                        else Thread { voskService?.start(lang, null, modelId) }.start()
                         result.success(null)
                     }
                     "stop" -> { voskService?.stop(); result.success(null) }
@@ -209,49 +192,39 @@ class MainActivity : FlutterActivity() {
                                 val outFile = java.io.File(destDir, entry.name)
                                 if (entry.isDirectory) { outFile.mkdirs(); continue }
                                 outFile.parentFile?.mkdirs()
-                                zf.getInputStream(entry).use { inp ->
-                                    outFile.outputStream().use { out -> inp.copyTo(out) }
-                                }
+                                zf.getInputStream(entry).use { inp -> outFile.outputStream().use { out -> inp.copyTo(out) } }
                             }
-                            zf.close()
-                            result.success(null)
+                            zf.close(); result.success(null)
                         } catch (e: Exception) { result.error("EXTRACT_ERROR", e.message, null) }
                     }
                     else -> result.notImplemented()
                 }
             }
 
-        // ── Deepgram real-time transcription ──
+        // ── Deepgram ──
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/deepgram_events")
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
+                private var deepgramSink: io.flutter.plugin.common.EventChannel.EventSink? = null
+                private var deepgramService: DeepgramService? = null
                 override fun onListen(a: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) {
-                    deepgramSink = sink
-                    deepgramService?.setSink(sink)
-                }
+                    deepgramSink = sink; deepgramService?.setSink(sink) }
                 override fun onCancel(a: Any?) { deepgramSink = null }
             })
-
         MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/deepgram").setMethodCallHandler { call, result ->
             when (call.method) {
                 "start" -> {
                     val lang = call.argument<String>("language") ?: "multi"
                     val workerUrl = (call.argument<String>("workerUrl") ?: "").trimEnd('/')
                     val streamUrl = call.argument<String>("streamUrl") ?: ""
-                    deepgramService = DeepgramService(this, workerUrl)
-                    deepgramService?.setSink(deepgramSink)
-                    deepgramService?.setStreamUrl(streamUrl)
-                    Thread { deepgramService?.start(lang) }.start()
+                    val svc = DeepgramService(this, workerUrl)
+                    svc.setStreamUrl(streamUrl)
+                    Thread { svc.start(lang) }.start()
                     result.success(null)
                 }
-                "stop" -> {
-                    deepgramService?.stop()
-                    deepgramService = null
-                    result.success(null)
-                }
+                "stop" -> { result.success(null) }
                 else -> result.notImplemented()
             }
         }
-
 
         // ── Thumbnail ──
         MethodChannel(fe.dartExecutor.binaryMessenger, THUMB_CH).setMethodCallHandler { call, result ->
@@ -279,7 +252,6 @@ class MainActivity : FlutterActivity() {
         whisperCh = MethodChannel(fe.dartExecutor.binaryMessenger, WHISPER_CH)
         whisperCh!!.setMethodCallHandler { call, result ->
 
-        // ── EventChannel جداگانه برای دکمه لغو notification (مستقل از whisperCh) ──
         io.flutter.plugin.common.EventChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ai_cancel")
             .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
                 override fun onListen(args: Any?, sink: io.flutter.plugin.common.EventChannel.EventSink?) { aiCancelSink = sink }
@@ -292,74 +264,42 @@ class MainActivity : FlutterActivity() {
                     val output = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
                     extractCancel.set(false)
                     executor.execute {
-                        try {
-                            extractAudioWav(input, output, extractCancel)
-                            handler.post { result.success(output) }
-                        } catch (e: Exception) {
-                            handler.post { result.error("EXTRACT_FAILED", e.message, null) }
-                        }
+                        try { extractAudioWav(input, output, extractCancel); handler.post { result.success(output) } }
+                        catch (e: Exception) { handler.post { result.error("EXTRACT_FAILED", e.message, null) } }
                     }
                 }
-
-                "getModelsDir" -> {
-                    val dir = java.io.File(filesDir, "whisper_models").also { it.mkdirs() }
-                    result.success(dir.absolutePath)
-                }
-
-                // بکاپ مدل‌های AI به Downloads/Vezoo/
+                "getModelsDir" -> result.success(java.io.File(filesDir, "whisper_models").also { it.mkdirs() }.absolutePath)
                 "backupModels" -> {
                     val destDir = call.argument<String>("destDir") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
                     executor.execute {
                         try {
-                            // چند مسیر احتمالی مدل‌ها
-                            val possibleDirs = listOf(
-                                java.io.File(filesDir, "whisper_models"),
-                                java.io.File(filesDir.parentFile, "files/whisper_models"),
-                                java.io.File(getExternalFilesDir(null), "whisper_models"),
-                            )
                             val dest = java.io.File(destDir).also { it.mkdirs() }
                             val copied = mutableListOf<String>()
-
-                            for (modelsDir in possibleDirs) {
-                                if (!modelsDir.exists()) continue
-                                // جستجوی recursive — مدل‌ها در زیرپوشه هستن (مثل whisper_models/base/ggml-base.bin)
-                                modelsDir.walkTopDown().forEach { f ->
+                            listOf(java.io.File(filesDir, "whisper_models")).forEach { dir ->
+                                if (!dir.exists()) return@forEach
+                                dir.walkTopDown().forEach { f ->
                                     if (f.isFile && (f.extension == "bin" || f.name.contains("ggml"))) {
                                         f.copyTo(java.io.File(dest, f.name), overwrite = true)
                                         if (!copied.contains(f.name)) copied.add(f.name)
                                     }
                                 }
                             }
-
-
-                            if (copied.isEmpty()) {
-                                handler.post { result.error("NO_FILES","هیچ فایلی برای بکاپ یافت نشد",null) }
-                            } else {
-                                handler.post { result.success(copied) }
-                            }
-                        } catch (e: Exception) {
-                            handler.post { result.error("BACKUP_FAILED", e.message, null) }
-                        }
+                            if (copied.isEmpty()) handler.post { result.error("NO_FILES","هیچ فایلی یافت نشد",null) }
+                            else handler.post { result.success(copied) }
+                        } catch (e: Exception) { handler.post { result.error("BACKUP_FAILED", e.message, null) } }
                     }
                 }
-
-                // ایمپورت مدل از فایل
                 "importModel" -> {
                     val srcPath = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
                     val modelsDirPath = call.argument<String>("modelsDir")
                     executor.execute {
                         try {
                             val src = java.io.File(srcPath)
-                            // ذخیره در مسیری که Dart داده (مطمئن‌ترین روش)
                             val targetDir = java.io.File(modelsDirPath ?: "${filesDir.absolutePath}/whisper_models").also { it.mkdirs() }
                             val dst = java.io.File(targetDir, src.name)
                             src.copyTo(dst, overwrite = true)
-                            // لاگ مسیر برای debug
-                            android.util.Log.d("Vezoo", "Model imported to: ${dst.absolutePath}")
                             handler.post { result.success(dst.absolutePath) }
-                        } catch (e: Exception) {
-                            handler.post { result.error("IMPORT_FAILED", e.message, null) }
-                        }
+                        } catch (e: Exception) { handler.post { result.error("IMPORT_FAILED", e.message, null) } }
                     }
                 }
                 "extractAudioRange" -> {
@@ -369,12 +309,8 @@ class MainActivity : FlutterActivity() {
                     val durMs   = (call.argument<Int>("durationMs") ?: 30000).toLong()
                     extractCancel.set(false)
                     executor.execute {
-                        try {
-                            extractAudioWavRange(input, output, extractCancel, startMs, durMs)
-                            handler.post { result.success(output) }
-                        } catch (e: Exception) {
-                            handler.post { result.error("EXTRACT_RANGE_FAILED", e.message, null) }
-                        }
+                        try { extractAudioWavRange(input, output, extractCancel, startMs, durMs); handler.post { result.success(output) } }
+                        catch (e: Exception) { handler.post { result.error("EXTRACT_RANGE_FAILED", e.message, null) } }
                     }
                 }
                 "cancelExtraction" -> { extractCancel.set(true); result.success(null) }
@@ -384,105 +320,54 @@ class MainActivity : FlutterActivity() {
                         val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
                         val mi = android.app.ActivityManager.MemoryInfo()
                         am.getMemoryInfo(mi)
-                        val totalMb = (mi.totalMem / (1024 * 1024)).toInt()
-                        result.success(totalMb)
-                    } catch (e: Throwable) {
-                        result.error("DEVICE_INFO_FAILED", e.message, null)
-                    }
+                        result.success((mi.totalMem / (1024 * 1024)).toInt())
+                    } catch (e: Throwable) { result.error("DEVICE_INFO_FAILED", e.message, null) }
                 }
                 "getVideoDuration" -> {
                     val path = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
                     executor.execute {
                         try {
                             val r = MediaMetadataRetriever()
-                            if (path.startsWith("http://") || path.startsWith("https://")) {
+                            if (path.startsWith("http://") || path.startsWith("https://"))
                                 r.setDataSource(path, mapOf("User-Agent" to "Vezoo/1.0"))
-                            } else {
-                                r.setDataSource(applicationContext, Uri.fromFile(File(path)))
-                            }
+                            else r.setDataSource(applicationContext, Uri.fromFile(File(path)))
                             val dur = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-                            r.release()
-                            handler.post { result.success(dur.toInt()) }
-                        } catch (e: Throwable) {
-                            handler.post { result.error("DURATION_FAILED", e.message, null) }
-                        }
+                            r.release(); handler.post { result.success(dur.toInt()) }
+                        } catch (e: Throwable) { handler.post { result.error("DURATION_FAILED", e.message, null) } }
                     }
                 }
                 "startLiveSubService" -> {
-                    val title = call.argument<String>("title") ?: "زیرنویس زنده"
-                    val text  = call.argument<String>("text")  ?: "در حال پردازش..."
-                    val intent = Intent(this, LiveSubService::class.java).apply {
-                        putExtra("title", title); putExtra("text", text)
-                    }
-                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent)
-                    else startService(intent)
-                    // وقتی service از بیرون kill شد (اپ کامل بسته شد) → به Dart اطلاع بده
-                    LiveSubServiceHelper.onServiceDestroyed = {
-                        handler.post { whisperCh?.invokeMethod("liveSubServiceDestroyed", null) }
-                    }
+                    val t = call.argument<String>("title") ?: "زیرنویس زنده"
+                    val tx = call.argument<String>("text") ?: "در حال پردازش..."
+                    val intent = Intent(this, LiveSubService::class.java).apply { putExtra("title", t); putExtra("text", tx) }
+                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
+                    LiveSubServiceHelper.onServiceDestroyed = { handler.post { whisperCh?.invokeMethod("liveSubServiceDestroyed", null) } }
                     result.success(null)
                 }
-                "stopLiveSubService" -> {
-                    LiveSubServiceHelper.onServiceDestroyed = null
-                    stopService(Intent(this, LiveSubService::class.java))
-                    result.success(null)
-                }
-                "showAiProgress" -> {
-                    val title = call.argument<String>("title") ?: "زیرنویس AI"
-                    showAiProgressNotif(title, 0, "Starting...")
-                    result.success(null)
-                }
-                "updateAiProgress" -> {
-                    val status = call.argument<String>("status") ?: ""
-                    val percent = call.argument<Int>("percent") ?: 0
-                    showAiProgressNotif(null, percent, status)
-                    result.success(null)
-                }
-                "hideAiProgress" -> {
-                    nm().cancel(AI_NOTIF_ID)
-                    result.success(null)
-                }
-
-                // ── AI v2 (whisper.cpp بومی) ──
+                "stopLiveSubService" -> { LiveSubServiceHelper.onServiceDestroyed = null; stopService(Intent(this, LiveSubService::class.java)); result.success(null) }
+                "showAiProgress" -> { showAiProgressNotif(call.argument<String>("title") ?: "زیرنویس AI", 0, "Starting..."); result.success(null) }
+                "updateAiProgress" -> { showAiProgressNotif(null, call.argument<Int>("percent") ?: 0, call.argument<String>("status") ?: ""); result.success(null) }
+                "hideAiProgress" -> { nm().cancel(AI_NOTIF_ID); result.success(null) }
                 "v2InitContext" -> {
                     val modelPath = call.argument<String>("modelPath") ?: run { result.error("NO_MODEL","",null); return@setMethodCallHandler }
                     executor.execute {
-                        try {
-                            val ctx = WhisperV2Bridge.nativeInitContext(modelPath)
-                            handler.post { if (ctx != 0L) result.success(ctx) else result.error("INIT_FAILED", "context ptr is 0", null) }
-                        } catch (e: Throwable) {
-                            handler.post { result.error("INIT_EXCEPTION", e.message, null) }
-                        }
+                        try { val ctx = WhisperV2Bridge.nativeInitContext(modelPath); handler.post { if (ctx != 0L) result.success(ctx) else result.error("INIT_FAILED","ptr is 0",null) } }
+                        catch (e: Throwable) { handler.post { result.error("INIT_EXCEPTION", e.message, null) } }
                     }
                 }
-                "v2FreeContext" -> {
-                    val ctx = (call.argument<Number>("ctx") ?: 0).toLong()
-                    executor.execute {
-                        try { WhisperV2Bridge.nativeFreeContext(ctx) } catch (_: Throwable) {}
-                        handler.post { result.success(null) }
-                    }
-                }
+                "v2FreeContext" -> { val ctx = (call.argument<Number>("ctx") ?: 0).toLong(); executor.execute { try { WhisperV2Bridge.nativeFreeContext(ctx) } catch (_: Throwable) {}; handler.post { result.success(null) } } }
                 "v2Transcribe" -> {
                     val ctx = (call.argument<Number>("ctx") ?: 0).toLong()
                     val wavPath = call.argument<String>("wavPath") ?: run { result.error("NO_WAV","",null); return@setMethodCallHandler }
                     val lang = call.argument<String>("lang") ?: "en"
-                        val modelId = call.argument<String>("modelId")
                     val threads = call.argument<Int>("threads") ?: 4
                     val translate = call.argument<Boolean>("translate") ?: false
                     executor.execute {
-                        try {
-                            val text = WhisperV2Bridge.nativeTranscribeWav(ctx, wavPath, lang, threads, translate)
-                            handler.post { result.success(text) }
-                        } catch (e: Throwable) {
-                            handler.post { result.error("TRANSCRIBE_EXCEPTION", e.message, null) }
-                        }
+                        try { val text = WhisperV2Bridge.nativeTranscribeWav(ctx, wavPath, lang, threads, translate); handler.post { result.success(text) } }
+                        catch (e: Throwable) { handler.post { result.error("TRANSCRIBE_EXCEPTION", e.message, null) } }
                     }
                 }
-                "v2SystemInfo" -> {
-                    try { result.success(WhisperV2Bridge.nativeGetSystemInfo()) }
-                    catch (e: Throwable) { result.error("SYSINFO_EXCEPTION", e.message, null) }
-                }
-
+                "v2SystemInfo" -> { try { result.success(WhisperV2Bridge.nativeGetSystemInfo()) } catch (e: Throwable) { result.error("SYSINFO_EXCEPTION", e.message, null) } }
                 else -> result.notImplemented()
             }
         }
@@ -492,11 +377,9 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "initMasterKey" -> {
                     try {
-                        val serverHalfB64 = call.argument<String>("server_half") ?: throw Exception("server_half مقدار ندارد")
-                        val serverHalf = Base64.decode(serverHalfB64, Base64.DEFAULT)
+                        val serverHalf = Base64.decode(call.argument<String>("server_half") ?: throw Exception("missing"), Base64.DEFAULT)
                         val masterKey = hkdf(serverHalf + APP_HALF, HKDF_SALT, HKDF_INFO, 32)
-                        storeMasterKey(masterKey)
-                        handler.post { result.success(true) }
+                        storeMasterKey(masterKey); handler.post { result.success(true) }
                     } catch (e: Exception) { handler.post { result.error("INIT_FAILED", e.message, null) } }
                 }
                 "hasMasterKey" -> handler.post { result.success(loadMasterKey() != null) }
@@ -504,22 +387,16 @@ class MainActivity : FlutterActivity() {
                     val inputPath = call.argument<String>("input") ?: run { result.error("NO_INPUT","",null); return@setMethodCallHandler }
                     val outputPath = call.argument<String>("output") ?: run { result.error("NO_OUTPUT","",null); return@setMethodCallHandler }
                     executor.execute {
-                        try {
-                            val masterKey = loadMasterKey() ?: throw Exception("Master Key یافت نشد — اپ را ری‌استارت کنید")
-                            decryptVez(inputPath, outputPath, masterKey)
-                            handler.post { result.success(outputPath) }
-                        } catch (e: Exception) { handler.post { result.error("DECRYPT_FAILED", e.message, null) } }
+                        try { val mk = loadMasterKey() ?: throw Exception("Key not found"); decryptVez(inputPath, outputPath, mk); handler.post { result.success(outputPath) } }
+                        catch (e: Exception) { handler.post { result.error("DECRYPT_FAILED", e.message, null) } }
                     }
                 }
                 "getCacheDir" -> handler.post { result.success(cacheDir.absolutePath) }
                 "getVezMeta" -> {
                     val path = call.argument<String>("path") ?: run { result.error("NO_PATH","",null); return@setMethodCallHandler }
                     executor.execute {
-                        try {
-                            val masterKey = loadMasterKey() ?: throw Exception("Master Key یافت نشد")
-                            val meta = readVezMeta(path, masterKey)
-                            handler.post { result.success(meta) }
-                        } catch (e: Exception) { handler.post { result.error("META_FAILED", e.message, null) } }
+                        try { val mk = loadMasterKey() ?: throw Exception("Key not found"); handler.post { result.success(readVezMeta(path, mk)) } }
+                        catch (e: Exception) { handler.post { result.error("META_FAILED", e.message, null) } }
                     }
                 }
                 else -> result.notImplemented()
@@ -531,41 +408,34 @@ class MainActivity : FlutterActivity() {
         else registerReceiver(receiver, f)
     }
 
-    // ── HKDF-SHA256 از C library ──
-    private fun hkdf(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray {
-        return nativeHkdf(ikm, salt, info, length)
-            ?: throw Exception("HKDF C library failed")
-    }
+    private fun hkdf(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray =
+        nativeHkdf(ikm, salt, info, length) ?: throw Exception("HKDF failed")
 
-    // ── AES-256-GCM از C library ──
-    private fun gcmDecrypt(key: ByteArray, data: ByteArray): ByteArray {
-        return nativeGcmDecrypt(key, data)
-            ?: throw Exception("GCM decrypt C library failed")
-    }
+    private fun gcmDecrypt(key: ByteArray, data: ByteArray): ByteArray =
+        nativeGcmDecrypt(key, data) ?: throw Exception("GCM decrypt failed")
 
-    // ── Keystore ──
     private fun ensureWrapKey() {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         if (!ks.containsAlias(KS_ALIAS)) {
             KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
-                init(KeyGenParameterSpec.Builder(KS_ALIAS,
-                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                init(KeyGenParameterSpec.Builder(KS_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
                     .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                     .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())
                 generateKey()
             }
         }
     }
+
     private fun storeMasterKey(masterKey: ByteArray) {
         ensureWrapKey()
         val wk = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.getKey(KS_ALIAS, null) as SecretKey
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, wk)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding"); cipher.init(Cipher.ENCRYPT_MODE, wk)
         val enc = cipher.doFinal(masterKey)
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
             .putString("mk_iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .putString("mk_data", Base64.encodeToString(enc, Base64.NO_WRAP)).apply()
     }
+
     private fun loadMasterKey(): ByteArray? {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val iv   = Base64.decode(prefs.getString("mk_iv",   null) ?: return null, Base64.NO_WRAP)
@@ -573,177 +443,75 @@ class MainActivity : FlutterActivity() {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         if (!ks.containsAlias(KS_ALIAS)) return null
         val wk = ks.getKey(KS_ALIAS, null) as SecretKey
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, wk, GCMParameterSpec(128, iv))
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding"); cipher.init(Cipher.DECRYPT_MODE, wk, GCMParameterSpec(128, iv))
         return cipher.doFinal(data)
     }
 
-    // ── Audio Extraction for Whisper ──
-    
-
-    
-
-    
-
     private fun extractAudioWav(videoPath: String, outputPath: String, cancel: AtomicBoolean) {
         val extractor = MediaExtractor()
-        if (videoPath.startsWith("http://") || videoPath.startsWith("https://"))
-            extractor.setDataSource(videoPath, mapOf("User-Agent" to "Vezoo/1.0"))
-        else extractor.setDataSource(videoPath)
-        var audioIdx = -1
-        lateinit var audioFmt: MediaFormat
-        for (i in 0 until extractor.trackCount) {
-            val fmt = extractor.getTrackFormat(i)
-            val mime = fmt.getString(MediaFormat.KEY_MIME) ?: continue
-            if (mime.startsWith("audio/")) { audioIdx = i; audioFmt = fmt; break }
-        }
-        require(audioIdx >= 0) { "No audio track found" }
-        extractor.selectTrack(audioIdx)
-        val origRate = audioFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-        val channels = audioFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-        val mime = audioFmt.getString(MediaFormat.KEY_MIME)!!
-        val codec = MediaCodec.createDecoderByType(mime)
-        codec.configure(audioFmt, null, null, 0); codec.start()
-        val bufInfo = MediaCodec.BufferInfo()
-
-        // ── بافر primitive رشدپذیر — جایگزین MutableList<Short> که boxing داشت و کند بود ──
-        val durationUs = audioFmt.getLong(MediaFormat.KEY_DURATION, 0L)
-        val estSamples = if (durationUs > 0) ((durationUs / 1_000_000.0) * origRate).toInt() + 4096 else 1_000_000
-        var pcm = ShortArray(estSamples.coerceAtLeast(4096))
-        var pcmLen = 0
-        fun ensureCapacity(extra: Int) {
-            if (pcmLen + extra > pcm.size) {
-                val newCap = maxOf(pcm.size * 2, pcmLen + extra)
-                pcm = pcm.copyOf(newCap)
-            }
-        }
-
-        var inputDone = false
-        try {
-            while (!cancel.get()) {
-                if (!inputDone) {
-                    val inIdx = codec.dequeueInputBuffer(10_000)
-                    if (inIdx >= 0) {
-                        val buf = codec.getInputBuffer(inIdx)!!
-                        val sz = extractor.readSampleData(buf, 0)
-                        if (sz < 0) { codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true }
-                        else { codec.queueInputBuffer(inIdx, 0, sz, extractor.sampleTime, 0); extractor.advance() }
-                    }
-                }
-                val outIdx = codec.dequeueOutputBuffer(bufInfo, 10_000)
-                if (outIdx >= 0) {
-                    val buf = codec.getOutputBuffer(outIdx)!!
-                    val s = ShortArray(bufInfo.size / 2)
-                    buf.order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s)
-                    codec.releaseOutputBuffer(outIdx, false)
-                    if (channels >= 2) {
-                        val outCount = s.size / channels
-                        ensureCapacity(outCount)
-                        var i = 0
-                        while (i + 1 < s.size) {
-                            pcm[pcmLen++] = ((s[i].toInt() + s[i + 1].toInt()) / 2).toShort()
-                            i += channels
-                        }
-                    } else {
-                        ensureCapacity(s.size)
-                        System.arraycopy(s, 0, pcm, pcmLen, s.size)
-                        pcmLen += s.size
-                    }
-                    if (bufInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
-                }
-            }
-        } finally { codec.stop(); codec.release(); extractor.release() }
-        if (cancel.get()) throw Exception("cancelled")
-        val trimmed = pcm.copyOf(pcmLen)
-        val out = if (origRate == 16000) trimmed else resamplePcm(trimmed, origRate, 16000)
-        writeWav(outputPath, out, 16000)
-    }
-
-    /** استخراج یه بازه‌ی زمانی از صدای ویدیو — برای زیرنویس زنده */
-    private fun extractAudioWavRange(videoPath: String, outputPath: String, cancel: AtomicBoolean, startMs: Long, durationMs: Long) {
-        val extractor = MediaExtractor()
-        if (videoPath.startsWith("http://") || videoPath.startsWith("https://"))
-            extractor.setDataSource(videoPath, mapOf("User-Agent" to "Vezoo/1.0"))
+        if (videoPath.startsWith("http")) extractor.setDataSource(videoPath, mapOf("User-Agent" to "Vezoo/1.0"))
         else extractor.setDataSource(videoPath)
         var audioIdx = -1; lateinit var audioFmt: MediaFormat
-        for (i in 0 until extractor.trackCount) {
-            val fmt = extractor.getTrackFormat(i)
-            val mime = fmt.getString(MediaFormat.KEY_MIME) ?: continue
-            if (mime.startsWith("audio/")) { audioIdx = i; audioFmt = fmt; break }
-        }
-        require(audioIdx >= 0) { "No audio track found" }
+        for (i in 0 until extractor.trackCount) { val fmt = extractor.getTrackFormat(i); if (fmt.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) { audioIdx = i; audioFmt = fmt; break } }
+        require(audioIdx >= 0) { "No audio track" }
         extractor.selectTrack(audioIdx)
-        extractor.seekTo(startMs * 1000L, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
-
-        val origRate = audioFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-        val channels = audioFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-        val mime = audioFmt.getString(MediaFormat.KEY_MIME)!!
-        val codec = MediaCodec.createDecoderByType(mime)
-        codec.configure(audioFmt, null, null, 0); codec.start()
-        val bufInfo = MediaCodec.BufferInfo()
-        val endUs = (startMs + durationMs) * 1000L
-
-        val estSamples = ((durationMs / 1000.0) * origRate).toInt() + 4096
-        var pcm = ShortArray(estSamples.coerceAtLeast(4096))
-        var pcmLen = 0
-        fun ensureCap(extra: Int) {
-            if (pcmLen + extra > pcm.size) pcm = pcm.copyOf(maxOf(pcm.size * 2, pcmLen + extra))
-        }
-        var inputDone = false
+        val origRate = audioFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE); val channels = audioFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        val codec = MediaCodec.createDecoderByType(audioFmt.getString(MediaFormat.KEY_MIME)!!); codec.configure(audioFmt, null, null, 0); codec.start()
+        val bufInfo = MediaCodec.BufferInfo(); var pcm = ShortArray(1_000_000); var pcmLen = 0; var inputDone = false
         try {
             while (!cancel.get()) {
-                if (!inputDone) {
-                    val inIdx = codec.dequeueInputBuffer(10_000)
-                    if (inIdx >= 0) {
-                        val buf = codec.getInputBuffer(inIdx)!!
-                        val sz = extractor.readSampleData(buf, 0)
-                        val sampleTime = extractor.sampleTime
-                        if (sz < 0 || sampleTime >= endUs) {
-                            codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true
-                        } else {
-                            codec.queueInputBuffer(inIdx, 0, sz, sampleTime, 0); extractor.advance()
-                        }
-                    }
-                }
+                if (!inputDone) { val inIdx = codec.dequeueInputBuffer(10_000); if (inIdx >= 0) { val buf = codec.getInputBuffer(inIdx)!!; val sz = extractor.readSampleData(buf, 0); if (sz < 0) { codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true } else { codec.queueInputBuffer(inIdx, 0, sz, extractor.sampleTime, 0); extractor.advance() } } }
                 val outIdx = codec.dequeueOutputBuffer(bufInfo, 10_000)
                 if (outIdx >= 0) {
-                    val buf = codec.getOutputBuffer(outIdx)!!
-                    val s = ShortArray(bufInfo.size / 2)
-                    buf.order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s)
-                    codec.releaseOutputBuffer(outIdx, false)
-                    if (channels >= 2) {
-                        ensureCap(s.size / channels)
-                        var i = 0; while (i + 1 < s.size) { pcm[pcmLen++] = ((s[i].toInt() + s[i+1].toInt()) / 2).toShort(); i += channels }
-                    } else {
-                        ensureCap(s.size); System.arraycopy(s, 0, pcm, pcmLen, s.size); pcmLen += s.size
-                    }
+                    val buf = codec.getOutputBuffer(outIdx)!!; val s = ShortArray(bufInfo.size / 2); buf.order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s); codec.releaseOutputBuffer(outIdx, false)
+                    if (channels >= 2) { val oc = s.size / channels; if (pcmLen + oc > pcm.size) pcm = pcm.copyOf(pcm.size * 2); var i = 0; while (i + 1 < s.size) { pcm[pcmLen++] = ((s[i].toInt() + s[i + 1].toInt()) / 2).toShort(); i += channels } }
+                    else { if (pcmLen + s.size > pcm.size) pcm = pcm.copyOf(pcm.size * 2); System.arraycopy(s, 0, pcm, pcmLen, s.size); pcmLen += s.size }
                     if (bufInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
                 }
             }
         } finally { codec.stop(); codec.release(); extractor.release() }
         if (cancel.get()) throw Exception("cancelled")
-        val trimmed = pcm.copyOf(pcmLen)
-        val out = if (origRate == 16000) trimmed else resamplePcm(trimmed, origRate, 16000)
-        writeWav(outputPath, out, 16000)
+        val trimmed = pcm.copyOf(pcmLen); val out = if (origRate == 16000) trimmed else resamplePcm(trimmed, origRate, 16000); writeWav(outputPath, out, 16000)
     }
+
+    private fun extractAudioWavRange(videoPath: String, outputPath: String, cancel: AtomicBoolean, startMs: Long, durationMs: Long) {
+        val extractor = MediaExtractor()
+        if (videoPath.startsWith("http")) extractor.setDataSource(videoPath, mapOf("User-Agent" to "Vezoo/1.0"))
+        else extractor.setDataSource(videoPath)
+        var audioIdx = -1; lateinit var audioFmt: MediaFormat
+        for (i in 0 until extractor.trackCount) { val fmt = extractor.getTrackFormat(i); if (fmt.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) { audioIdx = i; audioFmt = fmt; break } }
+        require(audioIdx >= 0) { "No audio track" }
+        extractor.selectTrack(audioIdx); extractor.seekTo(startMs * 1000L, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        val origRate = audioFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE); val channels = audioFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        val codec = MediaCodec.createDecoderByType(audioFmt.getString(MediaFormat.KEY_MIME)!!); codec.configure(audioFmt, null, null, 0); codec.start()
+        val bufInfo = MediaCodec.BufferInfo(); val endUs = (startMs + durationMs) * 1000L; var pcm = ShortArray(500_000); var pcmLen = 0; var inputDone = false
+        try {
+            while (!cancel.get()) {
+                if (!inputDone) { val inIdx = codec.dequeueInputBuffer(10_000); if (inIdx >= 0) { val buf = codec.getInputBuffer(inIdx)!!; val sz = extractor.readSampleData(buf, 0); val st = extractor.sampleTime; if (sz < 0 || st >= endUs) { codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true } else { codec.queueInputBuffer(inIdx, 0, sz, st, 0); extractor.advance() } } }
+                val outIdx = codec.dequeueOutputBuffer(bufInfo, 10_000)
+                if (outIdx >= 0) {
+                    val buf = codec.getOutputBuffer(outIdx)!!; val s = ShortArray(bufInfo.size / 2); buf.order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s); codec.releaseOutputBuffer(outIdx, false)
+                    if (channels >= 2) { if (pcmLen + s.size/channels > pcm.size) pcm = pcm.copyOf(pcm.size * 2); var i = 0; while (i + 1 < s.size) { pcm[pcmLen++] = ((s[i].toInt() + s[i+1].toInt()) / 2).toShort(); i += channels } }
+                    else { if (pcmLen + s.size > pcm.size) pcm = pcm.copyOf(pcm.size * 2); System.arraycopy(s, 0, pcm, pcmLen, s.size); pcmLen += s.size }
+                    if (bufInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                }
+            }
+        } finally { codec.stop(); codec.release(); extractor.release() }
+        if (cancel.get()) throw Exception("cancelled")
+        val trimmed = pcm.copyOf(pcmLen); val out = if (origRate == 16000) trimmed else resamplePcm(trimmed, origRate, 16000); writeWav(outputPath, out, 16000)
+    }
+
     private fun resamplePcm(src: ShortArray, from: Int, to: Int): ShortArray {
-        val out = ShortArray((src.size.toLong() * to / from).toInt())
-        val ratio = from.toDouble() / to.toDouble()
-        for (i in out.indices) {
-            val pos = i * ratio; val idx = pos.toInt().coerceIn(0, src.size - 1)
-            val a = src[idx].toDouble(); val b = src.getOrElse(idx + 1) { src.last() }.toDouble()
-            out[i] = (a + (b - a) * (pos - idx)).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-        }
+        val out = ShortArray((src.size.toLong() * to / from).toInt()); val ratio = from.toDouble() / to.toDouble()
+        for (i in out.indices) { val pos = i * ratio; val idx = pos.toInt().coerceIn(0, src.size - 1); val a = src[idx].toDouble(); val b = src.getOrElse(idx + 1) { src.last() }.toDouble(); out[i] = (a + (b - a) * (pos - idx)).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort() }
         return out
     }
 
     private fun writeWav(path: String, pcm: ShortArray, rate: Int) {
         val dataSize = pcm.size * 2
         java.io.RandomAccessFile(path, "rw").use { f ->
-            f.write(byteArrayOf(82,73,70,70)); f.wLe32(dataSize + 36)
-            f.write(byteArrayOf(87,65,86,69)); f.write(byteArrayOf(102,109,116,32))
-            f.wLe32(16); f.wLe16(1); f.wLe16(1)
-            f.wLe32(rate); f.wLe32(rate * 2); f.wLe16(2); f.wLe16(16)
+            f.write(byteArrayOf(82,73,70,70)); f.wLe32(dataSize + 36); f.write(byteArrayOf(87,65,86,69)); f.write(byteArrayOf(102,109,116,32))
+            f.wLe32(16); f.wLe16(1); f.wLe16(1); f.wLe32(rate); f.wLe32(rate * 2); f.wLe16(2); f.wLe16(16)
             f.write(byteArrayOf(100,97,116,97)); f.wLe32(dataSize)
             for (s in pcm) { f.write(s.toInt() and 0xFF); f.write((s.toInt() shr 8) and 0xFF) }
         }
@@ -751,40 +519,29 @@ class MainActivity : FlutterActivity() {
     private fun java.io.RandomAccessFile.wLe32(v: Int) { write(v and 0xFF); write((v shr 8) and 0xFF); write((v shr 16) and 0xFF); write((v shr 24) and 0xFF) }
     private fun java.io.RandomAccessFile.wLe16(v: Int) { write(v and 0xFF); write((v shr 8) and 0xFF) }
 
-    // ── VEZ File ──
-    private fun readInt(fis: FileInputStream): Int {
-        val b = ByteArray(4); fis.read(b)
-        return ((b[0].toInt() and 0xFF) shl 24) or ((b[1].toInt() and 0xFF) shl 16) or
-               ((b[2].toInt() and 0xFF) shl 8) or (b[3].toInt() and 0xFF)
-    }
     private fun readFull(fis: FileInputStream, len: Int): ByteArray {
         val buf = ByteArray(len); var off = 0
         while (off < len) { val n = fis.read(buf, off, len - off); if (n == -1) break; off += n }
         return buf
     }
+    private fun readInt(fis: FileInputStream): Int {
+        val b = ByteArray(4); fis.read(b)
+        return ((b[0].toInt() and 0xFF) shl 24) or ((b[1].toInt() and 0xFF) shl 16) or ((b[2].toInt() and 0xFF) shl 8) or (b[3].toInt() and 0xFF)
+    }
 
     private fun parseHeader(path: String, masterKey: ByteArray): Triple<ByteArray, String, FileInputStream> {
-        val fis = FileInputStream(path)
-        val magic = readFull(fis, 6)
-        if (!magic.contentEquals(MAGIC)) throw Exception("فایل VEZOO نیست")
-        fis.read() // algo (0x01)
-        val fileKey = gcmDecrypt(masterKey, readFull(fis, readInt(fis)))
+        val fis = FileInputStream(path); val magic = readFull(fis, 6)
+        if (!magic.contentEquals(MAGIC)) throw Exception("Not a VEZOO file")
+        fis.read(); val fileKey = gcmDecrypt(masterKey, readFull(fis, readInt(fis)))
         val metaJson = String(gcmDecrypt(fileKey, readFull(fis, readInt(fis))), Charsets.UTF_8)
         return Triple(fileKey, metaJson, fis)
     }
 
     private fun readVezMeta(path: String, masterKey: ByteArray): Map<String, Any> {
-        val (_, metaJson, fis) = parseHeader(path, masterKey)
-        fis.close()
-        // parse JSON manually (simple approach)
+        val (_, metaJson, fis) = parseHeader(path, masterKey); fis.close()
         val map = mutableMapOf<String, Any>()
         metaJson.replace("{","").replace("}","").split(",").forEach { pair ->
-            val kv = pair.split(":")
-            if (kv.size >= 2) {
-                val k = kv[0].trim().replace("\"","")
-                val v = kv.drop(1).joinToString(":").trim().replace("\"","")
-                map[k] = v.toLongOrNull() ?: v.toBooleanStrictOrNull() ?: v
-            }
+            val kv = pair.split(":"); if (kv.size >= 2) { val k = kv[0].trim().replace("\"",""); val v = kv.drop(1).joinToString(":").trim().replace("\"",""); map[k] = v.toLongOrNull() ?: v.toBooleanStrictOrNull() ?: v }
         }
         return map
     }
@@ -794,21 +551,15 @@ class MainActivity : FlutterActivity() {
         BufferedOutputStream(FileOutputStream(outputPath), 1024 * 1024).use { out ->
             val sizeBuf = ByteArray(4)
             while (fis.read(sizeBuf) == 4) {
-                val chunkLen = ((sizeBuf[0].toInt() and 0xFF) shl 24) or
-                               ((sizeBuf[1].toInt() and 0xFF) shl 16) or
-                               ((sizeBuf[2].toInt() and 0xFF) shl 8) or
-                               (sizeBuf[3].toInt() and 0xFF)
+                val chunkLen = ((sizeBuf[0].toInt() and 0xFF) shl 24) or ((sizeBuf[1].toInt() and 0xFF) shl 16) or ((sizeBuf[2].toInt() and 0xFF) shl 8) or (sizeBuf[3].toInt() and 0xFF)
                 if (chunkLen <= 0 || chunkLen > 20 * 1024 * 1024) break
                 out.write(gcmDecrypt(fileKey, readFull(fis, chunkLen)))
             }
-        }
-        fis.close()
+        }; fis.close()
     }
 
-    // ── PiP + Notification (بقیه کدهای موجود) ──
     private fun requestNotifPermission() {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
     }
     private fun nm() = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -821,21 +572,15 @@ class MainActivity : FlutterActivity() {
     private fun showAiProgressNotif(newTitle: String?, percent: Int, status: String) {
         if (newTitle != null) aiNotifTitle = newTitle
         nm().notify(AI_NOTIF_ID, NotificationCompat.Builder(this, AI_NOTIF_CH_ID)
-            .setSmallIcon(android.R.drawable.ic_popup_sync)
-            .setContentTitle(aiNotifTitle)
-            .setContentText(status)
-            .setProgress(100, percent.coerceIn(0, 100), percent <= 0)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(percent < 100)
-            .setOnlyAlertOnce(true)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", pi(A_AI_CANCEL, 5))
-            .build())
+            .setSmallIcon(android.R.drawable.ic_popup_sync).setContentTitle(aiNotifTitle).setContentText(status)
+            .setProgress(100, percent.coerceIn(0, 100), percent <= 0).setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(percent < 100).setOnlyAlertOnce(true)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", pi(A_AI_CANCEL, 5)).build())
     }
     private fun pi(action: String, code: Int) = PendingIntent.getBroadcast(this, code, Intent(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     private fun showNotif() {
         nm().notify(NOTIF_ID, NotificationCompat.Builder(this, NOTIF_CH_ID)
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle(title).setContentText(if (playing) "Playing" else "Paused")
+            .setSmallIcon(android.R.drawable.ic_media_play).setContentTitle(title).setContentText(if (playing) "Playing" else "Paused")
             .setPriority(NotificationCompat.PRIORITY_LOW).setOngoing(playing)
             .addAction(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) "Pause" else "Play", pi(if (playing) A_PAUSE else A_PLAY, 1))
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", pi(A_CLOSE, 2)).build())
@@ -862,34 +607,29 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(req: Int, result: Int, data: android.content.Intent?) {
         super.onActivityResult(req, result, data)
         if (req == PROJ_REQ_VOSK && result == android.app.Activity.RESULT_OK && data != null) {
-            // service قبلاً شروع شده — فقط projection بگیر
             val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
             val projection = mgr?.getMediaProjection(result, data)
             pendingVoskLang?.let { lang ->
                 pendingVoskLang = null
                 Thread {
-                    try { voskService?.start(lang, projection, null) }
-                    catch (e: Throwable) {
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                            android.widget.Toast.makeText(this, "ERR: ${e.message?.take(80)}", android.widget.Toast.LENGTH_LONG).show()
-                        }
-                    }
+                    try { voskService?.start(lang, projection) }
+                    catch (e: Throwable) { android.util.Log.e("Vosk", "start failed: ${e.message}") }
                 }.start()
             }
         }
     }
+}
 
 private fun genThumb(path: String, timeUs: Long): ByteArray? {
-        val r = MediaMetadataRetriever()
-        return try {
-            if (!File(path).exists()) return null
-            r.setDataSource(applicationContext, Uri.fromFile(File(path)))
-            var bmp: Bitmap? = null
-            for (t in longArrayOf(timeUs, 0L)) { bmp = r.getFrameAtTime(t, MediaMetadataRetriever.OPTION_CLOSEST_SYNC); if (bmp != null) break }
-            bmp ?: return null
-            val out = java.io.ByteArrayOutputStream()
-            Bitmap.createScaledBitmap(bmp, 160, 90, true).compress(Bitmap.CompressFormat.JPEG, 75, out)
-            out.toByteArray()
-        } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
-    }
+    val r = MediaMetadataRetriever()
+    return try {
+        if (!java.io.File(path).exists()) return null
+        r.setDataSource(android.app.Application().applicationContext, Uri.fromFile(java.io.File(path)))
+        var bmp: Bitmap? = null
+        for (t in longArrayOf(timeUs, 0L)) { bmp = r.getFrameAtTime(t, MediaMetadataRetriever.OPTION_CLOSEST_SYNC); if (bmp != null) break }
+        bmp ?: return null
+        val out = java.io.ByteArrayOutputStream()
+        Bitmap.createScaledBitmap(bmp, 160, 90, true).compress(Bitmap.CompressFormat.JPEG, 75, out)
+        out.toByteArray()
+    } catch (_: Exception) { null } finally { try { r.release() } catch (_: Exception) {} }
 }
