@@ -89,7 +89,7 @@ jobs:
           fi
           # غیرفعال کردن R8/minify برای جلوگیری از کرش youtubedl-android
           if ! grep -q "minifyEnabled" "$BAPP"; then
-            perl -i -0pe 's/(buildTypes\s*\{\s*release\s*\{)/$1\n            minifyEnabled = false\n            shrinkResources = false/' "$BAPP"
+            perl -i -0pe 's/(buildTypes\s*\{\s*release\s*\{)/$1\n            isMinifyEnabled = false\n            isShrinkResources = false/' "$BAPP"
             echo "=== minifyEnabled=false added ==="
           fi
 
