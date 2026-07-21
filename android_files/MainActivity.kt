@@ -1,4 +1,3 @@
-
 package com.vezoo.player
 
 import android.app.NotificationChannel
@@ -122,7 +121,11 @@ class MainActivity : FlutterActivity() {
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "getStreamUrl" -> ytDlpService.getStreamUrl(call.argument<String>("url") ?: "", result)
+                    "getStreamUrl" -> ytDlpService.getStreamUrl(
+                        call.argument<String>("url") ?: "",
+                        result,
+                        call.argument<String>("cookiePath")
+                    )
                     "getFormats"   -> ytDlpService.getFormats(call.argument<String>("url") ?: "", result)
                     "updateYtDlp"  -> ytDlpService.updateYtDlp(result)
                     "getVersion"   -> {
