@@ -87,6 +87,12 @@ jobs:
             echo 'dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }' >> "$BAPP"
             echo "=== okhttp3 added ==="
           fi
+          # غیرفعال کردن R8/minify برای جلوگیری از کرش youtubedl-android
+          if ! grep -q "minifyEnabled" "$BAPP"; then
+            perl -i -0pe 's/(buildTypes\s*\{\s*release\s*\{)/$1\n            minifyEnabled = false\n            shrinkResources = false/' "$BAPP"
+            echo "=== minifyEnabled=false added ==="
+          fi
+
           if ! grep -q "youtubedl-android" "$BAPP"; then
             echo 'dependencies { implementation("io.github.junkfood02.youtubedl-android:library:0.18.1") }' >> "$BAPP"
             echo 'dependencies { implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1") }' >> "$BAPP"
@@ -108,8 +114,13 @@ jobs:
           fi
           echo "-keep class com.sun.jna.** { *; }" >> android/app/proguard-rules.pro
           echo "-keep class com.yausername.** { *; }" >> android/app/proguard-rules.pro
-          echo "-keep class org.schabi.** { *; }" >> android/app/proguard-rules.pro
+          echo "-keepclassmembers class com.yausername.** { *; }" >> android/app/proguard-rules.pro
+          echo "-keep interface com.yausername.** { *; }" >> android/app/proguard-rules.pro
           echo "-dontwarn com.yausername.**" >> android/app/proguard-rules.pro
+          echo "-keep class org.apache.commons.compress.** { *; }" >> android/app/proguard-rules.pro
+          echo "-keepclassmembers class * { @com.fasterxml.jackson.annotation.* *; }" >> android/app/proguard-rules.pro
+          echo "-keep class com.fasterxml.jackson.** { *; }" >> android/app/proguard-rules.pro
+          echo "-keep class * implements com.fasterxml.jackson.databind.cfg.HandlerInstantiator { *; }" >> android/app/proguard-rules.pro
           echo "-keepclassmembers class * extends com.sun.jna.** { public *; }" >> android/app/proguard-rules.pro
           echo "-keep class org.vosk.** { *; }" >> android/app/proguard-rules.pro
           echo "-dontwarn com.sun.jna.**" >> android/app/proguard-rules.pro
