@@ -123,7 +123,12 @@ class LyricsService {
     // موزیک زیرنویس → /storage/emulated/0/Download/Vezoo/Music/
     const musicDir = '/storage/emulated/0/Download/Vezoo/Music';
     await Directory(musicDir).create(recursive: true);
-    final base = p.basenameWithoutExtension(videoPath);
+    // sanitize نام فایل — URL های بلند رو کوتاه کن
+    String base = p.basenameWithoutExtension(videoPath.split('?').first);
+    base = base.replaceAll(RegExp(r'[<>:"/\\|*\x00-\x1f]'), '_').substring(0, base.length.clamp(0, 60));
+    if (base.isEmpty || base == 'videoplayback') {
+      base = 'music_${DateTime.now().millisecondsSinceEpoch}';
+    }
     final outPath = p.join(musicDir, '${base}_$suffix.srt');
     await File(outPath).writeAsString(srtContent, encoding: utf8);
     return outPath;
@@ -141,3 +146,4 @@ class _LrcLine {
   final String text;
   _LrcLine(this.time, this.text);
 }
+
