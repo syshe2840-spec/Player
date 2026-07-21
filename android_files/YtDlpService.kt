@@ -1,4 +1,3 @@
-
 package com.vezoo.player
 
 import android.content.Context
@@ -43,13 +42,17 @@ class YtDlpService(private val context: Context) {
     }
 
     // گرفتن stream URL از هر سایتی
-    fun getStreamUrl(url: String, result: MethodChannel.Result) {
+    fun getStreamUrl(url: String, result: MethodChannel.Result, cookiePath: String? = null) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(
                     YoutubeDLRequest(url).apply {
                         addOption("--no-playlist")
                         addOption("-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+                        addOption("--no-warnings")
+                        if (cookiePath != null && java.io.File(cookiePath).exists()) {
+                            addOption("--cookies", cookiePath)
+                        }
                     }
                 )
                 val streamUrl = info.url ?: throw Exception("No stream URL found")
