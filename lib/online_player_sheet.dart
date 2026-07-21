@@ -219,7 +219,11 @@ class _State extends State<OnlinePlayerSheet> {
       });
     } catch (e) {
       if (mounted && !_cancelled) setState(() {
-        _error = '❌ yt-dlp: $e';
+        // نشون دادن خطای کامل
+        String errMsg = e.toString();
+        // حذف Exception: prefix
+        if (errMsg.startsWith('Exception: ')) errMsg = errMsg.substring(11);
+        _error = errMsg;
         _loading = false;
         _dlStatus = '';
       });
@@ -384,4 +388,3 @@ class _State extends State<OnlinePlayerSheet> {
     );
   }
 }
-
