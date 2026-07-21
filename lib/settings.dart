@@ -10,6 +10,7 @@ import 'ytdlp_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
 import 'vosk_models_screen.dart';
+import 'ytdlp_service.dart';
 import 'main.dart' show showSnack;
 
 class PlayerSettings extends StatefulWidget {
@@ -487,6 +488,10 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   Widget build(BuildContext ctx) => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── yt-dlp ──
+      _YtDlpCard(),
+      const SizedBox(height: 12),
+
       // ── Vosk Models ──
       ListTile(
         tileColor: const Color(0xFF1A1A2A),
@@ -527,6 +532,91 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
             child: Text(_status, style: const TextStyle(color: Colors.white60, fontSize: 11))),
         ]),
       ),
+    ]),
+  );
+}
+
+// ── Widget آپدیت yt-dlp ──
+class _YtDlpCard extends StatefulWidget {
+  @override State<_YtDlpCard> createState() => _YtDlpCardState();
+}
+
+class _YtDlpCardState extends State<_YtDlpCard> {
+  String _version = '...';
+  String _status = '';
+  bool _updating = false;
+  bool _cancelled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final v = await YtDlpService.getVersion();
+    if (mounted) setState(() => _version = v);
+  }
+
+  Future<void> _update() async {
+    setState(() { _updating = true; _cancelled = false; _status = ''; });
+    await YtDlpService.updateWithProgress((s) {
+      if (mounted && !_cancelled) setState(() => _status = s);
+    });
+    if (mounted) {
+      setState(() => _updating = false);
+      await _loadVersion();
+    }
+  }
+
+  @override
+  Widget build(BuildContext ctx) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF1A1A2A),
+      borderRadius: BorderRadius.circular(12)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.download_for_offline_rounded, color: Color(0xFF7C3AED), size: 18),
+        const SizedBox(width: 8),
+        const Text('yt-dlp', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(6)),
+          child: Text('v$_version', style: const TextStyle(color: Colors.white54, fontSize: 10))),
+      ]),
+      const SizedBox(height: 4),
+      const Text('پشتیبانی از ۱۰۰۰+ سایت', style: TextStyle(color: Colors.white38, fontSize: 11)),
+      if (_status.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text(_status, style: TextStyle(
+          color: _status.startsWith('❌') ? Colors.redAccent :
+                 _status.startsWith('✅') ? Colors.greenAccent : Colors.white60,
+          fontSize: 11)),
+      ],
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: FilledButton.icon(
+          onPressed: _updating ? null : _update,
+          icon: _updating
+            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : const Icon(Icons.update_rounded, size: 16),
+          label: Text(_updating ? 'در حال آپدیت...' : 'آپدیت yt-dlp'),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF7C3AED),
+            padding: const EdgeInsets.symmetric(vertical: 8)))),
+        if (_updating) ...[
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () => setState(() { _cancelled = true; _updating = false; _status = 'لغو شد'; }),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12)),
+            child: const Text('لغو')),
+        ],
+      ]),
     ]),
   );
 }
