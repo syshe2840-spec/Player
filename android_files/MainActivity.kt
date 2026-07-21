@@ -117,6 +117,25 @@ class MainActivity : FlutterActivity() {
         requestNotifPermission()
 
 
+        // ── yt-dlp ──
+        YtDlpService.init(this)
+        val ytDlpService = YtDlpService(this)
+        io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/ytdlp")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getStreamUrl" -> {
+                        val url = call.argument<String>("url") ?: ""
+                        ytDlpService.getStreamUrl(url, result)
+                    }
+                    "getFormats" -> {
+                        val url = call.argument<String>("url") ?: ""
+                        ytDlpService.getFormats(url, result)
+                    }
+                    "updateYtDlp" -> ytDlpService.updateYtDlp(result)
+                    else -> result.notImplemented()
+                }
+            }
+
         // ── Android Built-in STT ──
         androidSttCallback = io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/android_stt_callback")
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/android_stt")
