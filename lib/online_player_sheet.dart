@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'ytdlp_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:flutter_go_torrent_streamer/flutter_go_torrent_streamer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -206,10 +207,17 @@ class _State extends State<OnlinePlayerSheet> {
           const SizedBox(height: 10),
           // ── input ──
           Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(children: [
+            IconButton(
+              onPressed: () => _showSupportedSites(context),
+              icon: const Icon(Icons.help_outline_rounded, color: Colors.white54, size: 20),
+              tooltip: 'سایت‌های پشتیبانی شده',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints()),
+            const SizedBox(width: 4),
             Expanded(child: TextField(controller: _ctrl,
               style: const TextStyle(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
-                hintText: 'YouTube / magnet: / MP4...',
+                hintText: 'YouTube / Instagram / TikTok / ۱۰۰۰+ سایت...',
                 hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
                 suffixIcon: _ctrl.text.isNotEmpty ? IconButton(
                   icon: const Icon(Icons.clear, size: 16, color: Colors.white38),
