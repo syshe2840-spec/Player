@@ -8,12 +8,20 @@ import 'package:dio/dio.dart';
 import 'player.dart';
 import 'l10n.dart';
 
-enum _UrlType { direct, youtube, torrent }
+enum _UrlType { direct, youtube, torrent, ytdlp }
 
 _UrlType _detectType(String url) {
   if (url.startsWith('magnet:') || url.endsWith('.torrent')) return _UrlType.torrent;
   if (url.contains('youtube.com') || url.contains('youtu.be')) return _UrlType.youtube;
-  return _UrlType.direct;
+  // فایل مستقیم → پخش مستقیم
+  final lower = url.toLowerCase();
+  final isDirect = lower.contains('.mp4') || lower.contains('.mkv') ||
+    lower.contains('.m3u8') || lower.contains('.mpd') || lower.contains('.avi') ||
+    lower.contains('.mov') || lower.contains('.ts') || lower.contains('.flv') ||
+    lower.contains('rtmp://') || lower.contains('rtsp://');
+  if (isDirect) return _UrlType.direct;
+  // بقیه → yt-dlp
+  return _UrlType.ytdlp;
 }
 
 class _Quality { final String label, url; _Quality(this.label, this.url); }
@@ -97,6 +105,7 @@ class _State extends State<OnlinePlayerSheet> {
     try {
       if (type == _UrlType.youtube) { await _analyzeYoutube(url); }
       else if (type == _UrlType.torrent) { await _analyzeTorrent(url); }
+      else if (type == _UrlType.ytdlp) { await _analyzeYtDlp(url); }
       else { await _playDirect(url); }
     } catch (e) {
       if (mounted && !_cancelled) setState(() { _error = 'Error: $e'; _loading = false; _dlStatus = ''; });
@@ -191,6 +200,36 @@ class _State extends State<OnlinePlayerSheet> {
     Navigator.pop(context);
     Navigator.push(context, MaterialPageRoute(builder: (_) =>
       PlayerScreen(playlist: [File(url)], playlistIndex: 0)));
+  }
+
+  Future<void> _analyzeYtDlp(String url) async {
+    setState(() => _dlStatus = '⏳ دریافت اطلاعات yt-dlp...');
+    try {
+      final info = await YtDlpService.getStreamUrl(url);
+      if (_cancelled) return;
+      final streamUrl = info['url'] as String? ?? '';
+      final title = info['title'] as String? ?? '';
+      final extractor = info['extractor'] as String? ?? '';
+      if (streamUrl.isEmpty) throw Exception('stream URL دریافت نشد');
+      if (mounted) setState(() {
+        _title = title.isEmpty ? extractor : '$title ($extractor)';
+        _qualities = [_Quality('بهترین کیفیت', streamUrl)];
+        _loading = false;
+        _dlStatus = '';
+      });
+    } catch (e) {
+      if (mounted && !_cancelled) setState(() {
+        _error = '❌ yt-dlp: $e';
+        _loading = false;
+        _dlStatus = '';
+      });
+    }
+  }
+
+  Future<void> _downloadYtDlp(String url, String label) async {
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.mp4';
+    final dir = '/storage/emulated/0/Download/Vezoo';
+    _downloadYt(url, label); // استفاده از همون downloader موجود
   }
 
   void _playYt(String url) {
@@ -345,3 +384,4 @@ class _State extends State<OnlinePlayerSheet> {
     );
   }
 }
+
