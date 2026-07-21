@@ -20,6 +20,7 @@ class VoskService(
     private var model: Model? = null
     private var recorder: AudioRecord? = null
     @Volatile private var running = false
+    private var mediaProjection: android.media.projection.MediaProjection? = null
     val eventQueue = ConcurrentLinkedQueue<Map<String, Any>>()
 
     companion object {
@@ -34,6 +35,7 @@ class VoskService(
     }
 
     private fun doStart(langCode: String, projection: android.media.projection.MediaProjection?, modelId: String? = null) {
+        mediaProjection = projection
         send("status", "VOSK START: lang=$langCode")
 
         val modelPath = findModel(langCode, modelId)
@@ -149,6 +151,8 @@ class VoskService(
         try { recognizer?.close() } catch (_: Exception) {}
         try { model?.close() } catch (_: Exception) {}
         recorder = null; recognizer = null; model = null
+        try { mediaProjection?.stop() } catch (_: Exception) {}
+        mediaProjection = null
         send("status", "stopped")
     }
 }
