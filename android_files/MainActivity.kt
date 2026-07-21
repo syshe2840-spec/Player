@@ -627,7 +627,7 @@ private fun genThumb(path: String, timeUs: Long): ByteArray? {
     val r = MediaMetadataRetriever()
     return try {
         if (!java.io.File(path).exists()) return null
-        r.setDataSource(android.app.Application().applicationContext, Uri.fromFile(java.io.File(path)))
+        r.setDataSource(path)
         var bmp: Bitmap? = null
         for (t in longArrayOf(timeUs, 0L)) { bmp = r.getFrameAtTime(t, MediaMetadataRetriever.OPTION_CLOSEST_SYNC); if (bmp != null) break }
         bmp ?: return null
