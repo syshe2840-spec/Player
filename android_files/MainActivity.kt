@@ -182,7 +182,12 @@ class MainActivity : FlutterActivity() {
                         else Thread { voskService?.start(lang, null, modelId) }.start()
                         result.success(null)
                     }
-                    "stop" -> { voskService?.stop(); result.success(null) }
+                    "stop" -> {
+                        voskService?.stop()
+                        // پایان دادن به MediaProjection foreground service
+                        stopService(android.content.Intent(this, MediaProjectionService::class.java))
+                        result.success(null)
+                    }
                     "getNextEvent" -> result.success(voskService?.getNextEvent())
                     "extractModel" -> {
                         val zipPath = call.argument<String>("zipPath") ?: ""
