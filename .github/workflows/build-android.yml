@@ -90,7 +90,9 @@ jobs:
           if ! grep -q "youtubedl-android" "$BAPP"; then
             echo 'dependencies { implementation("io.github.junkfood02.youtubedl-android:library:0.18.1") }' >> "$BAPP"
             echo 'dependencies { implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1") }' >> "$BAPP"
-            echo "=== youtubedl-android added ==="
+            # جلوگیری از خطای libffmpeg.zip.so و libpython.zip.so
+            perl -i -0pe 's|(android\s*\{)|$1\n    packaging { jniLibs { useLegacyPackaging = true } }|' "$BAPP"
+            echo "=== youtubedl-android + useLegacyPackaging added ==="
           fi
           if ! grep -q "activity-ktx" "$BAPP"; then
             echo 'dependencies { implementation("androidx.activity:activity-ktx:1.8.0") }' >> "$BAPP"
