@@ -1,3 +1,4 @@
+
 package com.vezoo.player
 
 import android.content.Context
@@ -82,11 +83,11 @@ class YtDlpService(private val context: Context) {
                     mapOf(
                         "formatId" to (f.formatId ?: ""),
                         "ext" to (f.ext ?: ""),
-                        "resolution" to (f.resolution ?: ""),
                         "url" to (f.url ?: ""),
-                        "vcodec" to (f.vcodec ?: ""),
-                        "acodec" to (f.acodec ?: ""),
-                        "filesize" to (f.filesize ?: 0L),
+                        "vcodec" to (f.vcodec ?: "none"),
+                        "acodec" to (f.acodec ?: "none"),
+                        "width" to (f.width ?: 0),
+                        "height" to (f.height ?: 0),
                     )
                 } ?: emptyList()
                 withContext(Dispatchers.Main) {
