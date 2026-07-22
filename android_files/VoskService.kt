@@ -147,13 +147,18 @@ class VoskService(
 
     fun stop() {
         running = false
-        try { recorder?.stop(); recorder?.release() } catch (_: Exception) {}
-        try { recognizer?.close() } catch (_: Exception) {}
-        try { model?.close() } catch (_: Exception) {}
-        recorder = null; recognizer = null; model = null
+        try { recorder?.stop() } catch (_: Exception) {}
+        try { recorder?.release() } catch (_: Exception) {}
+        recorder = null
+        // recognizer باید قبل از model بسته بشه + null check
+        val rec = recognizer
+        recognizer = null
+        try { rec?.close() } catch (_: Exception) {}
+        val mdl = model
+        model = null
+        try { mdl?.close() } catch (_: Exception) {}
         try { mediaProjection?.stop() } catch (_: Exception) {}
         mediaProjection = null
         send("status", "stopped")
     }
 }
-
