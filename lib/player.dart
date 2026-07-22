@@ -499,7 +499,7 @@ class _PlayerState extends State<PlayerScreen>{
   Future<String> _translateWithWorker(String text, String targetLang) async {
     try {
       final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 8);
+      client.connectionTimeout = const Duration(seconds: 15);
       final req = await client.postUrl(Uri.parse('https://player.lastofanarchy.workers.dev/translate-srt'));
       req.headers.set('Content-Type', 'application/json');
       final escaped = text.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
@@ -512,6 +512,7 @@ class _PlayerState extends State<PlayerScreen>{
       final json = jsonDecode(body);
       return (json['lines'] as List?)?.first?.toString() ?? text;
     } catch (e) {
+      if (_mounted) setState((){_aiLog.add('[TRANS] ❌ ${e.toString().substring(0, e.toString().length.clamp(0,100))}');});
       return text;
     }
   }
