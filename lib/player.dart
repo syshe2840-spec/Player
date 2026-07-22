@@ -465,10 +465,15 @@ class _PlayerState extends State<PlayerScreen>{
       content: Text('✅ زیرنویس ذخیره شد: $baseName.srt'),
       backgroundColor: const Color(0xFF7C3AED),
       duration: const Duration(seconds: 4),
-      action: SnackBarAction(label: 'باز کردن', textColor: Colors.white,
+      action: SnackBarAction(label: 'بارگذاری روی ویدیو', textColor: Colors.white,
         onPressed: () async {
-          Navigator.push(context, MaterialPageRoute(builder: (_) =>
-            SrtEditorScreen(srtPath: savedPath!)));
+          await _loadSub(savedPath!, secondary: false);
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('✅ زیرنویس بارگذاری شد'),
+            backgroundColor: Colors.green, duration: const Duration(seconds: 2),
+            action: SnackBarAction(label: 'ویرایش', textColor: Colors.white,
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
+                SrtEditorScreen(srtPath: savedPath!))))));
         }),
     ));
   }
