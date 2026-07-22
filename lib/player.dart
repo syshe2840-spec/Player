@@ -83,6 +83,24 @@ class _PlayerState extends State<PlayerScreen>{
   int _voskPollMs = 100;
 
   // زبان‌هایی که partial رو Latin برمیگردونن — فقط final نشون بده
+
+  static const _langNames = {
+    'fa':'Persian','en':'English','ar':'Arabic','zh':'Chinese','ru':'Russian',
+    'es':'Spanish','fr':'French','de':'German','tr':'Turkish','hi':'Hindi',
+    'ja':'Japanese','ko':'Korean','it':'Italian','pt':'Portuguese','nl':'Dutch',
+    'pl':'Polish','uk':'Ukrainian','sv':'Swedish','da':'Danish','fi':'Finnish',
+    'no':'Norwegian','cs':'Czech','ro':'Romanian','hu':'Hungarian','el':'Greek',
+    'bg':'Bulgarian','hr':'Croatian','sk':'Slovak','lt':'Lithuanian','lv':'Latvian',
+    'sl':'Slovenian','et':'Estonian','sr':'Serbian','he':'Hebrew','ur':'Urdu',
+    'sw':'Swahili','th':'Thai','vi':'Vietnamese','id':'Indonesian','ms':'Malay',
+    'tl':'Filipino','km':'Khmer','bn':'Bengali','ta':'Tamil','te':'Telugu',
+    'ka':'Georgian','hy':'Armenian','az':'Azerbaijani','kk':'Kazakh','uz':'Uzbek',
+    'mn':'Mongolian','my':'Burmese','si':'Sinhala','ne':'Nepali','am':'Amharic',
+    'so':'Somali','ha':'Hausa','yo':'Yoruba','ht':'Haitian Creole','mi':'Maori',
+    'cy':'Welsh','ga':'Irish','eu':'Basque','ca':'Catalan','la':'Latin',
+    'eo':'Esperanto','yi':'Yiddish','ps':'Pashto','ku':'Kurdish','lo':'Lao',
+    'zh-cn':'Chinese Simplified','zh-tw':'Chinese Traditional',
+  };
   static const _nonLatinLangs = {'fa','ar','zh','ja','ko','ru','uk','hi','he','el','ka','am','bn','gu','kn','ml','mr','ne','pa','si','ta','te','ur','ky','kk','tg','mn','my','km','lo','th'};
   bool get _voskFinalOnly => _nonLatinLangs.contains(_dgLang);
   bool _isFullscreen=false;
@@ -485,7 +503,8 @@ class _PlayerState extends State<PlayerScreen>{
       final req = await client.postUrl(Uri.parse('https://player.lastofanarchy.workers.dev/translate-srt'));
       req.headers.set('Content-Type', 'application/json');
       final escaped = text.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
-      req.write('{"lines":["$escaped"],"target_lang":"$targetLang"}');
+      final langName = _langNames[targetLang] ?? targetLang;
+      req.write('{"lines":["$escaped"],"target_lang":"$langName"}');
       final res = await req.close();
       final body = await res.transform(const Utf8Decoder()).join();
       if (!_mounted) return text;
