@@ -294,8 +294,9 @@ class SrtTranslationService {
       onSrtUpdated?.call(partialPath);
     }
 
-    if (translatedLines.length != allTextLines.length) {
-      throw Exception('Translation line count mismatch');
+    // اگه تعداد کم شد ، خطوط اضافه نشده رو با متن اصلی پر کن
+    while (translatedLines.length < allTextLines.length) {
+      translatedLines.add(allTextLines[translatedLines.length]);
     }
 
     // ── ذخیره نهایی کامل ──
