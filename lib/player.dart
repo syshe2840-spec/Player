@@ -1953,7 +1953,9 @@ class _PlayerState extends State<PlayerScreen>{
                         if(!mounted) return;
                         setState((){_translating=false; _translatingStatus='';});
                         _loadSub(translated, secondary: false);
-                        showSnack(context, L.translationDone, color: Color(0xFF7C3AED), seconds: 10);
+                        showSnack(context,
+                          'ترجمه ذخیره شد:\n$translated',
+                          color: Color(0xFF7C3AED), seconds: 10);
                       },
                       onDoneSecondary: (translated) {
                         if(!mounted) return;
