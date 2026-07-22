@@ -664,32 +664,31 @@ class _PlayerState extends State<PlayerScreen>{
               setState(() {
                 if (fin) {
                   _dgText = t;
-                                // ذخیره SRT
-                  if (_voskStartTime == null) {
-                    setState((){_aiLog.add('[SRT] ❌ startTime=null — SRT not saved');});
-                  } else {
+                                // ذخیره SRT با timing دقیق
+                  if (_voskStartTime != null) {
                     final now = DateTime.now();
-                    final elapsed = now.difference(_voskStartTime!);
-                    _voskSrtEntries.add(_SrtEntry(
-                      _voskSrtEntries.length + 1,
-                      elapsed - const Duration(seconds: 2),
-                      elapsed, t));
-                    setState((){_aiLog.add('[SRT] entry#${_voskSrtEntries.length} added, saving...');});
-                    _saveVoskSrt(silent: true);
-                  }
-                  // ترجمه
-                  if (!_voskTranslate) {
-                    setState((){_aiLog.add('[TRANS] disabled');});
-                  } else if (_voskTranslateTo.isEmpty) {
-                    setState((){_aiLog.add('[TRANS] ❌ target lang empty');});
-                  } else {
-                    setState((){_aiLog.add('[TRANS] → $_voskTranslateTo: "$t"');});
-                    _translateWithWorker(t, _voskTranslateTo).then((r) {
-                      if (_mounted) {
-                        setState((){_aiLog.add('[TRANS] result: "$r"');});
-                        if (r.isNotEmpty && r != t) setState(() => _dgText = r);
-                      }
-                    });
+                    final endTime = now.difference(_voskStartTime!);
+                    final startTime = _lastFinalTime != null
+                        ? _lastFinalTime!.difference(_voskStartTime!)
+                        : (endTime > const Duration(milliseconds: 500)
+                            ? endTime - const Duration(milliseconds: 500)
+                            : Duration.zero);
+                    _lastFinalTime = now;
+
+                    if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
+                      // ترجمه → entry با متن ترجمه شده ذخیره بشه
+                      _translateWithWorker(t, _voskTranslateTo).then((r) {
+                        final text = (r.isNotEmpty && r != t) ? r : t;
+                        _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, text));
+                        if (_mounted) {
+                          setState(() => _dgText = text);
+                          _saveVoskSrt(silent: true);
+                        }
+                      });
+                    } else {
+                      _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, t));
+                      _saveVoskSrt(silent: true);
+                    }
                   }
                 } else {
                   if (!_voskFinalOnly) _dgPartial = t;
