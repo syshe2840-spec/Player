@@ -502,9 +502,9 @@ class _PlayerState extends State<PlayerScreen>{
       client.connectionTimeout = const Duration(seconds: 15);
       final req = await client.postUrl(Uri.parse('https://player.lastofanarchy.workers.dev/translate-srt'));
       req.headers.set('Content-Type', 'application/json');
-      final escaped = text.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
       final langName = _langNames[targetLang] ?? targetLang;
-      req.write('{"lines":["$escaped"],"target_lang":"$langName"}');
+      final body2 = jsonEncode({'lines': [text], 'target_lang': langName});
+      req.write(body2);
       final res = await req.close();
       final body = await res.transform(const Utf8Decoder()).join();
       if (!_mounted) return text;
