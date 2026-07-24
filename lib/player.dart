@@ -503,8 +503,10 @@ class _PlayerState extends State<PlayerScreen>{
       final req = await client.postUrl(Uri.parse('https://player.lastofanarchy.workers.dev/translate-srt'));
       req.headers.set('Content-Type', 'application/json');
       final langName = _langNames[targetLang] ?? targetLang;
-      final body2 = jsonEncode({'lines': [text], 'target_lang': langName});
-      req.write(body2);
+      final bodyStr = jsonEncode({'lines': [text], 'target_lang': langName});
+      final bodyBytes = utf8.encode(bodyStr);
+      req.headers.set('Content-Length', bodyBytes.length.toString());
+      req.add(bodyBytes);
       final res = await req.close();
       final body = await res.transform(const Utf8Decoder()).join();
       if (!_mounted) return text;
