@@ -1,4 +1,4 @@
-// lib/browser.dart — مرورگر فایل حرفه‌ای (Glassmorphic UI)
+// lib/browser.dart — مرورگر فایل فوق‌پیشرفته و نئونی (Cyberpunk Glassmorphic UI)
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -18,51 +18,50 @@ import 'player.dart';
 import 'main.dart' show showSnack;
 import 'l10n.dart';
 
-// ── ثابت‌های تم مدرن شیشه‌ای (Cosmic Dark & Neon Glass) ──
-const kBg      = Color(0xFF07080C);
-const kSurface = Color(0xFF0F101A);
-const kCard    = Color(0x1AFFFFFF);
-const kBorder  = Color(0x26FFFFFF);
-const kAccent  = Color(0xFF7000FF);
-const kCyan    = Color(0xFF00F2FE);
-const kGreen   = Color(0xFF10B981);
-const kAmber   = Color(0xFFF59E0B);
-const kRed     = Color(0xFFEF4444);
-const kPink    = Color(0xFFEC4899);
-const kTextSec = Color(0xFF94A3B8);
-const kTextDim = Color(0xFF64748B);
+// ── ثابت‌های تم فوق مدرن و نئونی (Cyberpunk Futuristic Theme) ──
+const kBg          = Color(0xFF030508); // مشکی عمیق فضایی
+const kSurface     = Color(0xFF0B0D14); // تیره شفاف
+const kAccent      = Color(0xFF8B5CF6); // بنفش نئونی پلاسما
+const kCyan        = Color(0xFF06B6D4); // فیروزه‌ای لیزری
+const kGreen       = Color(0xFF10B981); // سبز زئوس
+const kAmber       = Color(0xFFF59E0B); // طلایی درخشان
+const kRed         = Color(0xFFF43F5E); // قرمز نئونی
+const kPink        = Color(0xFFEC4899); // صورتی سایبر
+const kTextSec     = Color(0xFF94A3B8);
+const kTextDim     = Color(0xFF64748B);
 
 enum _SortBy { name, date, size, type }
 
 LinearGradient _extGrad(String ext) {
   switch (ext) {
-    case 'mp4': return const LinearGradient(colors: [Color(0xFF7000FF), Color(0xFF4F46E5)]);
-    case 'mkv': return const LinearGradient(colors: [Color(0xFF00F2FE), Color(0xFF0284C7)]);
+    case 'mp4': return const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)]);
+    case 'mkv': return const LinearGradient(colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)]);
     case 'avi': return const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]);
-    case 'mov': return const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFFBE185D)]);
+    case 'mov': return const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFFF43F5E)]);
     case 'webm':return const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFD97706)]);
-    case 'flv': return const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]);
+    case 'flv': return const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFB91C1C)]);
     default:    return const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4338CA)]);
   }
 }
 
 Widget _badge(String text, Color color) => Container(
-  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
   decoration: BoxDecoration(
-    color: color.withOpacity(0.15),
-    borderRadius: BorderRadius.circular(6),
-    border: Border.all(color: color.withOpacity(0.4), width: 0.8),
+    color: color.withOpacity(0.18),
+    borderRadius: BorderRadius.circular(8),
+    border: Border.all(color: color.withOpacity(0.5), width: 1),
+    boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 4)],
   ),
-  child: Text(text, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold, height: 1.2)),
+  child: Text(text, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
 );
 
-// ── کش thumbnail با MethodChannel → MediaMetadataRetriever ──
+// ── کش thumbnail با MethodChannel ──
 final Map<String, Uint8List?> _thumbCache = {};
 const _thumbChannel = MethodChannel('ir.subteam.subtitle_player/thumbnail');
 Future<Uint8List?> _loadThumb(String path) async {
   if (_thumbCache.containsKey(path)) return _thumbCache[path];
   try {
-    final data = await _thumbChannel.invokeMethod<Uint8List>('getThumbnail', {'path': path, 'timeMs': 2000, 'width': 160, 'height': 90});
+    final data = await _thumbChannel.invokeMethod<Uint8List>('getThumbnail', {'path': path, 'timeMs': 2000, 'width': 180, 'height': 100});
     return _thumbCache[path] = data;
   } catch (_) {
     return _thumbCache[path] = null;
@@ -210,7 +209,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
   void _showVideoMenu(File f) {
     showModalBottomSheet(
       context: context, backgroundColor: kSurface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => VideoMenu(
         file: f,
         onDone: () async { Navigator.pop(ctx); await Store.load(); _loadDir(_path); },
@@ -248,7 +247,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
     return showDialog<String>(context: context, builder: (ctx) => AlertDialog(
       title: Text(title),
       content: Column(mainAxisSize: MainAxisSize.min, children: all.map((folder) => ListTile(
-        leading: const Icon(Icons.folder, color: kAmber), title: Text(p.basename(folder)),
+        leading: const Icon(Icons.folder_special_rounded, color: kAmber), title: Text(p.basename(folder)),
         onTap: () => Navigator.pop(ctx, folder),
       )).toList()),
     ));
@@ -408,9 +407,9 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
         appBar: _selectMode ? _selectBar() : _normalBar(isSaved),
         body: Stack(
           children: [
-            // ۱. هاله‌های نورانی کیهانی پس‌زمینه
-            _buildAuroraGlow(),
-            // ۲. بدنه‌ی اصلی
+            // ۱. هاله‌های نورانی فوق مدرن پس‌زمینه
+            _buildCyberGlow(),
+            // ۲. لیست محتوا
             _buildBody(),
           ],
         ),
@@ -420,32 +419,28 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAuroraGlow() {
+  Widget _buildCyberGlow() {
     return Stack(
       children: [
         Positioned(
-          top: -100,
-          right: -50,
+          top: -120, right: -60,
           child: Container(
-            width: 250,
-            height: 250,
+            width: 300, height: 300,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: kAccent.withOpacity(0.25),
-              boxShadow: [BoxShadow(color: kAccent.withOpacity(0.3), blurRadius: 120, spreadRadius: 30)],
+              color: kAccent.withOpacity(0.22),
+              boxShadow: [BoxShadow(color: kAccent.withOpacity(0.35), blurRadius: 140, spreadRadius: 40)],
             ),
           ),
         ),
         Positioned(
-          bottom: 120,
-          left: -80,
+          bottom: 100, left: -90,
           child: Container(
-            width: 240,
-            height: 240,
+            width: 280, height: 280,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: kCyan.withOpacity(0.15),
-              boxShadow: [BoxShadow(color: kCyan.withOpacity(0.2), blurRadius: 110, spreadRadius: 20)],
+              color: kCyan.withOpacity(0.18),
+              boxShadow: [BoxShadow(color: kCyan.withOpacity(0.25), blurRadius: 130, spreadRadius: 30)],
             ),
           ),
         ),
@@ -454,22 +449,25 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildFABs() => ClipRRect(
-    borderRadius: BorderRadius.circular(28),
+    borderRadius: BorderRadius.circular(36),
     child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: kSurface.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(28),
+          color: Colors.black.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(36),
           border: Border.all(color: Colors.white.withOpacity(0.15)),
+          boxShadow: [
+            BoxShadow(color: kAccent.withOpacity(0.25), blurRadius: 20, spreadRadius: 1),
+          ],
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          _fabBtn(Icons.history_rounded, L.history, kTextSec, () => _openPanel(0)),
-          const SizedBox(width: 4), _fabBtn(Icons.bookmark_rounded, L.bookmarks, kAmber, () => _openPanel(1)),
-          const SizedBox(width: 4), _fabBtn(Icons.favorite_rounded, L.favorites, kPink, () => _openPanel(2)),
-          const SizedBox(width: 4), _fabBtn(Icons.push_pin_rounded, L.folders, kGreen, () => _openPanel(3)),
-          const SizedBox(width: 4), _fabBtn(Icons.tune_rounded, L.settings, kTextSec, () => _openPanel(4)),
+          _fabBtn(Icons.history_toggle_off_rounded, L.history, kCyan, () => _openPanel(0)),
+          const SizedBox(width: 6), _fabBtn(Icons.bookmark_border_rounded, L.bookmarks, kAmber, () => _openPanel(1)),
+          const SizedBox(width: 6), _fabBtn(Icons.favorite_border_rounded, L.favorites, kPink, () => _openPanel(2)),
+          const SizedBox(width: 6), _fabBtn(Icons.folder_special_outlined, L.folders, kGreen, () => _openPanel(3)),
+          const SizedBox(width: 6), _fabBtn(Icons.space_dashboard_rounded, L.settings, kAccent, () => _openPanel(4)),
         ]),
       ),
     ),
@@ -477,15 +475,26 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
 
   Widget _fabBtn(IconData icon, String tip, Color color, VoidCallback fn) => Tooltip(
     message: tip,
-    child: InkWell(onTap: fn, borderRadius: BorderRadius.circular(20),
-        child: Padding(padding: const EdgeInsets.all(10), child: Icon(icon, size: 22, color: color))),
+    child: InkWell(
+      onTap: fn,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          shape: BoxShape.circle,
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Icon(icon, size: 20, color: color),
+      ),
+    ),
   );
 
   PreferredSizeWidget _normalBar(bool isSaved) => AppBar(
-    backgroundColor: kBg.withOpacity(0.8),
+    backgroundColor: kBg.withOpacity(0.7),
     elevation: 0,
     automaticallyImplyLeading: false,
-    leading: _path != root ? IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18), onPressed: _goUp) : null,
+    leading: _path != root ? IconButton(icon: const Icon(Icons.arrow_back_rounded, size: 22, color: Colors.white), onPressed: _goUp) : null,
     title: _searching
         ? Row(children: [
             Expanded(child: TextField(controller: _searchCtrl, autofocus: true,
@@ -498,7 +507,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
           ])
         : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Text(_path == root ? L.internalStorage : p.basename(_path), overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.3)),
             if (_path != root) Text(p.dirname(_path), overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 10, color: kTextDim, height: 1.2)),
           ]),
@@ -512,28 +521,29 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
           },
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: _globalSearch ? kAccent : Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(16),
+              gradient: _globalSearch ? const LinearGradient(colors: [kAccent, kPink]) : null,
+              color: _globalSearch ? null : Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _globalSearch ? kAccent : Colors.white.withOpacity(0.15)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.public_rounded, size: 13, color: _globalSearch ? Colors.white : kTextSec),
+              Icon(Icons.radar_rounded, size: 14, color: _globalSearch ? Colors.white : kTextSec),
               const SizedBox(width: 4),
-              Text(L.searchAll, style: TextStyle(fontSize: 11, color: _globalSearch ? Colors.white : kTextSec, fontWeight: FontWeight.w600)),
+              Text(L.searchAll, style: TextStyle(fontSize: 11, color: _globalSearch ? Colors.white : kTextSec, fontWeight: FontWeight.bold)),
             ]),
           ),
         ),
       ],
-      IconButton(icon: Icon(_searching ? Icons.close_rounded : Icons.search_rounded, size: 20),
+      IconButton(icon: Icon(_searching ? Icons.close_rounded : Icons.search_rounded, size: 22, color: Colors.white),
           onPressed: () { setState(() { _searching = !_searching; if (!_searching) { _searchQuery = ''; _searchCtrl.clear(); _searchResults = []; _globalSearch = false; } }); }),
       if (!_searching) IconButton(
-        icon: const Icon(Icons.wifi_tethering_rounded, size: 20),
+        icon: const Icon(Icons.stream_rounded, size: 22, color: kCyan),
         tooltip: L.onlineVideo,
         onPressed: () => showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => const OnlinePlayerSheet())),
       if (!_searching) IconButton(
-        icon: const Icon(Icons.live_tv_rounded, size: 20, color: Color(0xFF22c55e)),
+        icon: const Icon(Icons.live_tv_rounded, size: 22, color: kGreen),
         tooltip: 'IPTV',
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IptvScreen()))),
       if (!_searching) ...[
@@ -542,7 +552,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
           onPressed: () async { await Store.toggleSavedFolder(_path); setState(() {}); },
         ),
         PopupMenuButton<String>(
-          icon: const Icon(Icons.storage_rounded, size: 20),
+          icon: const Icon(Icons.folder_copy_rounded, size: 20, color: Colors.white70),
           tooltip: L.selectStorage,
           itemBuilder: (_) {
             final items = <PopupMenuEntry<String>>[
@@ -568,7 +578,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
           },
         ),
         PopupMenuButton<_SortBy>(
-          icon: const Icon(Icons.sort_rounded, size: 20),
+          icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.white70),
           onSelected: (v) => setState(() { if (_sortBy == v) _sortDesc = !_sortDesc; else { _sortBy = v; _sortDesc = false; } }),
           itemBuilder: (_) => [
             _pmSort(_SortBy.name, L.sortName, Icons.sort_by_alpha_rounded),
@@ -589,12 +599,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
 
   PreferredSizeWidget _selectBar() => AppBar(
     automaticallyImplyLeading: false,
-    backgroundColor: kAccent.withOpacity(0.2),
+    backgroundColor: kAccent.withOpacity(0.3),
     leading: IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => setState(() { _selectMode = false; _selected.clear(); })),
-    title: Text('${_selected.length} ${L.select}', style: const TextStyle(fontSize: 15)),
+    title: Text('${_selected.length} ${L.select}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
     actions: [
       if (_selected.isNotEmpty) IconButton(
-        icon: const Icon(Icons.play_circle_rounded, color: kCyan, size: 26),
+        icon: const Icon(Icons.play_circle_fill_rounded, color: kCyan, size: 28),
         tooltip: L.play,
         onPressed: () {
           final sorted = _filteredVideos.where((v) => _selected.contains(v.path)).toList();
@@ -607,7 +617,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
         }),
       TextButton.icon(icon: const Icon(Icons.select_all_rounded, size: 18), label: Text(L.allItems, style: TextStyle(fontSize: 13)),
           onPressed: () => setState(() => _selected.addAll(_filteredVideos.map((v) => v.path)))),
-      IconButton(icon: const Icon(Icons.delete_outline_rounded, color: kRed, size: 22),
+      IconButton(icon: const Icon(Icons.delete_forever_rounded, color: kRed, size: 24),
           onPressed: _selected.isEmpty ? null : () => _confirmDelete(_selected.map((s) => File(s)).toList())),
     ],
   );
@@ -615,8 +625,8 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
   Widget _buildBody() {
     if (_checking) return const Center(child: CircularProgressIndicator(color: kAccent));
     if (!_granted) return Center(child: Padding(padding: const EdgeInsets.all(32), child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: kBorder)),
-          child: const Icon(Icons.folder_off_rounded, size: 48, color: kTextSec)),
+      Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
+          child: const Icon(Icons.folder_off_rounded, size: 54, color: kTextSec)),
       const SizedBox(height: 20),
       Text(L.permissionNeeded, textAlign: TextAlign.center, style: TextStyle(color: kTextSec)),
       const SizedBox(height: 20),
@@ -625,10 +635,10 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
     ])));
 
     return Column(children: [
-      Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), color: Colors.white.withOpacity(0.03),
+      Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), color: Colors.white.withOpacity(0.02),
           child: Row(children: [
-            Icon(Icons.folder_open_rounded, size: 14, color: kCyan), const SizedBox(width: 8),
-            Expanded(child: Text(_path, style: const TextStyle(fontSize: 11, color: kTextSec), overflow: TextOverflow.ellipsis)),
+            Icon(Icons.explore_rounded, size: 14, color: kCyan), const SizedBox(width: 8),
+            Expanded(child: Text(_path, style: const TextStyle(fontSize: 11, color: kTextSec, letterSpacing: 0.3), overflow: TextOverflow.ellipsis)),
             if (_searchRunning) const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: kAccent)),
             if (_globalSearch && !_searchRunning && _searchResults.isNotEmpty)
               Text('${_searchResults.length}', style: const TextStyle(fontSize: 11, color: kCyan, fontWeight: FontWeight.bold)),
@@ -644,7 +654,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
       const CircularProgressIndicator(color: kAccent), const SizedBox(height: 16), Text(L.searchingGlobal, style: TextStyle(color: kTextSec)),
     ]));
     if (total == 0) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.video_library_outlined, size: 48, color: kTextDim), const SizedBox(height: 12),
+      Icon(Icons.video_library_outlined, size: 54, color: kTextDim), const SizedBox(height: 12),
       Text(L.noFilesFound, style: TextStyle(color: kTextSec)),
     ]));
 
@@ -653,8 +663,8 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
       color: kAccent,
       backgroundColor: kSurface,
       child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom + 90, top: 12, left: 16, right: 16),
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom + 95, top: 12, left: 16, right: 16),
         itemCount: total,
         itemBuilder: (ctx, i) {
           if (i < fDirs.length) {
@@ -681,18 +691,19 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
       enableDrag: false,
       builder: (ctx) => DraggableScrollableSheet(
         controller: ctrl,
-        initialChildSize: 0.55,
+        initialChildSize: 0.58,
         minChildSize: 0.35,
         maxChildSize: 0.97,
         expand: false,
         snap: true,
-        snapSizes: const [0.35, 0.55, 0.97],
+        snapSizes: const [0.35, 0.58, 0.97],
         shouldCloseOnMinExtent: false,
         builder: (bctx, sc) => Container(
           decoration: BoxDecoration(
-            color: kSurface.withOpacity(0.95),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: kSurface.withOpacity(0.96),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border.all(color: Colors.white.withOpacity(0.12)),
+            boxShadow: [BoxShadow(color: kAccent.withOpacity(0.2), blurRadius: 30, spreadRadius: 5)],
           ),
           child: Column(children: [
             GestureDetector(
@@ -705,12 +716,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
               },
               onVerticalDragEnd: (d) async {
                 final cur = ctrl.size;
-                final target = cur > 0.76 ? 0.97 : cur > 0.45 ? 0.55 : 0.35;
+                final target = cur > 0.76 ? 0.97 : cur > 0.45 ? 0.58 : 0.35;
                 await ctrl.animateTo(target, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
                 if (target <= 0.35 && ctx.mounted) Navigator.pop(ctx);
               },
-              child: SizedBox(height: 22, child: Center(child: Container(
-                width: 40, height: 4,
+              child: SizedBox(height: 24, child: Center(child: Container(
+                width: 44, height: 4,
                 decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(2)))))),
             Expanded(child: BottomPanel(initialPage: page, noHandle: true,
               onVideoTap: (path) { Navigator.pop(ctx); _openVideoByPath(path); },
@@ -720,7 +731,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
   }
 }
 
-// ── تایل پوشه (Glassmorphic) ──
+// ── تایل پوشه بازطراحی شده (Futuristic Directory Card) ──
 class _DirTile extends StatelessWidget {
   final Directory dir; final VoidCallback onTap;
   const _DirTile({required this.dir, required this.onTap});
@@ -728,47 +739,52 @@ class _DirTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: GestureDetector(
             onTap: onTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(16),
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF7000FF).withOpacity(0.3),
-                          const Color(0xFF8A2BE2).withOpacity(0.1),
+                          const Color(0xFF8B5CF6).withOpacity(0.35),
+                          const Color(0xFF06B6D4).withOpacity(0.15),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF7000FF).withOpacity(0.4)),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.5)),
+                      boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.2), blurRadius: 10)],
                     ),
-                    child: const Icon(Icons.folder_rounded, color: Color(0xFFB066FF), size: 22),
+                    child: const Icon(Icons.folder_special_rounded, color: Color(0xFFA78BFA), size: 24),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       p.basename(dir.path),
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.white),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white, letterSpacing: 0.2),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Icon(Icons.chevron_left_rounded, color: Colors.white.withOpacity(0.3), size: 20),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
+                    child: Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withOpacity(0.4), size: 14),
+                  ),
                 ],
               ),
             ),
@@ -779,7 +795,7 @@ class _DirTile extends StatelessWidget {
   }
 }
 
-// ── تایل ویدیو با thumbnail (Glassmorphic) ──
+// ── تایل ویدیو سه‌بعدی و سایبرپانک (Cyberpunk Video Tile) ──
 class _VideoTile extends StatelessWidget {
   final File file;
   final bool selectMode, selected, showPath;
@@ -808,47 +824,51 @@ class _VideoTile extends StatelessWidget {
     final dur = Store.getCachedDur(file.path);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: GestureDetector(
             onTap: onTap,
             onLongPress: onLongPress,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-                color: selected ? kAccent.withOpacity(0.2) : Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(16),
+                color: selected ? kAccent.withOpacity(0.25) : Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: selected ? kAccent : Colors.white.withOpacity(0.08),
+                  width: selected ? 1.5 : 1,
                 ),
+                boxShadow: selected ? [BoxShadow(color: kAccent.withOpacity(0.3), blurRadius: 12)] : null,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
+                    // ── پوستر ویدیو ──
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(14),
                       child: selectMode
                           ? AnimatedContainer(
                               duration: const Duration(milliseconds: 150),
-                              width: 48,
-                              height: 48,
+                              width: 52,
+                              height: 52,
                               decoration: BoxDecoration(
-                                color: selected ? kAccent : kBorder,
-                                borderRadius: BorderRadius.circular(10),
+                                color: selected ? kAccent : kSurface,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: selected ? kAccent : Colors.white24),
                               ),
                               child: Icon(
-                                selected ? Icons.check_rounded : Icons.circle_outlined,
+                                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
                                 color: Colors.white,
-                                size: 20,
+                                size: 24,
                               ),
                             )
                           : SizedBox(
-                              width: 64,
-                              height: 48,
+                              width: 72,
+                              height: 52,
                               child: FutureBuilder<Uint8List?>(
                                 future: _loadThumb(file.path),
                                 builder: (ctx, snap) {
@@ -859,9 +879,9 @@ class _VideoTile extends StatelessWidget {
                                         Image.memory(snap.data!, fit: BoxFit.cover),
                                         if (seen)
                                           Container(
-                                            color: kGreen.withOpacity(0.3),
+                                            color: Colors.black.withOpacity(0.4),
                                             alignment: Alignment.center,
-                                            child: const Icon(Icons.check_circle_rounded, color: kGreen, size: 20),
+                                            child: const Icon(Icons.check_circle_rounded, color: kGreen, size: 24),
                                           ),
                                       ],
                                     );
@@ -870,17 +890,18 @@ class _VideoTile extends StatelessWidget {
                                     decoration: BoxDecoration(gradient: grad),
                                     alignment: Alignment.center,
                                     child: snap.connectionState == ConnectionState.waiting
-                                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white38))
+                                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white54))
                                         : Text(
                                             ext.length > 3 ? ext.substring(0, 3).toUpperCase() : ext.toUpperCase(),
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
                                           ),
                                   );
                                 },
                               ),
                             ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
+                    // ── اطلاعات ویدیو ──
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -889,7 +910,7 @@ class _VideoTile extends StatelessWidget {
                             name,
                             style: TextStyle(
                               fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                               color: seen ? kGreen : Colors.white,
                               height: 1.3,
                             ),
@@ -903,15 +924,15 @@ class _VideoTile extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                          const SizedBox(height: 5),
+                          const SizedBox(height: 6),
                           Row(
                             children: [
-                              Text(sizeStr(file), style: const TextStyle(fontSize: 11, color: kTextDim)),
+                              Text(sizeStr(file), style: const TextStyle(fontSize: 11, color: kTextDim, fontWeight: FontWeight.w500)),
                               if (dur != null && dur > 0) ...[
-                                const Text(' · ', style: TextStyle(fontSize: 11, color: kTextDim)),
-                                Text(fmt(Duration(seconds: dur)), style: const TextStyle(fontSize: 11, color: kTextDim)),
+                                const Text(' • ', style: TextStyle(fontSize: 11, color: kTextDim)),
+                                Text(fmt(Duration(seconds: dur)), style: const TextStyle(fontSize: 11, color: kTextDim, fontWeight: FontWeight.w500)),
                               ],
-                              if (hasSub) ...[const SizedBox(width: 5), _badge('SUB', kGreen)],
+                              if (hasSub) ...[const SizedBox(width: 6), _badge('SUB', kGreen)],
                               if (bkm) ...[const SizedBox(width: 4), _badge('★', kAmber)],
                               if (fav) ...[const SizedBox(width: 4), _badge('❤', kPink)],
                               if (hasNote) ...[const SizedBox(width: 4), _badge('📝', kTextSec)],
@@ -921,16 +942,20 @@ class _VideoTile extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // ── دکمه پخش نئونی ──
                     if (!selectMode)
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: seen ? kGreen.withOpacity(0.15) : kAccent.withOpacity(0.2),
                           shape: BoxShape.circle,
-                          border: Border.all(color: seen ? kGreen.withOpacity(0.4) : kAccent.withOpacity(0.5)),
+                          border: Border.all(color: seen ? kGreen.withOpacity(0.5) : kAccent.withOpacity(0.6)),
+                          boxShadow: [
+                            BoxShadow(color: (seen ? kGreen : kAccent).withOpacity(0.25), blurRadius: 10),
+                          ],
                         ),
-                        child: Icon(Icons.play_arrow_rounded, color: seen ? kGreen : kCyan, size: 20),
+                        child: Icon(Icons.play_arrow_rounded, color: seen ? kGreen : kCyan, size: 24),
                       ),
                   ],
                 ),
@@ -956,15 +981,15 @@ class _VideoMenuState extends State<VideoMenu> {
   late bool _fav = Store.favorited.contains(widget.file.path);
   @override Widget build(BuildContext context) => SafeArea(top: false, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
     const SizedBox(height: 12),
-    Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
-    const SizedBox(height: 8),
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(children: [
-      Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: kBorder)),
-          child: const Icon(Icons.video_file_rounded, color: kCyan, size: 20)),
-      const SizedBox(width: 12),
-      Expanded(child: Text(p.basename(widget.file.path), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white), maxLines: 2)),
+    Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+    const SizedBox(height: 12),
+    Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [
+      Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white12)),
+          child: const Icon(Icons.video_file_rounded, color: kCyan, size: 22)),
+      const SizedBox(width: 14),
+      Expanded(child: Text(p.basename(widget.file.path), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white), maxLines: 2)),
     ])),
-    const SizedBox(height: 8), const Divider(height: 1, color: Colors.white12),
+    const SizedBox(height: 12), const Divider(height: 1, color: Colors.white12),
     _mi(Icons.info_outline_rounded, kTextSec, L.fileInfo, widget.onInfo),
     _mi2(Icons.bookmark_rounded, _bkm ? kAmber : kTextSec, _bkm ? L.removeBookmark : L.addBookmark, () async { await Store.toggleBookmark(widget.file.path); setState(() => _bkm = !_bkm); widget.onDone(); }),
     _mi2(Icons.favorite_rounded, _fav ? kPink : kTextSec, _fav ? L.removeFavorite : L.favorites, () async { await Store.toggleFavorite(widget.file.path); setState(() => _fav = !_fav); widget.onDone(); }),
@@ -995,16 +1020,16 @@ class _VideoMenuState extends State<VideoMenu> {
     _mi(Icons.edit_rounded, kTextSec, L.rename_, widget.onRename),
     _mi(Icons.select_all_rounded, kTextSec, L.selectGroup, widget.onSelect),
     _mi(Icons.delete_outline_rounded, kRed, L.delete, widget.onDelete),
-    const SizedBox(height: 8),
+    const SizedBox(height: 12),
   ])));
   Widget _mi(IconData icon, Color iconColor, String title, VoidCallback onTap) => ListTile(dense: true,
-    leading: Container(width: 30, height: 30, decoration: BoxDecoration(color: iconColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-        child: Icon(icon, color: iconColor, size: 16)),
-    title: Text(title, style: const TextStyle(fontSize: 13, color: Colors.white)), onTap: onTap);
+    leading: Container(width: 32, height: 32, decoration: BoxDecoration(color: iconColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: iconColor, size: 18)),
+    title: Text(title, style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w500)), onTap: onTap);
   Widget _mi2(IconData icon, Color iconColor, String title, VoidCallback onTap) => _mi(icon, iconColor, title, onTap);
 }
 
-// ── پانل شناور (Glassmorphic Drawer) ──
+// ── پانل کشویی شیشه‌ای ──
 class BottomPanel extends StatefulWidget {
   final int initialPage;
   final ValueChanged<String> onVideoTap, onFolderTap;
@@ -1021,14 +1046,14 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if (!widget.noHandle) ...[const SizedBox(height: 10), Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))), const SizedBox(height: 4)],
     TabBar(controller: _tab, isScrollable: true, indicatorColor: kCyan, labelColor: kCyan, unselectedLabelColor: kTextSec,
         labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), unselectedLabelStyle: const TextStyle(fontSize: 12),
-        tabs: [Tab(icon: Icon(Icons.history_rounded, size: 16), text: L.history),
-          Tab(icon: Icon(Icons.bookmark_rounded, size: 16), text: L.bookmarks),
-          Tab(icon: Icon(Icons.favorite_rounded, size: 16), text: L.favorites),
-          Tab(icon: Icon(Icons.push_pin_rounded, size: 16), text: L.folders),
-          Tab(icon: Icon(Icons.queue_music_rounded, size: 16), text: L.playlist),
-          Tab(icon: Icon(Icons.star_rounded, size: 16), text: L.sponsors),
-          Tab(icon: Icon(Icons.build_rounded, size: 16), text: L.tools),
-          Tab(icon: Icon(Icons.settings_rounded, size: 16), text: L.app)]),
+        tabs: [Tab(icon: Icon(Icons.history_rounded, size: 18), text: L.history),
+          Tab(icon: Icon(Icons.bookmark_rounded, size: 18), text: L.bookmarks),
+          Tab(icon: Icon(Icons.favorite_rounded, size: 18), text: L.favorites),
+          Tab(icon: Icon(Icons.folder_special_rounded, size: 18), text: L.folders),
+          Tab(icon: Icon(Icons.queue_music_rounded, size: 18), text: L.playlist),
+          Tab(icon: Icon(Icons.star_rounded, size: 18), text: L.sponsors),
+          Tab(icon: Icon(Icons.build_rounded, size: 18), text: L.tools),
+          Tab(icon: Icon(Icons.settings_rounded, size: 18), text: L.app)]),
     Expanded(child: TabBarView(controller: _tab, children: [
       _histTab(),
       _vList(Store.bookmarked.toList().reversed.toList(), Icons.bookmark_rounded, kAmber,
@@ -1042,10 +1067,10 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
   Widget _histTab() => Column(children: [
     if (Store.watchHistory.isNotEmpty) Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(children: [
-        Expanded(child: Text(L.recentViews, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white))),
-        TextButton.icon(icon: const Icon(Icons.delete_sweep_rounded, size: 15, color: kRed), label: Text(L.deleteAll, style: TextStyle(fontSize: 12, color: kRed)),
+        Expanded(child: Text(L.recentViews, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white))),
+        TextButton.icon(icon: const Icon(Icons.delete_sweep_rounded, size: 16, color: kRed), label: Text(L.deleteAll, style: const TextStyle(fontSize: 12, color: kRed)),
             onPressed: () async { final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
               title: Text(L.deleteAllHistory),
               actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(L.cancel)),
@@ -1058,8 +1083,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
   Widget _vList(List<String> paths, IconData icon, Color color, {Function(String)? onLongPress, void Function(String)? onRemove}) {
     if (paths.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: kBorder)),
-          child: Icon(icon, size: 32, color: color.withOpacity(0.4))),
+      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
+          child: Icon(icon, size: 36, color: color.withOpacity(0.5))),
       const SizedBox(height: 12), Text(L.nothingYet, style: TextStyle(color: kTextSec)),
     ]));
     return ListView.builder(itemCount: paths.length, padding: const EdgeInsets.only(bottom: 8), itemBuilder: (_, i) {
@@ -1069,13 +1094,13 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       final displayName = isUrl ? Uri.parse(path).pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => path) : p.basename(path);
       final displaySub = isUrl ? path : p.dirname(path);
       return ListTile(dense: true,
-        leading: Container(width: 30, height: 30, decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-            child: Icon(isUrl ? Icons.link_rounded : icon, color: exists ? color : kTextDim, size: 15)),
+        leading: Container(width: 32, height: 32, decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+            child: Icon(isUrl ? Icons.link_rounded : icon, color: exists ? color : kTextDim, size: 16)),
         title: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 13, color: exists ? Colors.white : kTextDim)),
+            style: TextStyle(fontSize: 13, color: exists ? Colors.white : kTextDim, fontWeight: FontWeight.w500)),
         subtitle: Text(displaySub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: kTextDim)),
         trailing: onRemove != null ? IconButton(
-          icon: const Icon(Icons.close, size: 14, color: kRed),
+          icon: const Icon(Icons.close, size: 16, color: kRed),
           onPressed: () => onRemove(path)) : null,
         onTap: exists ? () {
           if (isUrl) widget.onVideoTap(path);
@@ -1093,19 +1118,19 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
   Widget _folderList() {
     final folders = Store.savedFolders;
     if (folders.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: kBorder)),
-          child: const Icon(Icons.push_pin_outlined, size: 32, color: kTextDim)),
+      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
+          child: const Icon(Icons.folder_special_outlined, size: 36, color: kTextDim)),
       const SizedBox(height: 12), Text(L.noSavedFolders, style: TextStyle(color: kTextSec)),
       const SizedBox(height: 6), Text(L.pinFolderHint, style: TextStyle(fontSize: 11, color: kTextDim)),
     ]));
     return ListView.builder(itemCount: folders.length, itemBuilder: (_, i) {
       final folder = folders[i]; final exists = Directory(folder).existsSync();
       return ListTile(dense: true,
-        leading: Container(width: 30, height: 30, decoration: BoxDecoration(color: kAmber.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.folder_rounded, color: exists ? kAmber : kTextDim, size: 15)),
-        title: Text(p.basename(folder), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white)),
+        leading: Container(width: 32, height: 32, decoration: BoxDecoration(color: kAmber.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.folder_special_rounded, color: exists ? kAmber : kTextDim, size: 16)),
+        title: Text(p.basename(folder), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w500)),
         subtitle: Text(folder, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: kTextDim)),
-        trailing: IconButton(icon: const Icon(Icons.push_pin_rounded, size: 14, color: kRed),
+        trailing: IconButton(icon: const Icon(Icons.push_pin_rounded, size: 16, color: kRed),
             onPressed: () async { await Store.toggleSavedFolder(folder); setState(() {}); }),
         onTap: exists ? () => widget.onFolderTap(folder) : null);
     });
@@ -1114,12 +1139,12 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
   Widget _playlistTab() {
     final playlists = Store.playlists;
     return Column(children: [
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(children: [
-          Expanded(child: Text(L.playlist, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white))),
+          Expanded(child: Text(L.playlist, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white))),
           FilledButton.icon(
-            style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10), minimumSize: const Size(0, 32)),
-            icon: const Icon(Icons.add_rounded, size: 16), label: Text(L.newItem, style: TextStyle(fontSize: 12)),
+            style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12), minimumSize: const Size(0, 32)),
+            icon: const Icon(Icons.add_rounded, size: 16), label: Text(L.newItem, style: const TextStyle(fontSize: 12)),
             onPressed: () async {
               final ctrl = TextEditingController();
               final name = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
@@ -1134,8 +1159,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         ])),
       const Divider(height: 1, color: Colors.white12),
       if (playlists.isEmpty) Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: kBorder)),
-            child: const Icon(Icons.queue_music_rounded, size: 32, color: kTextDim)),
+        Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
+            child: const Icon(Icons.queue_music_rounded, size: 36, color: kTextDim)),
         const SizedBox(height: 12), Text(L.noPlaylists, style: TextStyle(color: kTextSec)),
         const SizedBox(height: 4), Text(L.createPlaylist, style: TextStyle(fontSize: 11, color: kTextDim)),
       ])))
@@ -1143,16 +1168,16 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         final name = playlists.keys.elementAt(i);
         final paths = playlists[name]!;
         return ListTile(dense: true,
-          leading: Container(width: 32, height: 32, decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [kAccent, kCyan]), borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.queue_music_rounded, size: 16, color: Colors.white)),
-          title: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white)),
+          leading: Container(width: 34, height: 34, decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [kAccent, kCyan]), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.queue_music_rounded, size: 18, color: Colors.white)),
+          title: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
           subtitle: Text('${paths.length}', style: const TextStyle(fontSize: 11, color: kTextDim)),
           trailing: PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded, size: 18, color: kTextSec),
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'play', child: Text(L.play, style: TextStyle(fontSize: 13))),
-              PopupMenuItem(value: 'delete', child: Text(L.delete, style: TextStyle(fontSize: 13, color: kRed))),
+              PopupMenuItem(value: 'play', child: Text(L.play, style: const TextStyle(fontSize: 13))),
+              PopupMenuItem(value: 'delete', child: Text(L.delete, style: const TextStyle(fontSize: 13, color: kRed))),
             ],
             onSelected: (v) async {
               if (v == 'delete') {
@@ -1193,9 +1218,9 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           return const Center(child: CircularProgressIndicator(color: kAccent));
         final list = snap.data ?? [];
         if (list.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: kBorder)),
-            child: const Icon(Icons.star_rounded, size: 32, color: kTextDim)),
+          Container(padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
+            child: const Icon(Icons.star_rounded, size: 36, color: kTextDim)),
           const SizedBox(height: 12),
           Text(L.noSponsors, style: TextStyle(color: kTextSec)),
         ]));
@@ -1206,14 +1231,14 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
             final s = list[i];
             final isFemale = (s['gender'] ?? 'male') == 'female';
             return Card(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withOpacity(0.04),
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18),
+                side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1)),
               child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
                 Container(width: 56, height: 56,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: isFemale ? [const Color(0xFFEC4899), const Color(0xFFF43F5E)] : [const Color(0xFF7000FF), const Color(0xFF00F2FE)]),
+                    gradient: LinearGradient(colors: isFemale ? [const Color(0xFFEC4899), const Color(0xFFF43F5E)] : [const Color(0xFF8B5CF6), const Color(0xFF06B6D4)]),
                     borderRadius: BorderRadius.circular(28)),
                   child: (s['avatar_url'] ?? '').isNotEmpty
                     ? ClipRRect(borderRadius: BorderRadius.circular(28), child: Image.network(s['avatar_url'], width: 56, height: 56, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(isFemale ? Icons.face_3_rounded : Icons.face_rounded, color: Colors.white, size: 28)))
@@ -1229,10 +1254,10 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                   const SizedBox(width: 8),
                   FilledButton(
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       minimumSize: const Size(0, 36)),
                     onPressed: () => ul.launchUrl(Uri.parse(s['link']), mode: ul.LaunchMode.externalApplication),
-                    child: Text(L.view, style: TextStyle(fontSize: 12))),
+                    child: Text(L.view, style: const TextStyle(fontSize: 12))),
                 ],
               ])),
             );
@@ -1251,22 +1276,22 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       final hasUpdate = remoteVer.isNotEmpty && ApiService.isNewer(remoteVer, ApiService.appVersion);
 
       return ListView(padding: const EdgeInsets.all(16), children: [
-        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [kAccent.withOpacity(0.2), kCyan.withOpacity(0.1)]),
-          borderRadius: BorderRadius.circular(16), border: Border.all(color: kAccent.withOpacity(0.3))),
+        Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [kAccent.withOpacity(0.25), kCyan.withOpacity(0.12)]),
+          borderRadius: BorderRadius.circular(20), border: Border.all(color: kAccent.withOpacity(0.4))),
           child: Row(children: [
-            Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: kAccent.withOpacity(0.3), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.play_circle_rounded, color: kCyan, size: 26)),
-            const SizedBox(width: 12),
+            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: kAccent.withOpacity(0.3), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.play_circle_fill_rounded, color: kCyan, size: 28)),
+            const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Vezoo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+              const Text('Vezoo Player', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, letterSpacing: 0.5)),
               Text('v${ApiService.appVersion}', style: const TextStyle(fontSize: 11, color: kTextSec)),
             ])),
             if (snap.connectionState == ConnectionState.waiting)
               const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: kAccent)),
           ])),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
         _appBtn(
           icon: hasUpdate ? Icons.system_update_rounded : Icons.check_circle_rounded,
@@ -1281,7 +1306,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         const SizedBox(height: 8),
 
         _appBtn(
-          icon: Icons.auto_awesome_rounded, color: const Color(0xFF7000FF),
+          icon: Icons.auto_awesome_rounded, color: kAccent,
           label: L.aiModels,
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiModelsScreen())),
         ),
@@ -1300,12 +1325,12 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           label: reportText,
           onTap: () => ul.launchUrl(Uri.parse(admin), mode: ul.LaunchMode.externalApplication)),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         const _LangPicker(),
         const SizedBox(height: 16),
-        Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(14), border: Border.all(color: kBorder)),
+        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white12)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(L.features, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)), const SizedBox(height: 8),
+              Text(L.features, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)), const SizedBox(height: 8),
               Text('• MP4/MKV/AVI/...\n• SRT/VTT/ASS/SSA\n• HDR\n• Dual Sub',
                   style: TextStyle(fontSize: 12, color: kTextSec, height: 1.7)),
             ])),
@@ -1316,15 +1341,15 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 Widget _appBtn({required IconData icon, required Color color, required String label, VoidCallback? onTap}) {
   return InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(16),
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: onTap != null ? color.withOpacity(0.4) : kBorder)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: onTap != null ? color.withOpacity(0.4) : Colors.white12)),
       child: Row(children: [
-        Icon(icon, color: onTap != null ? color : kTextDim, size: 20),
-        const SizedBox(width: 12),
-        Text(label, style: TextStyle(fontSize: 13, color: onTap != null ? Colors.white : kTextSec)),
+        Icon(icon, color: onTap != null ? color : kTextDim, size: 22),
+        const SizedBox(width: 14),
+        Text(label, style: TextStyle(fontSize: 13, color: onTap != null ? Colors.white : kTextSec, fontWeight: FontWeight.w500)),
         const Spacer(),
         if (onTap != null) Icon(Icons.arrow_forward_ios_rounded, size: 12, color: kTextDim),
       ]),
@@ -1342,22 +1367,22 @@ class _LangPickerState extends State<_LangPicker> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(L.language, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Text(L.language, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: kSupportedLangs.map((lang) =>
+        Wrap(spacing: 8, runSpacing: 8, children: kSupportedLangs.map((lang) =>
           GestureDetector(
             onTap: () async { await L.set(lang); if (mounted) setState(() {}); },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: L.current == lang ? const Color(0xFF7000FF) : Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
+                color: L.current == lang ? kAccent : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: L.current == lang ? const Color(0xFF7000FF) : Colors.white24)),
+                  color: L.current == lang ? kAccent : Colors.white24)),
               child: Text(kLangNames[lang]!,
                 style: TextStyle(
                   fontSize: 12,
-                  color: L.current == lang ? Colors.white : Colors.white60,
+                  color: L.current == lang ? Colors.white : Colors.white70,
                   fontWeight: L.current == lang ? FontWeight.bold : FontWeight.normal))),
         )).toList()),
       ]),
