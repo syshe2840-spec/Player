@@ -2625,7 +2625,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   Widget build(BuildContext ctx) => AlertDialog(
     backgroundColor: const Color(0xFF12121C),
     title: const Text('تنظیمات زیرنویس زنده', style: TextStyle(color: Colors.white, fontSize: 15)),
-    content: SizedBox(width: 300, child: Column(mainAxisSize: MainAxisSize.min, children: [
+    content: SizedBox(width: 300, height: 420, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
       // ── انتخاب موتور ──
       Row(children: [
         Expanded(child: GestureDetector(
