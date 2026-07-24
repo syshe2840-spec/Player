@@ -2849,7 +2849,7 @@ StatefulBuilder(builder: (_, ss2) {
           onChanged: (v) => setState(() => _translateTo = v!),
         ),
       ],
-    ])),
+    ]))),
     actions: [
       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لغو')),
       FilledButton(
