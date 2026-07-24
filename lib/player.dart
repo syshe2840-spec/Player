@@ -81,6 +81,8 @@ class _PlayerState extends State<PlayerScreen>{
   bool _voskTranslate = false;
   String _voskTranslateTo = 'fa';
   int _voskPollMs = 100;
+  bool _voskTranslateOnFinish = true;
+  Timer? _translateDebounceTimer;
 
   // زبان‌هایی که partial رو Latin برمیگردونن — فقط final نشون بده
 
@@ -536,6 +538,7 @@ class _PlayerState extends State<PlayerScreen>{
       final engine=result['engine'] as String? ?? 'vosk';
       _useAndroidStt = engine == 'android';
       _useVosk = engine == 'vosk';
+      _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       // درخواست permission میکروفون
       final micStatus = await permission_handler.Permission.microphone.request();
       if (!micStatus.isGranted) {
@@ -704,19 +707,36 @@ class _PlayerState extends State<PlayerScreen>{
                     _lastFinalTime = now;
 
                     if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
-                      // partial اصلی فوری نشون داده میشه (بدون تأخیر)
-                      // ترجمه final وقتی آماده شد جایگزین میشه
-                      _translateWithWorker(t, _voskTranslateTo).then((r) {
-                        final translated = (r.isNotEmpty && r != t) ? r : t;
-                        _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, translated));
-                        if (_mounted) {
-                          // فقط اگه متن جاری هنوز همون partial هست جایگزین کن
-                          setState(() => _dgText = translated);
-                          _saveVoskSrt(silent: true);
-                        }
-                      });
-                      // partial رو بدون تأخیر نشون بده
-                      if (_mounted) setState(() => _dgText = t);
+                      if (_voskTranslateOnFinish) {
+                        // حالت debounce: 400ms صبر کن، اگه سکوت بود ترجمه کن
+                        _translateDebounceTimer?.cancel();
+                        final capturedT = t;
+                        final capturedStart = startTime;
+                        final capturedEnd = endTime;
+                        _translateDebounceTimer = Timer(const Duration(milliseconds: 400), () {
+                          _translateWithWorker(capturedT, _voskTranslateTo).then((r) {
+                            final translated = (r.isNotEmpty && r != capturedT) ? r : capturedT;
+                            _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, capturedStart, capturedEnd, translated));
+                            if (_mounted) {
+                              setState(() => _dgText = translated);
+                              _saveVoskSrt(silent: true);
+                            }
+                          });
+                        });
+                        // متن اصلی فوری نشون بده
+                        if (_mounted) setState(() => _dgText = t);
+                      } else {
+                        // حالت همزمان: بلافاصله ترجمه کن
+                        _translateWithWorker(t, _voskTranslateTo).then((r) {
+                          final translated = (r.isNotEmpty && r != t) ? r : t;
+                          _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, translated));
+                          if (_mounted) {
+                            setState(() => _dgText = translated);
+                            _saveVoskSrt(silent: true);
+                          }
+                        });
+                        if (_mounted) setState(() => _dgText = t);
+                      }
                     } else {
                       _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, t));
                       _saveVoskSrt(silent: true);
@@ -1434,6 +1454,7 @@ class _PlayerState extends State<PlayerScreen>{
     for(final s in _subs)s.cancel();
     _voskPollTimer?.cancel(); _voskPollTimer = null;
     _androidSttPollTimer?.cancel(); _androidSttPollTimer = null;
+    _translateDebounceTimer?.cancel(); _translateDebounceTimer = null;
     _dgSub?.cancel();
     if(_dgActive){
       _dgActive = false;
@@ -2451,7 +2472,8 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _translateTo = 'fa';
   int _pollMs = 100;
   VoskModel? _selectedModel;
-  String _engine = 'vosk'; // vosk, android
+  String _engine = 'vosk';
+  bool _translateOnFinish = true; // vosk, android
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2727,6 +2749,21 @@ StatefulBuilder(builder: (_, ss2) {
         Switch(value: _translate, onChanged: (v) => setState(() => _translate = v),
           activeColor: const Color(0xFF7C3AED)),
       ]),
+      if (_translate) ...[
+        const SizedBox(height: 8),
+        Row(children: [
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('زمان ترجمه', style: TextStyle(color: Colors.white, fontSize: 13)),
+            Text('بعد از سکوت: کمتر چشمک', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ])),
+          Switch(value: _translateOnFinish,
+            onChanged: (v) => setState(() => _translateOnFinish = v),
+            activeColor: const Color(0xFF22c55e)),
+          const SizedBox(width: 4),
+          Text(_translateOnFinish ? 'بعد از سکوت' : 'همزمان',
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        ]),
+      ],
 
       if (_translate) ...[
         const SizedBox(height: 8),
@@ -2758,6 +2795,7 @@ StatefulBuilder(builder: (_, ss2) {
           'pollMs': _pollMs,
           'modelId': _selectedModel?.id,
           'engine': _engine,
+          'translateOnFinish': _translateOnFinish,
         }),
         child: const Text('شروع')),
     ],
