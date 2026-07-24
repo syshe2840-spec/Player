@@ -649,9 +649,11 @@ class _PlayerState extends State<PlayerScreen>{
               if (t.isNotEmpty) {
                 // اگه ترجمه فعاله partial با متن اصلی نشون بده (بدون تأخیر)
                 if (!fin && _voskFinalOnly && !_voskTranslate) return;
-                if (!fin && _voskTranslate) {
-                  // partial اصلی فقط اگه showOriginal فعاله
-                  if (_voskShowOriginal && t != _dgText && !_dgText.startsWith(t)) setState(() => _dgText = '$t...');
+                if (!fin) {
+                  // partial
+                  if (_voskFinalOnly) return;
+                  if (_voskTranslate && !_voskShowOriginal) return; // ترجمه mode: partial اصلی نشون نده
+                  if (!_voskTranslateOnFinish && t != _dgText) setState(() => _dgText = '$t...');
                   return;
                 }
                 final newText = fin ? t : '$t...';
@@ -740,8 +742,20 @@ class _PlayerState extends State<PlayerScreen>{
                         if (_mounted) setState(() => _dgText = t);
                       }
                     } else {
-                      _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, t));
-                      _saveVoskSrt(silent: true);
+                      // فقط اصلی — بدون ترجمه
+                      if (_voskTranslateOnFinish) {
+                        // بعد از پایان صحبت
+                        _translateDebounceTimer?.cancel();
+                        final capturedT = t; final capturedStart = startTime; final capturedEnd = endTime;
+                        _translateDebounceTimer = Timer(const Duration(milliseconds: 400), () {
+                          _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, capturedStart, capturedEnd, capturedT));
+                          if (_mounted) { setState(() => _dgText = capturedT); _saveVoskSrt(silent: true); }
+                        });
+                      } else {
+                        _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, t));
+                        if (_mounted) setState(() => _dgText = t);
+                        _saveVoskSrt(silent: true);
+                      }
                     }
                   }
                 } else {
@@ -2753,28 +2767,67 @@ StatefulBuilder(builder: (_, ss2) {
           activeColor: const Color(0xFF7C3AED)),
       ]),
       if (_translate) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
+        // نمایش
+        const Text('نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
+        const SizedBox(height: 6),
         Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('زمان ترجمه', style: TextStyle(color: Colors.white, fontSize: 13)),
-            Text('بعد از سکوت: کمتر چشمک', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ])),
-          Switch(value: _translateOnFinish,
-            onChanged: (v) => setState(() => _translateOnFinish = v),
-            activeColor: const Color(0xFF22c55e)),
-          const SizedBox(width: 4),
-          Text(_translateOnFinish ? 'بعد از سکوت' : 'همزمان',
-            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          Expanded(child: GestureDetector(
+            onTap: () => setState(() => _showOriginal = true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: _showOriginal ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
+                borderRadius: BorderRadius.circular(8)),
+              child: Column(children: [
+                Icon(Icons.text_fields_rounded, size: 16, color: _showOriginal ? Colors.white : Colors.white38),
+                const SizedBox(height: 3),
+                Text('زیرنویس اصلی', style: TextStyle(color: _showOriginal ? Colors.white : Colors.white38, fontSize: 11)),
+              ])))),
+          const SizedBox(width: 8),
+          Expanded(child: GestureDetector(
+            onTap: () => setState(() => _showOriginal = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: !_showOriginal ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
+                borderRadius: BorderRadius.circular(8)),
+              child: Column(children: [
+                Icon(Icons.translate_rounded, size: 16, color: !_showOriginal ? Colors.white : Colors.white38),
+                const SizedBox(height: 3),
+                Text('فقط ترجمه', style: TextStyle(color: !_showOriginal ? Colors.white : Colors.white38, fontSize: 11)),
+              ])))),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
+        // زمان نمایش
+        const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
+        const SizedBox(height: 6),
         Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('نمایش متن اصلی', style: TextStyle(color: Colors.white, fontSize: 13)),
-            Text('خاموش: فقط ترجمه نشون بده', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ])),
-          Switch(value: _showOriginal,
-            onChanged: (v) => setState(() => _showOriginal = v),
-            activeColor: const Color(0xFF7C3AED)),
+          Expanded(child: GestureDetector(
+            onTap: () => setState(() => _translateOnFinish = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: !_translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                borderRadius: BorderRadius.circular(8)),
+              child: Column(children: [
+                Icon(Icons.flash_on_rounded, size: 16, color: !_translateOnFinish ? Colors.white : Colors.white38),
+                const SizedBox(height: 3),
+                Text('همزمان با صدا', style: TextStyle(color: !_translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+              ])))),
+          const SizedBox(width: 8),
+          Expanded(child: GestureDetector(
+            onTap: () => setState(() => _translateOnFinish = true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: _translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                borderRadius: BorderRadius.circular(8)),
+              child: Column(children: [
+                Icon(Icons.pause_circle_rounded, size: 16, color: _translateOnFinish ? Colors.white : Colors.white38),
+                const SizedBox(height: 3),
+                Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+              ])))),
         ]),
       ],
 
