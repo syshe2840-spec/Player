@@ -1,4 +1,4 @@
-// lib/browser.dart — مرورگر فایل فوق‌پیشرفته و نئونی (Cyberpunk Glassmorphic UI)
+// lib/browser.dart — مرورگر فایل حرفه‌ای (Red & Black Dark Theme)
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -18,352 +18,377 @@ import 'player.dart';
 import 'main.dart' show showSnack;
 import 'l10n.dart';
 
-// ── ثابت‌های تم فوق مدرن و نئونی (Cyberpunk Futuristic Theme) ──
-const kBg          = Color(0xFF030508); // مشکی عمیق فضایی
-const kSurface     = Color(0xFF0B0D14); // تیره شفاف
-const kAccent      = Color(0xFF8B5CF6); // بنفش نئونی پلاسما
-const kCyan        = Color(0xFF06B6D4); // فیروزه‌ای لیزری
-const kGreen       = Color(0xFF10B981); // سبز زئوس
-const kAmber       = Color(0xFFF59E0B); // طلایی درخشان
-const kRed         = Color(0xFFF43F5E); // قرمز نئونی
-const kPink        = Color(0xFFEC4899); // صورتی سایبر
-const kTextSec     = Color(0xFF94A3B8);
-const kTextDim     = Color(0xFF64748B);
+// ── پلت رنگی جدید: قرمز و مشکی جذاب (Dark & Red Neon) ──
+// ── پلت رنگی مطابق با طرح Dribbble (Dark Purple & Electric Violet) ──
+const kBg      = Color(0xFF0D0B14); // پس‌زمینه تیره بادنجانی/بنفش سیر
+const kSurface = Color(0xFF161320); // سطوح و پنل‌های شناور
+const kCard    = Color(0xFF1F1A2E); // کارت‌ها و آیتم‌ها
+const kBorder  = Color(0xFF2E2744); // مرزها و خطوط جداکننده ظریف
+const kAccent  = Color(0xFF8B5CF6); // بنفش نئونی اصلی (Electric Violet)
+const kAccentSecondary = Color(0xFF6D28D9); // بنفش تیره پویاتر
+const kCyan    = Color(0xFF06B6D4); // سیان/فیروزه‌ای برای جزئیات
+const kGreen   = Color(0xFF10B981); // سبز زنده وضعیت
+const kAmber   = Color(0xFFF59E0B); // طلایی/کهربایی
+const kRed     = Color(0xFFEF4444); // قرمز هشدار
+const kTextSec = Color(0xFF9CA3AF); // متن ثانویه
+const kTextDim = Color(0xFF6B7280); // متن کم‌رنگ
 
-enum _SortBy { name, date, size, type }
 
-LinearGradient _extGrad(String ext) {
-  switch (ext) {
-    case 'mp4': return const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)]);
-    case 'mkv': return const LinearGradient(colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)]);
-    case 'avi': return const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]);
-    case 'mov': return const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFFF43F5E)]);
-    case 'webm':return const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFD97706)]);
-    case 'flv': return const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFB91C1C)]);
-    default:    return const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4338CA)]);
+enum _SortBy{name,date,size,type}
+
+LinearGradient _extGrad(String ext){
+  switch(ext){
+    case 'mp4': return const LinearGradient(colors:[Color(0xFFFF1744),Color(0xFFB71C1C)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    case 'mkv': return const LinearGradient(colors:[Color(0xFFD50000),Color(0xFF880E4F)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    case 'avi': return const LinearGradient(colors:[Color(0xFFFF5252),Color(0xFFC62828)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    case 'mov': return const LinearGradient(colors:[Color(0xFFFF4081),Color(0xFFC2185B)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    case 'webm':return const LinearGradient(colors:[Color(0xFFFF9100),Color(0xFFDD2C00)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    case 'flv': return const LinearGradient(colors:[Color(0xFFFF1744),Color(0xFF212121)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    default:    return const LinearGradient(colors:[Color(0xFFFF1744),Color(0xFF18181F)], begin: Alignment.topLeft, end: Alignment.bottomRight);
   }
 }
 
-Widget _badge(String text, Color color) => Container(
-  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-  decoration: BoxDecoration(
-    color: color.withOpacity(0.18),
-    borderRadius: BorderRadius.circular(8),
-    border: Border.all(color: color.withOpacity(0.5), width: 1),
-    boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 4)],
-  ),
-  child: Text(text, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+Widget _badge(String text,Color color)=>Container(
+  padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
+  decoration:BoxDecoration(
+      color:color.withOpacity(0.15),
+      borderRadius:BorderRadius.circular(6),
+      border:Border.all(color:color.withOpacity(0.4),width:0.8)),
+  child:Text(text,style:TextStyle(fontSize:10,color:color,fontWeight:FontWeight.w700,height:1.1)),
 );
 
-// ── کش thumbnail با MethodChannel ──
-final Map<String, Uint8List?> _thumbCache = {};
-const _thumbChannel = MethodChannel('ir.subteam.subtitle_player/thumbnail');
-Future<Uint8List?> _loadThumb(String path) async {
-  if (_thumbCache.containsKey(path)) return _thumbCache[path];
-  try {
-    final data = await _thumbChannel.invokeMethod<Uint8List>('getThumbnail', {'path': path, 'timeMs': 2000, 'width': 180, 'height': 100});
-    return _thumbCache[path] = data;
-  } catch (_) {
-    return _thumbCache[path] = null;
-  }
+// ── کش thumbnail با MethodChannel → MediaMetadataRetriever ──
+final Map<String,Uint8List?> _thumbCache={};
+const _thumbChannel=MethodChannel('ir.subteam.subtitle_player/thumbnail');
+Future<Uint8List?> _loadThumb(String path)async{
+  if(_thumbCache.containsKey(path))return _thumbCache[path];
+  try{
+    final data=await _thumbChannel.invokeMethod<Uint8List>('getThumbnail',{'path':path,'timeMs':2000,'width':160,'height':90});
+    return _thumbCache[path]=data;
+  }catch(_){return _thumbCache[path]=null;}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-class BrowserScreen extends StatefulWidget {
+class BrowserScreen extends StatefulWidget{
   const BrowserScreen({super.key});
-  @override State<BrowserScreen> createState() => _BrowserState();
+  @override State<BrowserScreen> createState()=>_BrowserState();
 }
 
-class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
-  static const root = '/storage/emulated/0';
-  bool _granted = false, _checking = true;
-  String _path = root;
-  List<Directory> _dirs = [];
-  List<File> _videos = [];
-  bool _selectMode = false;
-  final Set<String> _selected = {};
-  _SortBy _sortBy = _SortBy.name;
-  bool _sortDesc = false;
-  bool _searching = false;
-  bool _globalSearch = false;
-  String _searchQuery = '';
-  List<File> _searchResults = [];
-  bool _searchRunning = false;
-  final TextEditingController _searchCtrl = TextEditingController();
+class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
+  static const root='/storage/emulated/0';
+  bool _granted=false,_checking=true;
+  String _path=root;
+  List<Directory> _dirs=[];
+  List<File> _videos=[];
+  bool _selectMode=false;
+  final Set<String> _selected={};
+  _SortBy _sortBy=_SortBy.name;
+  bool _sortDesc=false;
+  bool _searching=false;
+  bool _globalSearch=false;
+  String _searchQuery='';
+  List<File> _searchResults=[];
+  bool _searchRunning=false;
+  final TextEditingController _searchCtrl=TextEditingController();
 
-  @override void initState() { super.initState(); _init(); }
-  @override void dispose() { _searchCtrl.dispose(); super.dispose(); }
+  @override void initState(){super.initState();_init();}
+  @override void dispose(){_searchCtrl.dispose();super.dispose();}
 
-  Future<void> _init() async { await Store.load(); await _ensurePermission(); }
+  Future<void> _init()async{await Store.load();await _ensurePermission();}
 
-  Future<void> _ensurePermission() async {
-    setState(() => _checking = true);
-    var ok = await Permission.manageExternalStorage.isGranted;
-    if (!ok) ok = (await Permission.manageExternalStorage.request()).isGranted;
-    if (!ok) ok = (await Permission.storage.request()).isGranted;
-    setState(() { _granted = ok; _checking = false; });
-    if (ok) _loadDir(_path);
+  Future<void> _ensurePermission()async{
+    setState(()=>_checking=true);
+    var ok=await Permission.manageExternalStorage.isGranted;
+    if(!ok)ok=(await Permission.manageExternalStorage.request()).isGranted;
+    if(!ok)ok=(await Permission.storage.request()).isGranted;
+    setState((){_granted=ok;_checking=false;});
+    if(ok)_loadDir(_path);
   }
 
-  void _loadDir(String path) {
-    try {
-      final items = Directory(path).listSync(followLinks: false);
-      final dirs = items.whereType<Directory>().toList();
-      final vids = items.whereType<File>().where(
-          (f) => kVideoExt.contains(p.extension(f.path).toLowerCase())).toList();
-      dirs.sort((a, b) => p.basename(a.path).toLowerCase().compareTo(p.basename(b.path).toLowerCase()));
-      setState(() {
-        _path = path; _dirs = dirs; _videos = vids; _selectMode = false;
-        _selected.clear(); _searching = false; _searchQuery = ''; _searchCtrl.clear();
-        _searchResults = []; _globalSearch = false;
-      });
-    } catch (_) {
-      if (mounted) showSnack(context, L.noAccess);
+  void _loadDir(String path){
+    try{
+      final items=Directory(path).listSync(followLinks:false);
+      final dirs=items.whereType<Directory>().toList();
+      final vids=items.whereType<File>().where(
+          (f)=>kVideoExt.contains(p.extension(f.path).toLowerCase())).toList();
+      dirs.sort((a,b)=>p.basename(a.path).toLowerCase().compareTo(p.basename(b.path).toLowerCase()));
+      setState((){_path=path;_dirs=dirs;_videos=vids;_selectMode=false;
+        _selected.clear();_searching=false;_searchQuery='';_searchCtrl.clear();
+        _searchResults=[];_globalSearch=false;});
+    }catch(_){
+      if(mounted)showSnack(context, L.noAccess);
     }
   }
+  void _goUp(){final par=p.dirname(_path);if(par!=_path&&par.startsWith('/storage'))_loadDir(par);}
 
-  void _goUp() { final par = p.dirname(_path); if (par != _path && par.startsWith('/storage')) _loadDir(par); }
-
-  int _sd(int v) => _sortDesc ? -v : v;
-  List<File> get _sortedVideos {
-    final s = List<File>.from(_videos);
-    switch (_sortBy) {
-      case _SortBy.name: s.sort((a, b) => _sd(p.basename(a.path).toLowerCase().compareTo(p.basename(b.path).toLowerCase()))); break;
-      case _SortBy.date: s.sort((a, b) { try { return _sd(a.lastModifiedSync().compareTo(b.lastModifiedSync())); } catch (_) { return 0; } }); break;
-      case _SortBy.size: s.sort((a, b) { try { return _sd(a.lengthSync().compareTo(b.lengthSync())); } catch (_) { return 0; } }); break;
-      case _SortBy.type: s.sort((a, b) => _sd(p.extension(a.path).compareTo(p.extension(b.path)))); break;
+  int _sd(int v)=>_sortDesc?-v:v;
+  List<File> get _sortedVideos{
+    final s=List<File>.from(_videos);
+    switch(_sortBy){
+      case _SortBy.name:s.sort((a,b)=>_sd(p.basename(a.path).toLowerCase().compareTo(p.basename(b.path).toLowerCase())));break;
+      case _SortBy.date:s.sort((a,b){try{return _sd(a.lastModifiedSync().compareTo(b.lastModifiedSync()));}catch(_){return 0;}});break;
+      case _SortBy.size:s.sort((a,b){try{return _sd(a.lengthSync().compareTo(b.lengthSync()));}catch(_){return 0;}});break;
+      case _SortBy.type:s.sort((a,b)=>_sd(p.extension(a.path).compareTo(p.extension(b.path))));break;
     }
     return s;
   }
-
-  List<File> get _filteredVideos {
-    if (!_searching || _searchQuery.isEmpty) return _sortedVideos;
-    if (_globalSearch) return _searchResults;
-    return _sortedVideos.where((f) => p.basename(f.path).toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+  List<File> get _filteredVideos{
+    if(!_searching||_searchQuery.isEmpty)return _sortedVideos;
+    if(_globalSearch)return _searchResults;
+    return _sortedVideos.where((f)=>p.basename(f.path).toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+  }
+  List<Directory> get _filteredDirs{
+    if(!_searching||_searchQuery.isEmpty||_globalSearch)return _globalSearch?[]:_dirs;
+    return _dirs.where((d)=>p.basename(d.path).toLowerCase().contains(_searchQuery.toLowerCase())).toList();
   }
 
-  List<Directory> get _filteredDirs {
-    if (!_searching || _searchQuery.isEmpty || _globalSearch) return _globalSearch ? [] : _dirs;
-    return _dirs.where((d) => p.basename(d.path).toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-  }
-
-  Future<void> _runGlobalSearch(String query) async {
-    if (query.isEmpty) { setState(() { _searchResults = []; _searchRunning = false; }); return; }
-    setState(() { _searchResults = []; _searchRunning = true; });
-    final results = <File>[];
-    final q = query.toLowerCase();
-    await _deepSearch(Directory(root), q, results);
-    for (final d in _getStorageDevices()) {
-      if (mounted && _searchRunning) await _deepSearch(d, q, results);
+  Future<void> _runGlobalSearch(String query)async{
+    if(query.isEmpty){setState((){_searchResults=[];_searchRunning=false;});return;}
+    setState((){_searchResults=[];_searchRunning=true;});
+    final results=<File>[];
+    final q=query.toLowerCase();
+    await _deepSearch(Directory(root),q,results);
+    for(final d in _getStorageDevices()){
+      if(mounted&&_searchRunning)await _deepSearch(d,q,results);
     }
-    if (mounted) setState(() => _searchRunning = false);
+    if(mounted)setState(()=>_searchRunning=false);
   }
 
-  Future<void> _deepSearch(Directory dir, String query, List<File> results) async {
-    if (!mounted || !_searchRunning) return;
+  Future<void> _deepSearch(Directory dir,String query,List<File> results)async{
+    if(!mounted||!_searchRunning)return;
     List<FileSystemEntity> entities;
-    try { entities = await dir.list(recursive: false).toList(); } catch (_) { return; }
-    for (final e in entities) {
-      if (!mounted || !_searchRunning) return;
-      if (e is File) {
-        if (kVideoExt.contains(p.extension(e.path).toLowerCase()) &&
-            p.basename(e.path).toLowerCase().contains(query)) {
+    try{entities=await dir.list(recursive:false).toList();}catch(_){return;}
+    for(final e in entities){
+      if(!mounted||!_searchRunning)return;
+      if(e is File){
+        if(kVideoExt.contains(p.extension(e.path).toLowerCase())&&
+            p.basename(e.path).toLowerCase().contains(query)){
           results.add(e);
-          if (mounted) setState(() => _searchResults = List.from(results));
+          if(mounted)setState(()=>_searchResults=List.from(results));
         }
-      } else if (e is Directory) {
-        final name = p.basename(e.path);
-        if (!name.startsWith('.') && name != 'proc' && name != 'sys' && name != 'dev') {
-          await _deepSearch(e, query, results);
+      }else if(e is Directory){
+        final name=p.basename(e.path);
+        if(!name.startsWith('.')&&name!='proc'&&name!='sys'&&name!='dev'){
+          await _deepSearch(e,query,results);
         }
       }
     }
   }
 
-  Future<void> _openVideo(File video, [List<File>? playlist, int? idx]) async {
-    final pl = playlist ?? _filteredVideos;
-    final i = idx ?? pl.indexOf(video);
-    await Navigator.push(context, MaterialPageRoute(
-      builder: (_) => PlayerScreen(subtitlePath: matchSubtitle(video.path), playlist: pl, playlistIndex: i < 0 ? 0 : i),
+  Future<void> _openVideo(File video,[List<File>?playlist,int?idx])async{
+    final pl=playlist??_filteredVideos;
+    final i=idx??pl.indexOf(video);
+    await Navigator.push(context,MaterialPageRoute(
+      builder:(_)=>PlayerScreen(subtitlePath:matchSubtitle(video.path),playlist:pl,playlistIndex:i<0?0:i),
     ));
     await Store.load();
-    if (mounted) setState(() {});
+    if(mounted)setState((){});
   }
 
-  Future<void> _openVideoByPath(String path) async {
-    final f = File(path);
-    if (!f.existsSync()) { showSnack(context, L.fileNotFound); return; }
-    await _openVideo(f, [f], 0);
+  Future<void> _openVideoByPath(String path)async{
+    final f=File(path);
+    if(!f.existsSync()){showSnack(context, L.fileNotFound);return;}
+    await _openVideo(f,[f],0);
   }
 
-  List<Directory> _getStorageDevices() {
-    final r = <Directory>[];
-    try {
-      for (final e in Directory('/storage').listSync()) {
-        if (e is Directory && p.basename(e.path) != 'emulated' && p.basename(e.path) != 'self') r.add(e);
-      }
-    } catch (_) {}
+  List<Directory> _getStorageDevices(){
+    final r=<Directory>[];
+    try{for(final e in Directory('/storage').listSync()){
+      if(e is Directory&&p.basename(e.path)!='emulated'&&p.basename(e.path)!='self')r.add(e);
+    }}catch(_){}
     return r;
   }
 
-  void _showVideoMenu(File f) {
+  void _showVideoMenu(File f){
     showModalBottomSheet(
-      context: context, backgroundColor: kSurface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => VideoMenu(
-        file: f,
-        onDone: () async { Navigator.pop(ctx); await Store.load(); _loadDir(_path); },
-        onInfo: () { Navigator.pop(ctx); _showFileInfo(f); },
-        onDelete: () { Navigator.pop(ctx); _confirmDelete([f]); },
-        onRename: () { Navigator.pop(ctx); _renameFile(f); },
-        onSelect: () { Navigator.pop(ctx); setState(() { _selectMode = true; _selected.add(f.path); }); },
-        onCopy: () { Navigator.pop(ctx); _copyFile(f); },
-        onMove: () { Navigator.pop(ctx); _moveFile(f); },
-        onRate: () { Navigator.pop(ctx); _showRating(f); },
-        onNote: () { Navigator.pop(ctx); _showNote(f); },
+      context:context,backgroundColor:kSurface,
+      shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
+      builder:(ctx)=>VideoMenu(
+        file:f,
+        onDone:()async{Navigator.pop(ctx);await Store.load();_loadDir(_path);},
+        onInfo:(){Navigator.pop(ctx);_showFileInfo(f);},
+        onDelete:(){Navigator.pop(ctx);_confirmDelete([f]);},
+        onRename:(){Navigator.pop(ctx);_renameFile(f);},
+        onSelect:(){Navigator.pop(ctx);setState((){_selectMode=true;_selected.add(f.path);});},
+        onCopy:(){Navigator.pop(ctx);_copyFile(f);},
+        onMove:(){Navigator.pop(ctx);_moveFile(f);},
+        onRate:(){Navigator.pop(ctx);_showRating(f);},
+        onNote:(){Navigator.pop(ctx);_showNote(f);},
       ),
     );
   }
 
-  Future<void> _copyFile(File f) async {
-    if (Store.savedFolders.isEmpty) { showSnack(context, L.noFolderSaved); return; }
-    final dest = await _pickFolder(L.copyTo);
-    if (dest == null) return;
-    try { await f.copy(p.join(dest, p.basename(f.path))); if (mounted) showSnack(context, L.copied); }
-    catch (_) { if (mounted) showSnack(context, L.error); }
+  Future<void> _copyFile(File f)async{
+    if(Store.savedFolders.isEmpty){showSnack(context, L.noFolderSaved);return;}
+    final dest=await _pickFolder(L.copyTo);
+    if(dest==null)return;
+    try{await f.copy(p.join(dest,p.basename(f.path)));
+      if(mounted)showSnack(context, L.copied);}
+    catch(_){if(mounted)showSnack(context, L.error);}
   }
 
-  Future<void> _moveFile(File f) async {
-    final dest = await _pickFolder(L.transferTo); if (dest == null) return;
-    final newPath = p.join(dest, p.basename(f.path));
-    try { await f.rename(newPath); }
-    catch (_) { try { await f.copy(newPath); await f.delete(); } catch (e) { if (mounted) showSnack(context, L.error); return; } }
+  Future<void> _moveFile(File f)async{
+    final dest=await _pickFolder(L.transferTo);if(dest==null)return;
+    final newPath=p.join(dest,p.basename(f.path));
+    try{await f.rename(newPath);}
+    catch(_){try{await f.copy(newPath);await f.delete();}catch(e){if(mounted)showSnack(context, L.error);return;}}
     _loadDir(_path);
   }
 
-  Future<String?> _pickFolder(String title) async {
-    final all = [...Store.savedFolders];
-    if (all.isEmpty) { showSnack(context, L.noFolderSaved); return null; }
-    return showDialog<String>(context: context, builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: Column(mainAxisSize: MainAxisSize.min, children: all.map((folder) => ListTile(
-        leading: const Icon(Icons.folder_special_rounded, color: kAmber), title: Text(p.basename(folder)),
-        onTap: () => Navigator.pop(ctx, folder),
+  Future<String?> _pickFolder(String title)async{
+    final all=[...Store.savedFolders];
+    if(all.isEmpty){showSnack(context, L.noFolderSaved);return null;}
+    return showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+      backgroundColor: kSurface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+      title:Text(title, style: const TextStyle(color: Colors.white)),
+      content:Column(mainAxisSize:MainAxisSize.min,children:all.map((folder)=>ListTile(
+        leading:const Icon(Icons.folder,color:kAmber),title:Text(p.basename(folder), style: const TextStyle(color: Colors.white)),
+        onTap:()=>Navigator.pop(ctx,folder),
       )).toList()),
     ));
   }
 
-  Future<void> _confirmDelete(List<File> files) async {
-    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: Text(L.deleteFile),
-      content: Text(files.length == 1 ? '${L.delete} «${p.basename(files.first.path)}»?' : '${files.length} ${L.delete}?'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(L.cancel)),
-        FilledButton(style: FilledButton.styleFrom(backgroundColor: kRed), onPressed: () => Navigator.pop(ctx, true), child: Text(L.delete)),
+  Future<void> _confirmDelete(List<File> files)async{
+    final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      backgroundColor: kSurface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+      title:Text(L.deleteFile, style: const TextStyle(color: Colors.white)),
+      content:Text(files.length==1?'${L.delete} «${p.basename(files.first.path)}»?':'${files.length} ${L.delete}?', style: const TextStyle(color: kTextSec)),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+        FilledButton(style:FilledButton.styleFrom(backgroundColor:kAccent),onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete)),
       ],
     ));
-    if (ok != true) return;
-    for (final f in files) { try { await f.delete(); } catch (_) {} }
+    if(ok!=true)return;
+    for(final f in files){try{await f.delete();}catch(_){}}
     _loadDir(_path);
   }
 
-  Future<void> _renameFile(File f) async {
-    final ctrl = TextEditingController(text: p.basenameWithoutExtension(f.path));
-    final name = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
-      title: Text(L.rename_),
-      content: TextField(controller: ctrl, autofocus: true,
-          decoration: InputDecoration(hintText: L.newName, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8))),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.cancel)),
-        FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(L.confirm)),
+  Future<void> _renameFile(File f)async{
+    final ctrl=TextEditingController(text:p.basenameWithoutExtension(f.path));
+    final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+      backgroundColor: kSurface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+      title:Text(L.rename_, style: const TextStyle(color: Colors.white)),
+      content:TextField(controller:ctrl,autofocus:true,
+          style: const TextStyle(color: Colors.white),
+          decoration:InputDecoration(
+            hintText:L.newName, hintStyle: const TextStyle(color: kTextDim),
+            border:OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kAccent)),
+            contentPadding:EdgeInsets.symmetric(horizontal:12,vertical:8))),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+        FilledButton(style: FilledButton.styleFrom(backgroundColor: kAccent), onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:Text(L.confirm)),
       ],
     ));
-    if (name == null || name.isEmpty) return;
-    try { await f.rename(p.join(p.dirname(f.path), '$name${p.extension(f.path)}')); _loadDir(_path); }
-    catch (_) { if (mounted) showSnack(context, L.error); }
+    if(name==null||name.isEmpty)return;
+    try{await f.rename(p.join(p.dirname(f.path),'$name${p.extension(f.path)}'));_loadDir(_path);}
+    catch(_){if(mounted)showSnack(context, L.error);}
   }
 
-  Future<void> _showRating(File f) async {
-    int rating = Store.ratings[f.path] ?? 0;
-    await showDialog(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, ss) => AlertDialog(
-      title: Text(p.basename(f.path), style: const TextStyle(fontSize: 13)),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(L.yourRatingLabel, style: TextStyle(color: kTextSec)), const SizedBox(height: 12),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) => GestureDetector(
-          onTap: () => ss(() => rating = i + 1),
-          child: Padding(padding: const EdgeInsets.all(4),
-              child: Icon(i < rating ? Icons.star_rounded : Icons.star_outline_rounded, color: kAmber, size: 36)),
+  Future<void> _showRating(File f)async{
+    int rating=Store.ratings[f.path]??0;
+    await showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,ss)=>AlertDialog(
+      backgroundColor: kSurface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+      title:Text(p.basename(f.path),style:const TextStyle(fontSize:13, color: Colors.white)),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        Text(L.yourRatingLabel,style:TextStyle(color:kTextSec)),const SizedBox(height:12),
+        Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>GestureDetector(
+          onTap:()=>ss(()=>rating=i+1),
+          child:Padding(padding:const EdgeInsets.all(4),
+              child:Icon(i<rating?Icons.star_rounded:Icons.star_outline_rounded,color:kAmber,size:36)),
         ))),
       ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.cancel)),
-        if (rating > 0) TextButton(onPressed: () async { await Store.saveRating(f.path, 0); Navigator.pop(ctx); setState(() {}); }, child: Text(L.delete, style: TextStyle(color: kRed))),
-        FilledButton(onPressed: () async { await Store.saveRating(f.path, rating); Navigator.pop(ctx); setState(() {}); }, child: Text(L.save)),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+        if(rating>0)TextButton(onPressed:()async{await Store.saveRating(f.path,0);Navigator.pop(ctx);setState((){});},child:Text(L.delete,style:TextStyle(color:kAccent))),
+        FilledButton(style: FilledButton.styleFrom(backgroundColor: kAccent), onPressed:()async{await Store.saveRating(f.path,rating);Navigator.pop(ctx);setState((){});},child:Text(L.save)),
       ],
     )));
   }
 
-  Future<void> _showNote(File f) async {
-    final ctrl = TextEditingController(text: Store.notes[f.path] ?? '');
-    await showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: Text(L.note),
-      content: TextField(controller: ctrl, maxLines: 5, autofocus: true,
-          decoration: InputDecoration(hintText: L.writtenNote, border: OutlineInputBorder(), contentPadding: EdgeInsets.all(12))),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.cancel)),
-        FilledButton(onPressed: () async { await Store.saveNote(f.path, ctrl.text.trim()); Navigator.pop(ctx); setState(() {}); }, child: Text(L.save)),
+  Future<void> _showNote(File f)async{
+    final ctrl=TextEditingController(text:Store.notes[f.path]??'');
+    await showDialog(context:context,builder:(ctx)=>AlertDialog(
+      backgroundColor: kSurface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+      title:Text(L.note, style: const TextStyle(color: Colors.white)),
+      content:TextField(controller:ctrl,maxLines:5,autofocus:true,
+          style: const TextStyle(color: Colors.white),
+          decoration:InputDecoration(
+            hintText:L.writtenNote, hintStyle: const TextStyle(color: kTextDim),
+            border:OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kAccent)),
+            contentPadding:EdgeInsets.all(12))),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+        FilledButton(style: FilledButton.styleFrom(backgroundColor: kAccent), onPressed:()async{await Store.saveNote(f.path,ctrl.text.trim());Navigator.pop(ctx);setState((){});},child:Text(L.save)),
       ],
     ));
   }
 
-  Future<void> _showFileInfo(File f) async {
-    final allSubs = findAllSubtitles(f.path);
-    String modified = '';
-    try { modified = f.lastModifiedSync().toString().split('.').first; } catch (_) {}
-    final dur = await Store.getDur(f.path);
-    final rating = Store.ratings[f.path] ?? 0;
-    final note = Store.notes[f.path] ?? '';
-    int fileSize = 0; try { fileSize = f.lengthSync(); } catch (_) {}
-    final ext = p.extension(f.path).toLowerCase().replaceAll('.', '');
-    final String codecHint = _codecHint(ext);
-    if (!mounted) return;
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      title: Row(children: [
-        Container(width: 4, height: 20, decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2))),
-        const SizedBox(width: 8),
-        Expanded(child: Text(p.basename(f.path), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+  Future<void> _showFileInfo(File f)async{
+    final sub=matchSubtitle(f.path);
+    final allSubs=findAllSubtitles(f.path);
+    String modified='';
+    try{modified=f.lastModifiedSync().toString().split('.').first;}catch(_){}
+    final dur=await Store.getDur(f.path);
+    final rating=Store.ratings[f.path]??0;
+    final note=Store.notes[f.path]??'';
+    int fileSize=0;try{fileSize=f.lengthSync();}catch(_){}
+    final ext=p.extension(f.path).toLowerCase().replaceAll('.','');
+    final String codecHint=_codecHint(ext);
+    if(!mounted)return;
+    showDialog(context:context,builder:(ctx)=>AlertDialog(
+      backgroundColor: kSurface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+      contentPadding:const EdgeInsets.fromLTRB(16,16,16,8),
+      title:Row(children:[
+        Container(width:4,height:20,decoration:BoxDecoration(color:kAccent,borderRadius:BorderRadius.circular(2))),
+        const SizedBox(width:8),
+        Expanded(child:Text(p.basename(f.path),style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600, color: Colors.white))),
       ]),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _iRow(Icons.folder_outlined, kTextSec, L.path, p.dirname(f.path)),
-        _iRow(Icons.video_file_rounded, kCyan, L.format, ext.toUpperCase()),
-        _iRow(Icons.data_usage_outlined, kTextSec, L.sortSize, sizeStr(f)),
-        if (fileSize > 0) _iRow(Icons.straighten_rounded, kTextSec, L.precise, '${fileSize} bytes'),
-        if (dur > 0) _iRow(Icons.timer_outlined, kCyan, L.duration, fmt(Duration(seconds: dur))),
-        _iRow(Icons.calendar_today_outlined, kTextSec, L.sortDate, modified),
-        _iRow(Icons.info_outline_rounded, kAccent, L.probableCodec, codecHint),
-        _iRow(Icons.visibility_outlined, Store.watched.contains(f.path) ? kGreen : kTextSec,
-            L.status, Store.watched.contains(f.path) ? L.watched : L.notWatched),
-        if (rating > 0) _iRow(Icons.star_rounded, kAmber, L.rating, '${'★' * rating}${'☆' * (5 - rating)}'),
-        if (note.isNotEmpty) _iRow(Icons.notes_rounded, kTextSec, L.note, note),
-        if (allSubs.isNotEmpty) ...[
-          _iRow(Icons.subtitles_rounded, kGreen, L.subtitle, '${allSubs.length}'),
-          ...allSubs.map((s) => Padding(
-            padding: const EdgeInsets.only(right: 24, top: 2),
-            child: Row(children: [
-              Icon(Icons.fiber_manual_record_rounded, size: 8, color: kGreen.withOpacity(0.6)),
-              const SizedBox(width: 6),
-              Expanded(child: Text(p.basename(s), style: const TextStyle(fontSize: 11, color: kTextSec))),
+      content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        _iRow(Icons.folder_outlined,kTextSec,L.path,p.dirname(f.path)),
+        _iRow(Icons.video_file_rounded,kAccent,L.format,ext.toUpperCase()),
+        _iRow(Icons.data_usage_outlined,kTextSec,L.sortSize,sizeStr(f)),
+        if(fileSize>0)_iRow(Icons.straighten_rounded,kTextSec,L.precise,'${fileSize} bytes'),
+        if(dur>0)_iRow(Icons.timer_outlined,kAccent,L.duration,fmt(Duration(seconds:dur))),
+        _iRow(Icons.calendar_today_outlined,kTextSec,L.sortDate,modified),
+        _iRow(Icons.info_outline_rounded,kAccent,L.probableCodec,codecHint),
+        _iRow(Icons.visibility_outlined,Store.watched.contains(f.path)?kGreen:kTextSec,
+            L.status,Store.watched.contains(f.path)?L.watched:L.notWatched),
+        if(rating>0)_iRow(Icons.star_rounded,kAmber,L.rating,'${'★'*rating}${'☆'*(5-rating)}'),
+        if(note.isNotEmpty)_iRow(Icons.notes_rounded,kTextSec,L.note,note),
+        if(allSubs.isNotEmpty)...[
+          _iRow(Icons.subtitles_rounded,kGreen,L.subtitle,'${allSubs.length}'),
+          ...allSubs.map((s)=>Padding(
+            padding:const EdgeInsets.only(right:24,top:2),
+            child:Row(children:[
+              Icon(Icons.fiber_manual_record_rounded,size:8,color:kGreen.withOpacity(0.6)),
+              const SizedBox(width:6),
+              Expanded(child:Text(p.basename(s),style:const TextStyle(fontSize:11,color:kTextSec))),
             ]),
           )),
-        ] else _iRow(Icons.subtitles_off_rounded, kTextDim, L.subtitle, L.notFound),
+        ]else _iRow(Icons.subtitles_off_rounded,kTextDim,L.subtitle,L.notFound),
       ])),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.close))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close, style: const TextStyle(color: kAccent)))],
     ));
   }
 
-  String _codecHint(String ext) {
-    switch (ext) {
+  String _codecHint(String ext){
+    switch(ext){
       case 'mp4': return 'H.264/H.265 (MPEG-4)';
       case 'mkv': return 'H.264/H.265/AV1 (Matroska)';
       case 'avi': return 'DivX/Xvid/MPEG-4';
@@ -378,590 +403,433 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin {
     }
   }
 
-  Widget _iRow(IconData icon, Color iconColor, String label, String val) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(5)),
-          child: Icon(icon, size: 12, color: iconColor)),
-      const SizedBox(width: 8),
-      Text('$label: ', style: const TextStyle(color: kTextSec, fontSize: 12)),
-      Expanded(child: Text(val, style: const TextStyle(fontSize: 12, height: 1.4), overflow: TextOverflow.ellipsis, maxLines: 2)),
+  Widget _iRow(IconData icon,Color iconColor,String label,String val)=>Padding(
+    padding:const EdgeInsets.symmetric(vertical:4),
+    child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Container(padding:const EdgeInsets.all(4),decoration:BoxDecoration(color:iconColor.withOpacity(0.12),borderRadius:BorderRadius.circular(6)),
+          child:Icon(icon,size:13,color:iconColor)),
+      const SizedBox(width:8),
+      Text('$label: ',style:const TextStyle(color:kTextSec,fontSize:12)),
+      Expanded(child:Text(val,style:const TextStyle(fontSize:12,height:1.4, color: Colors.white),overflow:TextOverflow.ellipsis,maxLines:2)),
     ]),
   );
 
   @override
-  Widget build(BuildContext context) {
-    final isSaved = Store.savedFolders.contains(_path);
+  Widget build(BuildContext context){
+    final isSaved=Store.savedFolders.contains(_path);
     return PopScope(
-      canPop: _path == root && !_selectMode && !_searching,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) {
-          if (_searching) { setState(() { _searching = false; _searchQuery = ''; _searchCtrl.clear(); _searchResults = []; _globalSearch = false; }); }
-          else if (_selectMode) { setState(() { _selectMode = false; _selected.clear(); }); }
-          else { _goUp(); }
+      canPop:_path==root&&!_selectMode&&!_searching,
+      onPopInvokedWithResult:(didPop,_){
+        if(!didPop){
+          if(_searching){setState((){_searching=false;_searchQuery='';_searchCtrl.clear();_searchResults=[];_globalSearch=false;});}
+          else if(_selectMode){setState((){_selectMode=false;_selected.clear();});}
+          else{_goUp();}
         }
       },
-      child: Scaffold(
+      child:Scaffold(
         backgroundColor: kBg,
-        extendBody: true,
-        appBar: _selectMode ? _selectBar() : _normalBar(isSaved),
-        body: Stack(
-          children: [
-            // ۱. هاله‌های نورانی فوق مدرن پس‌زمینه
-            _buildCyberGlow(),
-            // ۲. لیست محتوا
-            _buildBody(),
-          ],
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: _selectMode ? null : _buildFABs(),
+        extendBody:true,
+        appBar:_selectMode?_selectBar():_normalBar(isSaved),
+        body:_buildBody(),
+        floatingActionButtonLocation:FloatingActionButtonLocation.centerFloat,
+        floatingActionButton:_selectMode?null:_buildFABs(),
       ),
     );
   }
 
-  Widget _buildCyberGlow() {
-    return Stack(
-      children: [
-        Positioned(
-          top: -120, right: -60,
-          child: Container(
-            width: 300, height: 300,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: kAccent.withOpacity(0.22),
-              boxShadow: [BoxShadow(color: kAccent.withOpacity(0.35), blurRadius: 140, spreadRadius: 40)],
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 100, left: -90,
-          child: Container(
-            width: 280, height: 280,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: kCyan.withOpacity(0.18),
-              boxShadow: [BoxShadow(color: kCyan.withOpacity(0.25), blurRadius: 130, spreadRadius: 30)],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFABs() => ClipRRect(
-    borderRadius: BorderRadius.circular(36),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(36),
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
+  Widget _buildFABs()=>ClipRRect(
+    borderRadius:BorderRadius.circular(28),
+    child:BackdropFilter(
+      filter:ImageFilter.blur(sigmaX:20,sigmaY:20),
+      child:Container(
+        padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+        decoration:BoxDecoration(
+          color:kSurface.withOpacity(0.9),
+          borderRadius:BorderRadius.circular(28),
+          border:Border.all(color:kAccent.withOpacity(0.3)),
           boxShadow: [
-            BoxShadow(color: kAccent.withOpacity(0.25), blurRadius: 20, spreadRadius: 1),
+            BoxShadow(color: Colors.black.withOpacity(0.8), blurRadius: 16, offset: const Offset(0, 6)),
+            BoxShadow(color: kAccent.withOpacity(0.15), blurRadius: 20, spreadRadius: 1),
           ],
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          _fabBtn(Icons.history_toggle_off_rounded, L.history, kCyan, () => _openPanel(0)),
-          const SizedBox(width: 6), _fabBtn(Icons.bookmark_border_rounded, L.bookmarks, kAmber, () => _openPanel(1)),
-          const SizedBox(width: 6), _fabBtn(Icons.favorite_border_rounded, L.favorites, kPink, () => _openPanel(2)),
-          const SizedBox(width: 6), _fabBtn(Icons.folder_special_outlined, L.folders, kGreen, () => _openPanel(3)),
-          const SizedBox(width: 6), _fabBtn(Icons.space_dashboard_rounded, L.settings, kAccent, () => _openPanel(4)),
+        child:Row(mainAxisSize:MainAxisSize.min,children:[
+          _fabBtn(Icons.history_rounded,L.history,kTextSec,()=>_openPanel(0)),
+          const SizedBox(width:4),_fabBtn(Icons.bookmark_rounded,L.bookmarks,kAmber,()=>_openPanel(1)),
+          const SizedBox(width:4),_fabBtn(Icons.favorite_rounded,L.favorites,kAccent,()=>_openPanel(2)),
+          const SizedBox(width:4),_fabBtn(Icons.push_pin_rounded,L.folders,kGreen,()=>_openPanel(3)),
+          const SizedBox(width:4),_fabBtn(Icons.tune_rounded,L.settings,kTextSec,()=>_openPanel(4)),
         ]),
       ),
     ),
   );
 
-  Widget _fabBtn(IconData icon, String tip, Color color, VoidCallback fn) => Tooltip(
-    message: tip,
-    child: InkWell(
-      onTap: fn,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Icon(icon, size: 20, color: color),
-      ),
-    ),
+  Widget _fabBtn(IconData icon,String tip,Color color,VoidCallback fn)=>Tooltip(
+    message:tip,
+    child:InkWell(onTap:fn,borderRadius:BorderRadius.circular(20),
+        child:Padding(padding:const EdgeInsets.all(10),child:Icon(icon,size:22,color:color))),
   );
 
-  PreferredSizeWidget _normalBar(bool isSaved) => AppBar(
-    backgroundColor: kBg.withOpacity(0.7),
+  PreferredSizeWidget _normalBar(bool isSaved)=>AppBar(
+    backgroundColor: kBg,
     elevation: 0,
-    automaticallyImplyLeading: false,
-    leading: _path != root ? IconButton(icon: const Icon(Icons.arrow_back_rounded, size: 22, color: Colors.white), onPressed: _goUp) : null,
-    title: _searching
-        ? Row(children: [
-            Expanded(child: TextField(controller: _searchCtrl, autofocus: true,
-                style: const TextStyle(fontSize: 14, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: _globalSearch ? L.searchingGlobal : L.searchHere,
-                  border: InputBorder.none, hintStyle: const TextStyle(color: kTextDim, fontSize: 13)),
-                onChanged: (v) { setState(() => _searchQuery = v); if (_globalSearch) _runGlobalSearch(v); })),
-            if (_searchRunning) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: kAccent)),
+    automaticallyImplyLeading:false,
+    leading:_path!=root?IconButton(icon:const Icon(Icons.arrow_back_ios_new_rounded,size:18, color: Colors.white),onPressed:_goUp):null,
+    title:_searching
+        ?Row(children:[
+            Expanded(child:TextField(controller:_searchCtrl,autofocus:true,
+                style:const TextStyle(fontSize:14, color: Colors.white),
+                decoration:InputDecoration(
+                  hintText:_globalSearch?L.searchingGlobal:L.searchHere,
+                  border:InputBorder.none,hintStyle:const TextStyle(color:kTextDim,fontSize:13)),
+                onChanged:(v){setState(()=>_searchQuery=v);if(_globalSearch)_runGlobalSearch(v);})),
+            if(_searchRunning)const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:1.5,color:kAccent)),
           ])
-        : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(_path == root ? L.internalStorage : p.basename(_path), overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.3)),
-            if (_path != root) Text(p.dirname(_path), overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10, color: kTextDim, height: 1.2)),
+        :Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+            Text(_path==root?L.internalStorage:p.basename(_path),overflow:TextOverflow.ellipsis,
+                style:const TextStyle(fontSize:16,fontWeight:FontWeight.w600, color: Colors.white)),
+            if(_path!=root)Text(p.dirname(_path),overflow:TextOverflow.ellipsis,
+                style:const TextStyle(fontSize:10,color:kTextDim,height:1.2)),
           ]),
-    actions: [
-      if (_searching) ...[
+    actions:[
+      if(_searching)...[
         GestureDetector(
-          onTap: () {
-            setState(() => _globalSearch = !_globalSearch);
-            if (_globalSearch && _searchQuery.isNotEmpty) _runGlobalSearch(_searchQuery);
-            else setState(() => _searchResults = []);
+          onTap:(){
+            setState(()=>_globalSearch=!_globalSearch);
+            if(_globalSearch&&_searchQuery.isNotEmpty)_runGlobalSearch(_searchQuery);
+            else setState(()=>_searchResults=[]);
           },
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              gradient: _globalSearch ? const LinearGradient(colors: [kAccent, kPink]) : null,
-              color: _globalSearch ? null : Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _globalSearch ? kAccent : Colors.white.withOpacity(0.15)),
+          child:Container(
+            margin:const EdgeInsets.symmetric(vertical:8,horizontal:4),
+            padding:const EdgeInsets.symmetric(horizontal:10,vertical:4),
+            decoration:BoxDecoration(
+              color:_globalSearch?kAccent:kCard,
+              borderRadius:BorderRadius.circular(16),
+              border:Border.all(color:_globalSearch?kAccent:kBorder),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.radar_rounded, size: 14, color: _globalSearch ? Colors.white : kTextSec),
-              const SizedBox(width: 4),
-              Text(L.searchAll, style: TextStyle(fontSize: 11, color: _globalSearch ? Colors.white : kTextSec, fontWeight: FontWeight.bold)),
+            child:Row(mainAxisSize:MainAxisSize.min,children:[
+              Icon(Icons.public_rounded,size:13,color:_globalSearch?Colors.white:kTextSec),
+              const SizedBox(width:4),
+              Text(L.searchAll,style:TextStyle(fontSize:11,color:_globalSearch?Colors.white:kTextSec,fontWeight:FontWeight.w600)),
             ]),
           ),
         ),
       ],
-      IconButton(icon: Icon(_searching ? Icons.close_rounded : Icons.search_rounded, size: 22, color: Colors.white),
-          onPressed: () { setState(() { _searching = !_searching; if (!_searching) { _searchQuery = ''; _searchCtrl.clear(); _searchResults = []; _globalSearch = false; } }); }),
-      if (!_searching) IconButton(
-        icon: const Icon(Icons.stream_rounded, size: 22, color: kCyan),
-        tooltip: L.onlineVideo,
-        onPressed: () => showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => const OnlinePlayerSheet())),
-      if (!_searching) IconButton(
-        icon: const Icon(Icons.live_tv_rounded, size: 22, color: kGreen),
-        tooltip: 'IPTV',
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IptvScreen()))),
-      if (!_searching) ...[
-        if (_path != root) IconButton(
-          icon: Icon(isSaved ? Icons.push_pin_rounded : Icons.push_pin_outlined, color: isSaved ? kAmber : kTextSec, size: 20),
-          onPressed: () async { await Store.toggleSavedFolder(_path); setState(() {}); },
+      IconButton(icon:Icon(_searching?Icons.close_rounded:Icons.search_rounded,size:20, color: Colors.white),
+          onPressed:(){setState((){_searching=!_searching;if(!_searching){_searchQuery='';_searchCtrl.clear();_searchResults=[];_globalSearch=false;}});}),
+      if(!_searching)IconButton(
+        icon:const Icon(Icons.wifi_tethering_rounded,size:20, color: kAccent),
+        tooltip:L.onlineVideo,
+        onPressed:()=>showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,builder:(_)=>const OnlinePlayerSheet())),
+      if(!_searching)IconButton(
+        icon:const Icon(Icons.live_tv_rounded,size:20,color:kGreen),
+        tooltip:'IPTV',
+        onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const IptvScreen()))),
+      if(!_searching)...[
+        if(_path!=root)IconButton(
+          icon:Icon(isSaved?Icons.push_pin_rounded:Icons.push_pin_outlined,color:isSaved?kAmber:kTextSec,size:20),
+          onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
         ),
         PopupMenuButton<String>(
-          icon: const Icon(Icons.folder_copy_rounded, size: 20, color: Colors.white70),
-          tooltip: L.selectStorage,
-          itemBuilder: (_) {
-            final items = <PopupMenuEntry<String>>[
-              _pmStr(Icons.phone_android_rounded, '/storage/emulated/0', '📱 ${L.internalStorage}'),
-              _pmStr(Icons.download_rounded, '/storage/emulated/0/Download', '⬇ ${L.downloads}'),
-              _pmStr(Icons.movie_rounded, '/storage/emulated/0/Movies', '🎬 ${L.movies}'),
+          icon:const Icon(Icons.storage_rounded,size:20, color: Colors.white),
+          color: kSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: kBorder)),
+          tooltip:L.selectStorage,
+          itemBuilder:(_){
+            final items=<PopupMenuEntry<String>>[
+              _pmStr(Icons.phone_android_rounded,'/storage/emulated/0','📱 ${L.internalStorage}'),
+              _pmStr(Icons.download_rounded,'/storage/emulated/0/Download','⬇ ${L.downloads}'),
+              _pmStr(Icons.movie_rounded,'/storage/emulated/0/Movies','🎬 ${L.movies}'),
             ];
-            for (final d in _getStorageDevices()) { items.add(_pmStr(Icons.sd_card_rounded, d.path, '💾 ${p.basename(d.path)}')); }
-            items..add(const PopupMenuDivider())..add(_pmStr(Icons.edit_rounded, '__custom__', '📂 ${L.customPath}'));
+            for(final d in _getStorageDevices()){items.add(_pmStr(Icons.sd_card_rounded,d.path,'💾 ${p.basename(d.path)}'));}
+            items..add(const PopupMenuDivider(color: kBorder))..add(_pmStr(Icons.edit_rounded,'__custom__','📂 ${L.customPath}'));
             return items;
           },
-          onSelected: (v) {
-            if (v == '__custom__') {
-              final ctrl = TextEditingController(text: _path);
-              showDialog(context: context, builder: (ctx) => AlertDialog(
-                title: Text(L.customPath),
-                content: TextField(controller: ctrl, autofocus: true,
-                    decoration: InputDecoration(hintText: '/storage/emulated/0/...', border: OutlineInputBorder())),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.cancel)),
-                  FilledButton(onPressed: () { final pt = ctrl.text.trim(); Navigator.pop(ctx); if (pt.isNotEmpty) _loadDir(pt); }, child: Text(L.start))],
+          onSelected:(v){
+            if(v=='__custom__'){
+              final ctrl=TextEditingController(text:_path);
+              showDialog(context:context,builder:(ctx)=>AlertDialog(
+                backgroundColor: kSurface,
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+                title:Text(L.customPath, style: const TextStyle(color: Colors.white)),
+                content:TextField(controller:ctrl,autofocus:true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration:InputDecoration(
+                      hintText:'/storage/emulated/0/...', hintStyle: const TextStyle(color: kTextDim),
+                      border:OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kAccent)))),
+                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+                  FilledButton(style: FilledButton.styleFrom(backgroundColor: kAccent), onPressed:(){final pt=ctrl.text.trim();Navigator.pop(ctx);if(pt.isNotEmpty)_loadDir(pt);},child:Text(L.start))],
               ));
-            } else { _loadDir(v); }
+            }else{_loadDir(v);}
           },
         ),
         PopupMenuButton<_SortBy>(
-          icon: const Icon(Icons.sort_rounded, size: 20, color: Colors.white70),
-          onSelected: (v) => setState(() { if (_sortBy == v) _sortDesc = !_sortDesc; else { _sortBy = v; _sortDesc = false; } }),
-          itemBuilder: (_) => [
-            _pmSort(_SortBy.name, L.sortName, Icons.sort_by_alpha_rounded),
-            _pmSort(_SortBy.date, L.sortDate, Icons.access_time_rounded),
-            _pmSort(_SortBy.size, L.sortSize, Icons.data_usage_rounded),
-            _pmSort(_SortBy.type, L.sortType, Icons.video_file_rounded),
+          icon:const Icon(Icons.sort_rounded,size:20, color: Colors.white),
+          color: kSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: kBorder)),
+          onSelected:(v)=>setState((){if(_sortBy==v)_sortDesc=!_sortDesc;else{_sortBy=v;_sortDesc=false;}}),
+          itemBuilder:(_)=>[
+            _pmSort(_SortBy.name,L.sortName,Icons.sort_by_alpha_rounded),
+            _pmSort(_SortBy.date,L.sortDate,Icons.access_time_rounded),
+            _pmSort(_SortBy.size,L.sortSize,Icons.data_usage_rounded),
+            _pmSort(_SortBy.type,L.sortType,Icons.video_file_rounded),
           ],
         ),
       ],
     ],
   );
 
-  PopupMenuItem<String> _pmStr(IconData icon, String v, String t) => PopupMenuItem(value: v, height: 40,
-      child: Row(children: [Icon(icon, size: 16, color: kTextSec), const SizedBox(width: 10), Text(t, style: const TextStyle(fontSize: 13))]));
-  PopupMenuItem<_SortBy> _pmSort(_SortBy v, String t, IconData icon) => PopupMenuItem(value: v, height: 40,
-      child: Row(children: [Icon(icon, size: 16, color: _sortBy == v ? kAccent : kTextSec), const SizedBox(width: 10),
-        Text('$t${_sortBy == v ? (_sortDesc ? ' ↑' : ' ↓') : ''}', style: TextStyle(fontSize: 13, color: _sortBy == v ? kAccent : Colors.white))]));
+  PopupMenuItem<String> _pmStr(IconData icon,String v,String t)=>PopupMenuItem(value:v,height:40,
+      child:Row(children:[Icon(icon,size:16,color:kTextSec),const SizedBox(width:10),Text(t,style:const TextStyle(fontSize:13, color: Colors.white))]));
+  PopupMenuItem<_SortBy> _pmSort(_SortBy v,String t,IconData icon)=>PopupMenuItem(value:v,height:40,
+      child:Row(children:[Icon(icon,size:16,color:_sortBy==v?kAccent:kTextSec),const SizedBox(width:10),
+        Text('$t${_sortBy==v?(_sortDesc?' ↑':' ↓'):''}',style:TextStyle(fontSize:13,color:_sortBy==v?kAccent:Colors.white))]));
 
-  PreferredSizeWidget _selectBar() => AppBar(
-    automaticallyImplyLeading: false,
-    backgroundColor: kAccent.withOpacity(0.3),
-    leading: IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => setState(() { _selectMode = false; _selected.clear(); })),
-    title: Text('${_selected.length} ${L.select}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-    actions: [
-      if (_selected.isNotEmpty) IconButton(
-        icon: const Icon(Icons.play_circle_fill_rounded, color: kCyan, size: 28),
-        tooltip: L.play,
-        onPressed: () {
-          final sorted = _filteredVideos.where((v) => _selected.contains(v.path)).toList();
-          if (sorted.isEmpty) return;
-          setState(() { _selectMode = false; _selected.clear(); });
-          Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
-            playlist: sorted.map((v) => File(v.path)).toList(),
-            playlistIndex: 0,
+  PreferredSizeWidget _selectBar()=>AppBar(
+    automaticallyImplyLeading:false,
+    backgroundColor:kAccent.withOpacity(0.2),
+    elevation: 0,
+    leading:IconButton(icon:const Icon(Icons.close_rounded,size:20, color: Colors.white),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
+    title:Text('${_selected.length} ${L.select}',style:const TextStyle(fontSize:15, color: Colors.white)),
+    actions:[
+      if(_selected.isNotEmpty)IconButton(
+        icon:const Icon(Icons.play_circle_rounded,color:kAccent,size:26),
+        tooltip:L.play,
+        onPressed:(){
+          final sorted=_filteredVideos.where((v)=>_selected.contains(v.path)).toList();
+          if(sorted.isEmpty)return;
+          setState((){_selectMode=false;_selected.clear();});
+          Navigator.push(context,MaterialPageRoute(builder:(_)=>PlayerScreen(
+            playlist:sorted.map((v)=>File(v.path)).toList(),
+            playlistIndex:0,
           )));
         }),
-      TextButton.icon(icon: const Icon(Icons.select_all_rounded, size: 18), label: Text(L.allItems, style: TextStyle(fontSize: 13)),
-          onPressed: () => setState(() => _selected.addAll(_filteredVideos.map((v) => v.path)))),
-      IconButton(icon: const Icon(Icons.delete_forever_rounded, color: kRed, size: 24),
-          onPressed: _selected.isEmpty ? null : () => _confirmDelete(_selected.map((s) => File(s)).toList())),
+      TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18, color: kAccent),label:Text(L.allItems,style:const TextStyle(fontSize:13, color: kAccent)),
+          onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path)))),
+      IconButton(icon:const Icon(Icons.delete_outline_rounded,color:kRed,size:22),
+          onPressed:_selected.isEmpty?null:()=>_confirmDelete(_selected.map((s)=>File(s)).toList())),
     ],
   );
 
-  Widget _buildBody() {
-    if (_checking) return const Center(child: CircularProgressIndicator(color: kAccent));
-    if (!_granted) return Center(child: Padding(padding: const EdgeInsets.all(32), child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
-          child: const Icon(Icons.folder_off_rounded, size: 54, color: kTextSec)),
-      const SizedBox(height: 20),
-      Text(L.permissionNeeded, textAlign: TextAlign.center, style: TextStyle(color: kTextSec)),
-      const SizedBox(height: 20),
-      FilledButton.icon(onPressed: _ensurePermission, icon: const Icon(Icons.lock_open_rounded), label: Text(L.grantPermission)),
-      const SizedBox(height: 8), TextButton(onPressed: openAppSettings, child: Text(L.appSettings)),
+  Widget _buildBody(){
+    if(_checking)return const Center(child:CircularProgressIndicator(color: kAccent));
+    if(!_granted)return Center(child:Padding(padding:const EdgeInsets.all(32),child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder)),
+          child:const Icon(Icons.folder_off_rounded,size:48,color:kTextSec)),
+      const SizedBox(height:20),
+      Text(L.permissionNeeded,textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
+      const SizedBox(height:20),
+      FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: kAccent), onPressed:_ensurePermission,icon:const Icon(Icons.lock_open_rounded),label:Text(L.grantPermission)),
+      const SizedBox(height:8),TextButton(onPressed:openAppSettings,child:Text(L.appSettings, style: const TextStyle(color: kAccent))),
     ])));
 
-    return Column(children: [
-      Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), color: Colors.white.withOpacity(0.02),
-          child: Row(children: [
-            Icon(Icons.explore_rounded, size: 14, color: kCyan), const SizedBox(width: 8),
-            Expanded(child: Text(_path, style: const TextStyle(fontSize: 11, color: kTextSec, letterSpacing: 0.3), overflow: TextOverflow.ellipsis)),
-            if (_searchRunning) const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: kAccent)),
-            if (_globalSearch && !_searchRunning && _searchResults.isNotEmpty)
-              Text('${_searchResults.length}', style: const TextStyle(fontSize: 11, color: kCyan, fontWeight: FontWeight.bold)),
+    return Column(children:[
+      Container(width:double.infinity,padding:const EdgeInsets.symmetric(horizontal:16,vertical:8),color:kSurface.withOpacity(0.5),
+          child:Row(children:[
+            Icon(Icons.folder_open_rounded,size:14,color:kAccent.withOpacity(0.8)),const SizedBox(width:6),
+            Expanded(child:Text(_path,style:const TextStyle(fontSize:11,color:kTextDim),overflow:TextOverflow.ellipsis)),
+            if(_searchRunning)const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.5,color:kAccent)),
+            if(_globalSearch&&!_searchRunning&&_searchResults.isNotEmpty)
+              Text('${_searchResults.length}',style:const TextStyle(fontSize:11,color:kAccent, fontWeight: FontWeight.bold)),
           ])),
-      Expanded(child: _buildList()),
+      Expanded(child:_buildList()),
     ]);
   }
 
-  Widget _buildList() {
-    final fDirs = _filteredDirs, fVids = _filteredVideos;
-    final total = fDirs.length + fVids.length;
-    if (total == 0 && _searchRunning) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const CircularProgressIndicator(color: kAccent), const SizedBox(height: 16), Text(L.searchingGlobal, style: TextStyle(color: kTextSec)),
+  Widget _buildList(){
+    final fDirs=_filteredDirs,fVids=_filteredVideos;
+    final total=fDirs.length+fVids.length;
+    if(total==0&&_searchRunning)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const CircularProgressIndicator(color: kAccent),const SizedBox(height:16),Text(L.searchingGlobal,style:TextStyle(color:kTextSec)),
     ]));
-    if (total == 0) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.video_library_outlined, size: 54, color: kTextDim), const SizedBox(height: 12),
-      Text(L.noFilesFound, style: TextStyle(color: kTextSec)),
+    if(total==0)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Icon(Icons.video_library_outlined,size:48,color:kTextDim),const SizedBox(height:12),
+      Text(L.noFilesFound,style:TextStyle(color:kTextSec)),
     ]));
 
     return RefreshIndicator(
-      onRefresh: () async { if (!_globalSearch) { _loadDir(_path); } else if (_searchQuery.isNotEmpty) { _runGlobalSearch(_searchQuery); } },
-      color: kAccent,
-      backgroundColor: kSurface,
-      child: ListView.builder(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom + 95, top: 12, left: 16, right: 16),
-        itemCount: total,
-        itemBuilder: (ctx, i) {
-          if (i < fDirs.length) {
-            final d = fDirs[i];
-            return _DirTile(dir: d, onTap: () => _loadDir(d.path));
-          }
-          final v = fVids[i - fDirs.length];
-          return _VideoTile(
-            file: v, selectMode: _selectMode, selected: _selected.contains(v.path),
-            onTap: _selectMode ? () => setState(() => _selected.contains(v.path) ? _selected.remove(v.path) : _selected.add(v.path)) : () => _openVideo(v, fVids, i - fDirs.length),
-            onLongPress: _selectMode ? null : () => _showVideoMenu(v),
-            showPath: _globalSearch,
-          );
-        },
-      ),
-    );
+      onRefresh:()async{if(!_globalSearch){_loadDir(_path);}else if(_searchQuery.isNotEmpty){_runGlobalSearch(_searchQuery);}},
+      color:kAccent,
+      backgroundColor:kCard,
+      child:ListView.builder(
+      physics:const AlwaysScrollableScrollPhysics(),
+      padding:EdgeInsets.only(bottom:MediaQuery.of(context).viewPadding.bottom+90,top:8,left:12,right:12),
+      itemCount:total,
+      itemBuilder:(ctx,i){
+        if(i<fDirs.length){
+          final d=fDirs[i];
+          return _DirTile(dir:d,onTap:()=>_loadDir(d.path));
+        }
+        final v=fVids[i-fDirs.length];
+        return _VideoTile(
+          file:v,selectMode:_selectMode,selected:_selected.contains(v.path),
+          onTap:_selectMode?()=>setState(()=>_selected.contains(v.path)?_selected.remove(v.path):_selected.add(v.path)):()=>_openVideo(v,fVids,i-fDirs.length),
+          onLongPress:_selectMode?null:()=>_showVideoMenu(v),
+          showPath:_globalSearch,
+        );
+      },
+    ),);
   }
 
-  void _openPanel(int page) {
-    final ctrl = DraggableScrollableController();
+  void _openPanel(int page){
+    final ctrl=DraggableScrollableController();
     showModalBottomSheet(
-      context: context, isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: false,
-      builder: (ctx) => DraggableScrollableSheet(
-        controller: ctrl,
-        initialChildSize: 0.58,
-        minChildSize: 0.35,
-        maxChildSize: 0.97,
-        expand: false,
-        snap: true,
-        snapSizes: const [0.35, 0.58, 0.97],
-        shouldCloseOnMinExtent: false,
-        builder: (bctx, sc) => Container(
-          decoration: BoxDecoration(
-            color: kSurface.withOpacity(0.96),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border.all(color: Colors.white.withOpacity(0.12)),
-            boxShadow: [BoxShadow(color: kAccent.withOpacity(0.2), blurRadius: 30, spreadRadius: 5)],
+      context:context,isScrollControlled:true,
+      backgroundColor:Colors.transparent,
+      enableDrag:false,
+      builder:(ctx)=>DraggableScrollableSheet(
+        controller:ctrl,
+        initialChildSize:0.55,
+        minChildSize:0.35,
+        maxChildSize:0.97,
+        expand:false,
+        snap:true,
+        snapSizes:const[0.35,0.55,0.97],
+        shouldCloseOnMinExtent:false,
+        builder:(bctx,sc)=>Container(
+          decoration:BoxDecoration(
+            color:kSurface,
+            borderRadius:const BorderRadius.vertical(top:Radius.circular(24)),
+            border: Border.all(color: kAccent.withOpacity(0.3)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.9), blurRadius: 20, spreadRadius: 5),
+            ],
           ),
-          child: Column(children: [
+          child:Column(children:[
             GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onVerticalDragUpdate: (d) {
-                final size = MediaQuery.of(ctx).size.height;
-                final delta = -d.delta.dy / size;
-                final cur = ctrl.size;
-                ctrl.jumpTo((cur + delta).clamp(0.35, 0.97));
+              behavior:HitTestBehavior.translucent,
+              onVerticalDragUpdate:(d){
+                final size=MediaQuery.of(ctx).size.height;
+                final delta=-d.delta.dy/size;
+                final cur=ctrl.size;
+                ctrl.jumpTo((cur+delta).clamp(0.35,0.97));
               },
-              onVerticalDragEnd: (d) async {
-                final cur = ctrl.size;
-                final target = cur > 0.76 ? 0.97 : cur > 0.45 ? 0.58 : 0.35;
-                await ctrl.animateTo(target, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-                if (target <= 0.35 && ctx.mounted) Navigator.pop(ctx);
+              onVerticalDragEnd:(d)async{
+                final cur=ctrl.size;
+                final target=cur>0.76?0.97:cur>0.45?0.55:0.35;
+                await ctrl.animateTo(target,duration:const Duration(milliseconds:250),curve:Curves.easeOut);
+                if(target<=0.35&&ctx.mounted)Navigator.pop(ctx);
               },
-              child: SizedBox(height: 24, child: Center(child: Container(
-                width: 44, height: 4,
-                decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(2)))))),
-            Expanded(child: BottomPanel(initialPage: page, noHandle: true,
-              onVideoTap: (path) { Navigator.pop(ctx); _openVideoByPath(path); },
-              onFolderTap: (folder) { Navigator.pop(ctx); _loadDir(folder); })),
+              child:SizedBox(height:22,child:Center(child:Container(
+                width:40,height:4,
+                decoration:BoxDecoration(color:kAccent.withOpacity(0.6),borderRadius:BorderRadius.circular(2)))))),
+            Expanded(child:BottomPanel(initialPage:page,noHandle:true,
+              onVideoTap:(path){Navigator.pop(ctx);_openVideoByPath(path);},
+              onFolderTap:(folder){Navigator.pop(ctx);_loadDir(folder);})),
           ]))),
     );
   }
 }
 
-// ── تایل پوشه بازطراحی شده (Futuristic Directory Card) ──
-class _DirTile extends StatelessWidget {
-  final Directory dir; final VoidCallback onTap;
-  const _DirTile({required this.dir, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: GestureDetector(
-            onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF8B5CF6).withOpacity(0.35),
-                          const Color(0xFF06B6D4).withOpacity(0.15),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.5)),
-                      boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.2), blurRadius: 10)],
-                    ),
-                    child: const Icon(Icons.folder_special_rounded, color: Color(0xFFA78BFA), size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      p.basename(dir.path),
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white, letterSpacing: 0.2),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
-                    child: Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withOpacity(0.4), size: 14),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+// ── تایل پوشه ──
+class _DirTile extends StatelessWidget{
+  final Directory dir;final VoidCallback onTap;
+  const _DirTile({required this.dir,required this.onTap});
+  @override Widget build(BuildContext context)=>GestureDetector(
+    onTap:onTap,
+    child:Container(margin:const EdgeInsets.only(bottom:6),padding:const EdgeInsets.symmetric(horizontal:14,vertical:12),
+      decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(14),border:Border.all(color:kBorder.withOpacity(0.7))),
+      child:Row(children:[
+        Container(width:44,height:44,decoration:BoxDecoration(
+          gradient:const LinearGradient(colors:[Color(0xFFFF1744),Color(0xFF880E4F)],begin:Alignment.topLeft,end:Alignment.bottomRight),
+          borderRadius:BorderRadius.circular(12)),
+          child:const Icon(Icons.folder_rounded,color:Colors.white,size:22)),
+        const SizedBox(width:12),
+        Expanded(child:Text(p.basename(dir.path),style:const TextStyle(fontWeight:FontWeight.w500,fontSize:14, color: Colors.white),maxLines:1,overflow:TextOverflow.ellipsis)),
+        const Icon(Icons.chevron_left_rounded,color:kTextDim,size:20),
+      ]),
+    ),
+  );
 }
 
-// ── تایل ویدیو سه‌بعدی و سایبرپانک (Cyberpunk Video Tile) ──
-class _VideoTile extends StatelessWidget {
+// ── تایل ویدیو با thumbnail ──
+class _VideoTile extends StatelessWidget{
   final File file;
-  final bool selectMode, selected, showPath;
+  final bool selectMode,selected,showPath;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
-  const _VideoTile({
-    required this.file,
-    required this.selectMode,
-    required this.selected,
-    required this.onTap,
-    this.onLongPress,
-    this.showPath = false,
-  });
+  const _VideoTile({required this.file,required this.selectMode,required this.selected,required this.onTap,this.onLongPress,this.showPath=false});
 
-  @override
-  Widget build(BuildContext context) {
-    final name = p.basename(file.path);
-    final ext = p.extension(file.path).toLowerCase().replaceAll('.', '');
-    final seen = Store.watched.contains(file.path);
-    final bkm = Store.bookmarked.contains(file.path);
-    final fav = Store.favorited.contains(file.path);
-    final hasSub = matchSubtitle(file.path) != null;
-    final rating = Store.ratings[file.path] ?? 0;
-    final hasNote = Store.notes.containsKey(file.path);
-    final grad = _extGrad(ext);
-    final dur = Store.getCachedDur(file.path);
+  @override Widget build(BuildContext context){
+    final name=p.basename(file.path);
+    final ext=p.extension(file.path).toLowerCase().replaceAll('.','');
+    final seen=Store.watched.contains(file.path);
+    final bkm=Store.bookmarked.contains(file.path);
+    final fav=Store.favorited.contains(file.path);
+    final hasSub=matchSubtitle(file.path)!=null;
+    final rating=Store.ratings[file.path]??0;
+    final hasNote=Store.notes.containsKey(file.path);
+    final grad=_extGrad(ext);
+    final dur=Store.getCachedDur(file.path);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: GestureDetector(
-            onTap: onTap,
-            onLongPress: onLongPress,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: selected ? kAccent.withOpacity(0.25) : Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: selected ? kAccent : Colors.white.withOpacity(0.08),
-                  width: selected ? 1.5 : 1,
-                ),
-                boxShadow: selected ? [BoxShadow(color: kAccent.withOpacity(0.3), blurRadius: 12)] : null,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    // ── پوستر ویدیو ──
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: selectMode
-                          ? AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: selected ? kAccent : kSurface,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: selected ? kAccent : Colors.white24),
-                              ),
-                              child: Icon(
-                                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            )
-                          : SizedBox(
-                              width: 72,
-                              height: 52,
-                              child: FutureBuilder<Uint8List?>(
-                                future: _loadThumb(file.path),
-                                builder: (ctx, snap) {
-                                  if (snap.hasData && snap.data != null) {
-                                    return Stack(
-                                      fit: StackFit.expand,
-                                      children: [
-                                        Image.memory(snap.data!, fit: BoxFit.cover),
-                                        if (seen)
-                                          Container(
-                                            color: Colors.black.withOpacity(0.4),
-                                            alignment: Alignment.center,
-                                            child: const Icon(Icons.check_circle_rounded, color: kGreen, size: 24),
-                                          ),
-                                      ],
-                                    );
-                                  }
-                                  return Container(
-                                    decoration: BoxDecoration(gradient: grad),
-                                    alignment: Alignment.center,
-                                    child: snap.connectionState == ConnectionState.waiting
-                                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white54))
-                                        : Text(
-                                            ext.length > 3 ? ext.substring(0, 3).toUpperCase() : ext.toUpperCase(),
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
-                                          ),
-                                  );
-                                },
-                              ),
-                            ),
-                    ),
-                    const SizedBox(width: 14),
-                    // ── اطلاعات ویدیو ──
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: seen ? kGreen : Colors.white,
-                              height: 1.3,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (showPath)
-                            Text(
-                              p.dirname(file.path),
-                              style: const TextStyle(fontSize: 10, color: kTextDim),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Text(sizeStr(file), style: const TextStyle(fontSize: 11, color: kTextDim, fontWeight: FontWeight.w500)),
-                              if (dur != null && dur > 0) ...[
-                                const Text(' • ', style: TextStyle(fontSize: 11, color: kTextDim)),
-                                Text(fmt(Duration(seconds: dur)), style: const TextStyle(fontSize: 11, color: kTextDim, fontWeight: FontWeight.w500)),
-                              ],
-                              if (hasSub) ...[const SizedBox(width: 6), _badge('SUB', kGreen)],
-                              if (bkm) ...[const SizedBox(width: 4), _badge('★', kAmber)],
-                              if (fav) ...[const SizedBox(width: 4), _badge('❤', kPink)],
-                              if (hasNote) ...[const SizedBox(width: 4), _badge('📝', kTextSec)],
-                              if (rating > 0) ...[const SizedBox(width: 4), Text('${'★' * rating}', style: const TextStyle(fontSize: 10, color: kAmber))],
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    // ── دکمه پخش نئونی ──
-                    if (!selectMode)
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: seen ? kGreen.withOpacity(0.15) : kAccent.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: seen ? kGreen.withOpacity(0.5) : kAccent.withOpacity(0.6)),
-                          boxShadow: [
-                            BoxShadow(color: (seen ? kGreen : kAccent).withOpacity(0.25), blurRadius: 10),
-                          ],
-                        ),
-                        child: Icon(Icons.play_arrow_rounded, color: seen ? kGreen : kCyan, size: 24),
-                      ),
-                  ],
-                ),
-              ),
+    return GestureDetector(
+      onTap:onTap,onLongPress:onLongPress,
+      child:AnimatedContainer(
+        duration:const Duration(milliseconds:150),
+        margin:const EdgeInsets.only(bottom:6),
+        decoration:BoxDecoration(
+          color:selected?kAccent.withOpacity(0.2):kCard,
+          borderRadius:BorderRadius.circular(14),
+          border:Border.all(color:selected?kAccent:kBorder.withOpacity(0.7)),
+        ),
+        child:Padding(
+          padding:const EdgeInsets.all(12),
+          child:Row(children:[
+            ClipRRect(
+              borderRadius:BorderRadius.circular(10),
+              child:selectMode
+                  ?AnimatedContainer(duration:const Duration(milliseconds:150),width:48,height:48,
+                      decoration:BoxDecoration(color:selected?kAccent:kBorder,borderRadius:BorderRadius.circular(10)),
+                      child:Icon(selected?Icons.check_rounded:Icons.circle_outlined,color:Colors.white,size:20))
+                  :SizedBox(width:64,height:48,child:FutureBuilder<Uint8List?>(
+                      future:_loadThumb(file.path),
+                      builder:(ctx,snap){
+                        if(snap.hasData&&snap.data!=null){
+                          return Stack(fit:StackFit.expand,children:[
+                            Image.memory(snap.data!,fit:BoxFit.cover),
+                            if(seen)Container(color:kGreen.withOpacity(0.35),alignment:Alignment.center,
+                                child:const Icon(Icons.check_circle_rounded,color:Colors.white,size:20)),
+                          ]);
+                        }
+                        return Container(
+                          decoration:BoxDecoration(gradient:grad),
+                          alignment:Alignment.center,
+                          child:snap.connectionState==ConnectionState.waiting
+                              ?const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:1.5,color:Colors.white38))
+                              :Text(ext.length>3?ext.substring(0,3).toUpperCase():ext.toUpperCase(),
+                                  style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800,color:Colors.white)),
+                        );
+                      },
+                    )),
             ),
-          ),
+            const SizedBox(width:12),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text(name,style:TextStyle(fontSize:14,fontWeight:FontWeight.w500,
+                  color:seen?kGreen:Colors.white,height:1.3),maxLines:1,overflow:TextOverflow.ellipsis),
+              if(showPath)Text(p.dirname(file.path),style:const TextStyle(fontSize:10,color:kTextDim),maxLines:1,overflow:TextOverflow.ellipsis),
+              const SizedBox(height:5),
+              Row(children:[
+                Text(sizeStr(file),style:const TextStyle(fontSize:11,color:kTextDim)),
+                if(dur!=null&&dur>0)...[const Text(' · ',style:TextStyle(fontSize:11,color:kTextDim)),Text(fmt(Duration(seconds:dur)),style:const TextStyle(fontSize:11,color:kTextDim))],
+                if(hasSub)...[const SizedBox(width:5),_badge('SUB',kGreen)],
+                if(bkm)...[const SizedBox(width:4),_badge('★',kAmber)],
+                if(fav)...[const SizedBox(width:4),_badge('❤',kAccent)],
+                if(hasNote)...[const SizedBox(width:4),_badge('📝',kTextSec)],
+                if(rating>0)...[const SizedBox(width:4),Text('${'★'*rating}',style:const TextStyle(fontSize:10,color:kAmber))],
+              ]),
+            ])),
+            if(!selectMode)Container(
+              width:36,height:36,
+              decoration:BoxDecoration(
+                color:seen?kGreen.withOpacity(0.12):kAccent.withOpacity(0.12),
+                borderRadius:BorderRadius.circular(18),
+                border:Border.all(color:seen?kGreen.withOpacity(0.3):kAccent.withOpacity(0.3)),
+              ),
+              child:Icon(Icons.play_arrow_rounded,color:seen?kGreen:kAccent,size:20),
+            ),
+          ]),
         ),
       ),
     );
@@ -969,240 +837,258 @@ class _VideoTile extends StatelessWidget {
 }
 
 // ── منوی ویدیو ──
-class VideoMenu extends StatefulWidget {
+class VideoMenu extends StatefulWidget{
   final File file;
-  final VoidCallback onDone, onInfo, onDelete, onRename, onSelect, onCopy, onMove, onRate, onNote;
-  const VideoMenu({super.key, required this.file, required this.onDone, required this.onInfo, required this.onDelete, required this.onRename, required this.onSelect, required this.onCopy, required this.onMove, required this.onRate, required this.onNote});
-  @override State<VideoMenu> createState() => _VideoMenuState();
+  final VoidCallback onDone,onInfo,onDelete,onRename,onSelect,onCopy,onMove,onRate,onNote;
+  const VideoMenu({super.key,required this.file,required this.onDone,required this.onInfo,required this.onDelete,required this.onRename,required this.onSelect,required this.onCopy,required this.onMove,required this.onRate,required this.onNote});
+  @override State<VideoMenu> createState()=>_VideoMenuState();
 }
-
-class _VideoMenuState extends State<VideoMenu> {
-  late bool _bkm = Store.bookmarked.contains(widget.file.path);
-  late bool _fav = Store.favorited.contains(widget.file.path);
-  @override Widget build(BuildContext context) => SafeArea(top: false, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-    const SizedBox(height: 12),
-    Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
-    const SizedBox(height: 12),
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [
-      Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white12)),
-          child: const Icon(Icons.video_file_rounded, color: kCyan, size: 22)),
-      const SizedBox(width: 14),
-      Expanded(child: Text(p.basename(widget.file.path), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white), maxLines: 2)),
+class _VideoMenuState extends State<VideoMenu>{
+  late bool _bkm=Store.bookmarked.contains(widget.file.path);
+  late bool _fav=Store.favorited.contains(widget.file.path);
+  @override Widget build(BuildContext context)=>SafeArea(top:false,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+    const SizedBox(height:12),
+    Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kAccent.withOpacity(0.5),borderRadius:BorderRadius.circular(2)))),
+    const SizedBox(height:8),
+    Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Row(children:[
+      Container(width:40,height:40,decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(10),border:Border.all(color:kAccent.withOpacity(0.4))),
+          child:const Icon(Icons.video_file_rounded,color:kAccent,size:20)),
+      const SizedBox(width:12),
+      Expanded(child:Text(p.basename(widget.file.path),style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13, color: Colors.white),maxLines:2)),
     ])),
-    const SizedBox(height: 12), const Divider(height: 1, color: Colors.white12),
-    _mi(Icons.info_outline_rounded, kTextSec, L.fileInfo, widget.onInfo),
-    _mi2(Icons.bookmark_rounded, _bkm ? kAmber : kTextSec, _bkm ? L.removeBookmark : L.addBookmark, () async { await Store.toggleBookmark(widget.file.path); setState(() => _bkm = !_bkm); widget.onDone(); }),
-    _mi2(Icons.favorite_rounded, _fav ? kPink : kTextSec, _fav ? L.removeFavorite : L.favorites, () async { await Store.toggleFavorite(widget.file.path); setState(() => _fav = !_fav); widget.onDone(); }),
-    _mi(Icons.star_outline_rounded, kAmber, L.rating, widget.onRate),
-    _mi(Icons.notes_rounded, kTextSec, L.note, widget.onNote),
-    const Divider(height: 1, color: Colors.white12),
-    _mi(Icons.queue_music_rounded, kCyan, L.addToPlaylist, () async {
-      final playlists = Store.playlists.keys.toList();
-      if (playlists.isEmpty) {
+    const SizedBox(height:8),const Divider(height:1, color: kBorder),
+    _mi(Icons.info_outline_rounded,kTextSec,L.fileInfo,widget.onInfo),
+    _mi2(Icons.bookmark_rounded,_bkm?kAmber:kTextSec,_bkm?L.removeBookmark:L.addBookmark,()async{await Store.toggleBookmark(widget.file.path);setState(()=>_bkm=!_bkm);widget.onDone();}),
+    _mi2(Icons.favorite_rounded,_fav?kAccent:kTextSec,_fav?L.removeFavorite:L.favorites,()async{await Store.toggleFavorite(widget.file.path);setState(()=>_fav=!_fav);widget.onDone();}),
+    _mi(Icons.star_outline_rounded,kAmber,L.rating,widget.onRate),
+    _mi(Icons.notes_rounded,kTextSec,L.note,widget.onNote),
+    const Divider(height:1, color: kBorder),
+    _mi(Icons.queue_music_rounded,kAccent,L.addToPlaylist,()async{
+      final playlists=Store.playlists.keys.toList();
+      if(playlists.isEmpty){
         showSnack(context, L.noPlaylist);
         return;
       }
-      final name = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
-        title: Text(L.playlist),
-        content: Column(mainAxisSize: MainAxisSize.min, children: playlists.map((pl) => ListTile(
-          dense: true, leading: const Icon(Icons.queue_music_rounded, color: kCyan, size: 18),
-          title: Text(pl, style: const TextStyle(fontSize: 13)),
-          onTap: () => Navigator.pop(ctx, pl))).toList()),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.cancel))],
+      final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+        backgroundColor: kSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+        title:Text(L.playlist, style: const TextStyle(color: Colors.white)),
+        content:Column(mainAxisSize:MainAxisSize.min,children:playlists.map((pl)=>ListTile(
+          dense:true,leading:const Icon(Icons.queue_music_rounded,color:kAccent,size:18),
+          title:Text(pl,style:const TextStyle(fontSize:13, color: Colors.white)),
+          onTap:()=>Navigator.pop(ctx,pl))).toList()),
+        actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel, style: const TextStyle(color: kTextDim)))],
       ));
-      if (name != null) {
-        await Store.addToPlaylist(name, widget.file.path);
+      if(name!=null){
+        await Store.addToPlaylist(name,widget.file.path);
         showSnack(context, '${L.addedTo} "$name"');
       }
     }),
-    _mi(Icons.copy_rounded, kTextSec, L.copyTo, widget.onCopy),
-    _mi(Icons.drive_file_move_outline, kTextSec, L.moveTo, widget.onMove),
-    _mi(Icons.edit_rounded, kTextSec, L.rename_, widget.onRename),
-    _mi(Icons.select_all_rounded, kTextSec, L.selectGroup, widget.onSelect),
-    _mi(Icons.delete_outline_rounded, kRed, L.delete, widget.onDelete),
-    const SizedBox(height: 12),
+    _mi(Icons.copy_rounded,kTextSec,L.copyTo,widget.onCopy),
+    _mi(Icons.drive_file_move_outline,kTextSec,L.moveTo,widget.onMove),
+    _mi(Icons.edit_rounded,kTextSec,L.rename_,widget.onRename),
+    _mi(Icons.select_all_rounded,kTextSec,L.selectGroup,widget.onSelect),
+    _mi(Icons.delete_outline_rounded,kAccent,L.delete,widget.onDelete),
+    const SizedBox(height:8),
   ])));
-  Widget _mi(IconData icon, Color iconColor, String title, VoidCallback onTap) => ListTile(dense: true,
-    leading: Container(width: 32, height: 32, decoration: BoxDecoration(color: iconColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: iconColor, size: 18)),
-    title: Text(title, style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w500)), onTap: onTap);
-  Widget _mi2(IconData icon, Color iconColor, String title, VoidCallback onTap) => _mi(icon, iconColor, title, onTap);
+  Widget _mi(IconData icon,Color iconColor,String title,VoidCallback onTap)=>ListTile(dense:true,
+    leading:Container(width:30,height:30,decoration:BoxDecoration(color:iconColor.withOpacity(0.12),borderRadius:BorderRadius.circular(8)),
+        child:Icon(icon,color:iconColor,size:15)),
+    title:Text(title,style:const TextStyle(fontSize:13, color: Colors.white)),onTap:onTap);
+  Widget _mi2(IconData icon,Color iconColor,String title,VoidCallback onTap)=>_mi(icon,iconColor,title,onTap);
 }
 
-// ── پانل کشویی شیشه‌ای ──
-class BottomPanel extends StatefulWidget {
+// ── پانل شناور ──
+class BottomPanel extends StatefulWidget{
   final int initialPage;
-  final ValueChanged<String> onVideoTap, onFolderTap;
+  final ValueChanged<String> onVideoTap,onFolderTap;
   final bool noHandle;
-  const BottomPanel({super.key, required this.initialPage, required this.onVideoTap, required this.onFolderTap, this.noHandle = false});
-  @override State<BottomPanel> createState() => _BottomPanelState();
+  const BottomPanel({super.key,required this.initialPage,required this.onVideoTap,required this.onFolderTap,this.noHandle=false});
+  @override State<BottomPanel> createState()=>_BottomPanelState();
 }
-
-class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStateMixin {
+class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStateMixin{
   late TabController _tab;
-  @override void initState() { super.initState(); _tab = TabController(length: 8, vsync: this, initialIndex: widget.initialPage.clamp(0, 6)); }
-  @override void dispose() { _tab.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) => Column(children: [
-    if (!widget.noHandle) ...[const SizedBox(height: 10), Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))), const SizedBox(height: 4)],
-    TabBar(controller: _tab, isScrollable: true, indicatorColor: kCyan, labelColor: kCyan, unselectedLabelColor: kTextSec,
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), unselectedLabelStyle: const TextStyle(fontSize: 12),
-        tabs: [Tab(icon: Icon(Icons.history_rounded, size: 18), text: L.history),
-          Tab(icon: Icon(Icons.bookmark_rounded, size: 18), text: L.bookmarks),
-          Tab(icon: Icon(Icons.favorite_rounded, size: 18), text: L.favorites),
-          Tab(icon: Icon(Icons.folder_special_rounded, size: 18), text: L.folders),
-          Tab(icon: Icon(Icons.queue_music_rounded, size: 18), text: L.playlist),
-          Tab(icon: Icon(Icons.star_rounded, size: 18), text: L.sponsors),
-          Tab(icon: Icon(Icons.build_rounded, size: 18), text: L.tools),
-          Tab(icon: Icon(Icons.settings_rounded, size: 18), text: L.app)]),
-    Expanded(child: TabBarView(controller: _tab, children: [
+  @override void initState(){super.initState();_tab=TabController(length:8,vsync:this,initialIndex:widget.initialPage.clamp(0,6));}
+  @override void dispose(){_tab.dispose();super.dispose();}
+  @override Widget build(BuildContext context)=>Column(children:[
+    if(!widget.noHandle)...[const SizedBox(height:10),Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kAccent.withOpacity(0.5),borderRadius:BorderRadius.circular(2)))),const SizedBox(height:4)],
+    TabBar(controller:_tab,isScrollable:true,indicatorColor:kAccent,labelColor:kAccent,unselectedLabelColor:kTextSec,
+        dividerColor: Colors.transparent,
+        labelStyle:const TextStyle(fontSize:12,fontWeight:FontWeight.w600),unselectedLabelStyle:const TextStyle(fontSize:12),
+        tabs:[Tab(icon:Icon(Icons.history_rounded,size:16),text:L.history),
+          Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:L.bookmarks),
+          Tab(icon:Icon(Icons.favorite_rounded,size:16),text:L.favorites),
+          Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:L.folders),
+          Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:L.playlist),
+          Tab(icon:Icon(Icons.star_rounded,size:16),text:L.sponsors),
+          Tab(icon:Icon(Icons.build_rounded,size:16),text:L.tools),
+          Tab(icon:Icon(Icons.settings_rounded,size:16),text:L.app)]),
+    Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
-      _vList(Store.bookmarked.toList().reversed.toList(), Icons.bookmark_rounded, kAmber,
-        onRemove: (path) async { await Store.toggleBookmark(path); setState(() {}); }),
-      _vList(Store.favorited.toList().reversed.toList(), Icons.favorite_rounded, kPink,
-        onRemove: (path) async { await Store.toggleFavorite(path); setState(() {}); }),
-      _folderList(), _playlistTab(), _sponsorTab(), const ToolsTabBody(), _settingsTab(),
+      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber,
+        onRemove:(path)async{await Store.toggleBookmark(path);setState((){}); }),
+      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kAccent,
+        onRemove:(path)async{await Store.toggleFavorite(path);setState((){}); }),
+      _folderList(),_playlistTab(),_sponsorTab(),const ToolsTabBody(),_settingsTab(),
     ])),
-    SizedBox(height: MediaQuery.of(context).viewPadding.bottom),
+    SizedBox(height:MediaQuery.of(context).viewPadding.bottom),
   ]);
 
-  Widget _histTab() => Column(children: [
-    if (Store.watchHistory.isNotEmpty) Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: [
-        Expanded(child: Text(L.recentViews, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white))),
-        TextButton.icon(icon: const Icon(Icons.delete_sweep_rounded, size: 16, color: kRed), label: Text(L.deleteAll, style: const TextStyle(fontSize: 12, color: kRed)),
-            onPressed: () async { final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-              title: Text(L.deleteAllHistory),
-              actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(L.cancel)),
-                FilledButton(style: FilledButton.styleFrom(backgroundColor: kRed), onPressed: () => Navigator.pop(ctx, true), child: Text(L.delete))],
-            )); if (ok == true) { await Store.clearHistory(); setState(() {}); } })
+  Widget _histTab()=>Column(children:[
+    if(Store.watchHistory.isNotEmpty)Padding(
+      padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+      child:Row(children:[
+        Expanded(child:Text(L.recentViews,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13, color: Colors.white))),
+        TextButton.icon(icon:const Icon(Icons.delete_sweep_rounded,size:15,color:kAccent),label:Text(L.deleteAll,style:const TextStyle(fontSize:12,color:kAccent)),
+            onPressed:()async{final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+              backgroundColor: kSurface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+              title:Text(L.deleteAllHistory, style: const TextStyle(color: Colors.white)),
+              actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+                FilledButton(style:FilledButton.styleFrom(backgroundColor:kAccent),onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete))],
+            ));if(ok==true){await Store.clearHistory();setState((){});}})
       ])),
-    Expanded(child: _vList(Store.watchHistory, Icons.history_rounded, kTextSec,
-        onLongPress: (path) async { await Store.removeFromHistory(path); setState(() {}); })),
+    Expanded(child:_vList(Store.watchHistory,Icons.history_rounded,kTextSec,
+        onLongPress:(path)async{await Store.removeFromHistory(path);setState((){});})),
   ]);
 
-  Widget _vList(List<String> paths, IconData icon, Color color, {Function(String)? onLongPress, void Function(String)? onRemove}) {
-    if (paths.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
-          child: Icon(icon, size: 36, color: color.withOpacity(0.5))),
-      const SizedBox(height: 12), Text(L.nothingYet, style: TextStyle(color: kTextSec)),
+  Widget _vList(List<String> paths,IconData icon,Color color,{Function(String)?onLongPress, void Function(String)?onRemove}){
+    if(paths.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+          child:Icon(icon,size:32,color:color.withOpacity(0.4))),
+      const SizedBox(height:12),Text(L.nothingYet,style:TextStyle(color:kTextSec)),
     ]));
-    return ListView.builder(itemCount: paths.length, padding: const EdgeInsets.only(bottom: 8), itemBuilder: (_, i) {
-      final path = paths[i];
+    return ListView.builder(itemCount:paths.length,padding:const EdgeInsets.only(bottom:8),itemBuilder:(_,i){
+      final path=paths[i];
       final isUrl = path.startsWith('http://') || path.startsWith('https://');
       final exists = isUrl ? true : File(path).existsSync();
-      final displayName = isUrl ? Uri.parse(path).pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => path) : p.basename(path);
+      final displayName = isUrl ? Uri.parse(path).pathSegments.lastWhere((s)=>s.isNotEmpty,orElse:()=>path) : p.basename(path);
       final displaySub = isUrl ? path : p.dirname(path);
-      return ListTile(dense: true,
-        leading: Container(width: 32, height: 32, decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-            child: Icon(isUrl ? Icons.link_rounded : icon, color: exists ? color : kTextDim, size: 16)),
-        title: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 13, color: exists ? Colors.white : kTextDim, fontWeight: FontWeight.w500)),
-        subtitle: Text(displaySub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: kTextDim)),
-        trailing: onRemove != null ? IconButton(
-          icon: const Icon(Icons.close, size: 16, color: kRed),
-          onPressed: () => onRemove(path)) : null,
-        onTap: exists ? () {
-          if (isUrl) widget.onVideoTap(path);
+      return ListTile(dense:true,
+        leading:Container(width:30,height:30,decoration:BoxDecoration(color:color.withOpacity(0.12),borderRadius:BorderRadius.circular(8)),
+            child:Icon(isUrl ? Icons.link_rounded : icon,color:exists?color:kTextDim,size:15)),
+        title:Text(displayName,maxLines:1,overflow:TextOverflow.ellipsis,
+            style:TextStyle(fontSize:13,color:exists?Colors.white:kTextDim)),
+        subtitle:Text(displaySub,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
+        trailing:onRemove!=null?IconButton(
+          icon:const Icon(Icons.close,size:14,color:kAccent),
+          onPressed:()=>onRemove(path)):null,
+        onTap:exists?(){
+          if(isUrl) widget.onVideoTap(path);
           else widget.onVideoTap(path);
-        } : null,
-        onLongPress: () {
-          if (isUrl) {
-            Clipboard.setData(ClipboardData(text: path));
-            showSnack(context, L.linkCopied, color: const Color(0xFF7C3AED), seconds: 2);
-          } else if (onLongPress != null) onLongPress(path);
+        }:null,
+        onLongPress:(){
+          if(isUrl){
+            Clipboard.setData(ClipboardData(text:path));
+            showSnack(context, L.linkCopied, color: kAccent, seconds: 2);
+          } else if(onLongPress!=null) onLongPress(path);
         });
     });
   }
 
-  Widget _folderList() {
-    final folders = Store.savedFolders;
-    if (folders.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
-          child: const Icon(Icons.folder_special_outlined, size: 36, color: kTextDim)),
-      const SizedBox(height: 12), Text(L.noSavedFolders, style: TextStyle(color: kTextSec)),
-      const SizedBox(height: 6), Text(L.pinFolderHint, style: TextStyle(fontSize: 11, color: kTextDim)),
+  Widget _folderList(){
+    final folders=Store.savedFolders;
+    if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+          child:const Icon(Icons.push_pin_outlined,size:32,color:kTextDim)),
+      const SizedBox(height:12),Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
+      const SizedBox(height:6),Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
-    return ListView.builder(itemCount: folders.length, itemBuilder: (_, i) {
-      final folder = folders[i]; final exists = Directory(folder).existsSync();
-      return ListTile(dense: true,
-        leading: Container(width: 32, height: 32, decoration: BoxDecoration(color: kAmber.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.folder_special_rounded, color: exists ? kAmber : kTextDim, size: 16)),
-        title: Text(p.basename(folder), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w500)),
-        subtitle: Text(folder, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: kTextDim)),
-        trailing: IconButton(icon: const Icon(Icons.push_pin_rounded, size: 16, color: kRed),
-            onPressed: () async { await Store.toggleSavedFolder(folder); setState(() {}); }),
-        onTap: exists ? () => widget.onFolderTap(folder) : null);
+    return ListView.builder(itemCount:folders.length,itemBuilder:(_,i){
+      final folder=folders[i];final exists=Directory(folder).existsSync();
+      return ListTile(dense:true,
+        leading:Container(width:30,height:30,decoration:BoxDecoration(color:kAmber.withOpacity(0.12),borderRadius:BorderRadius.circular(8)),
+            child:Icon(Icons.folder_rounded,color:exists?kAmber:kTextDim,size:15)),
+        title:Text(p.basename(folder),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13, color: Colors.white)),
+        subtitle:Text(folder,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
+        trailing:IconButton(icon:const Icon(Icons.push_pin_rounded,size:14,color:kAccent),
+            onPressed:()async{await Store.toggleSavedFolder(folder);setState((){});}),
+        onTap:exists?()=>widget.onFolderTap(folder):null);
     });
   }
 
-  Widget _playlistTab() {
-    final playlists = Store.playlists;
-    return Column(children: [
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(children: [
-          Expanded(child: Text(L.playlist, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white))),
+  Widget _playlistTab(){
+    final playlists=Store.playlists;
+    return Column(children:[
+      Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+        child:Row(children:[
+          Expanded(child:Text(L.playlist,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13, color: Colors.white))),
           FilledButton.icon(
-            style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12), minimumSize: const Size(0, 32)),
-            icon: const Icon(Icons.add_rounded, size: 16), label: Text(L.newItem, style: const TextStyle(fontSize: 12)),
-            onPressed: () async {
-              final ctrl = TextEditingController();
-              final name = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
-                title: Text(L.newPlaylist),
-                content: TextField(controller: ctrl, autofocus: true,
-                    decoration: InputDecoration(hintText: L.playlistName, border: OutlineInputBorder())),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L.cancel)),
-                  FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(L.create))],
+            style:FilledButton.styleFrom(backgroundColor: kAccent, padding:const EdgeInsets.symmetric(horizontal:10),minimumSize:const Size(0,32)),
+            icon:const Icon(Icons.add_rounded,size:16),label:Text(L.newItem,style:const TextStyle(fontSize:12)),
+            onPressed:()async{
+              final ctrl=TextEditingController();
+              final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+                backgroundColor: kSurface,
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+                title:Text(L.newPlaylist, style: const TextStyle(color: Colors.white)),
+                content:TextField(controller:ctrl,autofocus:true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration:InputDecoration(
+                      hintText:L.playlistName, hintStyle: const TextStyle(color: kTextDim),
+                      border:OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kBorder)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kAccent)))),
+                actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+                  FilledButton(style: FilledButton.styleFrom(backgroundColor: kAccent), onPressed:()=>Navigator.pop(ctx,ctrl.text.trim()),child:Text(L.create))],
               ));
-              if (name != null && name.isNotEmpty) { await Store.createPlaylist(name); setState(() {}); }
+              if(name!=null&&name.isNotEmpty){await Store.createPlaylist(name);setState((){});}
             }),
         ])),
-      const Divider(height: 1, color: Colors.white12),
-      if (playlists.isEmpty) Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
-            child: const Icon(Icons.queue_music_rounded, size: 36, color: kTextDim)),
-        const SizedBox(height: 12), Text(L.noPlaylists, style: TextStyle(color: kTextSec)),
-        const SizedBox(height: 4), Text(L.createPlaylist, style: TextStyle(fontSize: 11, color: kTextDim)),
+      const Divider(height:1, color: kBorder),
+      if(playlists.isEmpty)Expanded(child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+            child:const Icon(Icons.queue_music_rounded,size:32,color:kTextDim)),
+        const SizedBox(height:12),Text(L.noPlaylists,style:TextStyle(color:kTextSec)),
+        const SizedBox(height:4),Text(L.createPlaylist,style:TextStyle(fontSize:11,color:kTextDim)),
       ])))
-      else Expanded(child: ListView.builder(itemCount: playlists.keys.length, itemBuilder: (_, i) {
-        final name = playlists.keys.elementAt(i);
-        final paths = playlists[name]!;
-        return ListTile(dense: true,
-          leading: Container(width: 34, height: 34, decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [kAccent, kCyan]), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.queue_music_rounded, size: 18, color: Colors.white)),
-          title: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
-          subtitle: Text('${paths.length}', style: const TextStyle(fontSize: 11, color: kTextDim)),
-          trailing: PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded, size: 18, color: kTextSec),
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'play', child: Text(L.play, style: const TextStyle(fontSize: 13))),
-              PopupMenuItem(value: 'delete', child: Text(L.delete, style: const TextStyle(fontSize: 13, color: kRed))),
+      else Expanded(child:ListView.builder(itemCount:playlists.keys.length,itemBuilder:(_,i){
+        final name=playlists.keys.elementAt(i);
+        final paths=playlists[name]!;
+        return ListTile(dense:true,
+          leading:Container(width:32,height:32,decoration:BoxDecoration(
+              gradient:const LinearGradient(colors:[kAccent,kAccentSecondary]),borderRadius:BorderRadius.circular(8)),
+              child:const Icon(Icons.queue_music_rounded,size:16,color:Colors.white)),
+          title:Text(name,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w500, color: Colors.white)),
+          subtitle:Text('${paths.length}',style:const TextStyle(fontSize:11,color:kTextDim)),
+          trailing:PopupMenuButton<String>(
+            icon:const Icon(Icons.more_vert_rounded,size:18,color:kTextSec),
+            color: kSurface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: kBorder)),
+            itemBuilder:(_)=>[
+              PopupMenuItem(value:'play',child:Text(L.play,style:const TextStyle(fontSize:13, color: Colors.white))),
+              PopupMenuItem(value:'delete',child:Text(L.delete,style:const TextStyle(fontSize:13,color:kAccent))),
             ],
-            onSelected: (v) async {
-              if (v == 'delete') {
-                final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-                  title: Text('${L.delete} "$name"?'),
-                  actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(L.cancel)),
-                    FilledButton(style: FilledButton.styleFrom(backgroundColor: kRed),
-                        onPressed: () => Navigator.pop(ctx, true), child: Text(L.delete))],
+            onSelected:(v)async{
+              if(v=='delete'){
+                final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+                  backgroundColor: kSurface,
+                  surfaceTintColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: kBorder)),
+                  title:Text('${L.delete} "$name"?', style: const TextStyle(color: Colors.white)),
+                  actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel, style: const TextStyle(color: kTextDim))),
+                    FilledButton(style:FilledButton.styleFrom(backgroundColor:kAccent),
+                        onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete))],
                 ));
-                if (ok == true) { await Store.deletePlaylist(name); setState(() {}); }
-              } else if (v == 'play' && paths.isNotEmpty) {
-                final files = paths.map((p) => File(p)).where((f) => f.existsSync()).toList();
-                if (files.isNotEmpty) {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
-                    playlist: files, playlistIndex: 0,
-                    subtitlePath: matchSubtitle(files.first.path),
+                if(ok==true){await Store.deletePlaylist(name);setState((){});}
+              }else if(v=='play'&&paths.isNotEmpty){
+                final files=paths.map((p)=>File(p)).where((f)=>f.existsSync()).toList();
+                if(files.isNotEmpty){
+                  Navigator.push(context,MaterialPageRoute(builder:(_)=>PlayerScreen(
+                    playlist:files, playlistIndex:0,
+                    subtitlePath:matchSubtitle(files.first.path),
                   )));
                 }
               }
             }),
-          onTap: paths.isEmpty ? null : () {
-            final files = paths.map((p) => File(p)).where((f) => f.existsSync()).toList();
-            if (files.isNotEmpty) Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
-              playlist: files, playlistIndex: 0,
-              subtitlePath: matchSubtitle(files.first.path),
+          onTap:paths.isEmpty?null:(){
+            final files=paths.map((p)=>File(p)).where((f)=>f.existsSync()).toList();
+            if(files.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>PlayerScreen(
+              playlist:files, playlistIndex:0,
+              subtitlePath:matchSubtitle(files.first.path),
             )));
           },
         );
@@ -1210,54 +1096,55 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     ]);
   }
 
-  Widget _sponsorTab() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: ApiService.getSponsors(),
-      builder: (ctx, snap) {
-        if (snap.connectionState == ConnectionState.waiting)
-          return const Center(child: CircularProgressIndicator(color: kAccent));
-        final list = snap.data ?? [];
-        if (list.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), shape: BoxShape.circle, border: Border.all(color: Colors.white12)),
-            child: const Icon(Icons.star_rounded, size: 36, color: kTextDim)),
-          const SizedBox(height: 12),
-          Text(L.noSponsors, style: TextStyle(color: kTextSec)),
+  Widget _sponsorTab(){
+    return FutureBuilder<List<Map<String,dynamic>>>(
+      future:ApiService.getSponsors(),
+      builder:(ctx,snap){
+        if(snap.connectionState==ConnectionState.waiting)
+          return const Center(child:CircularProgressIndicator(color: kAccent));
+        final list=snap.data??[];
+        if(list.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+          Container(padding:const EdgeInsets.all(16),
+            decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
+            child:const Icon(Icons.star_rounded,size:32,color:kTextDim)),
+          const SizedBox(height:12),
+          Text(L.noSponsors,style:TextStyle(color:kTextSec)),
         ]));
         return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: list.length,
-          itemBuilder: (_, i) {
-            final s = list[i];
-            final isFemale = (s['gender'] ?? 'male') == 'female';
+          padding:const EdgeInsets.all(12),
+          itemCount:list.length,
+          itemBuilder:(_,i){
+            final s=list[i];
+            final isFemale=(s['gender']??'male')=='female';
             return Card(
-              color: Colors.white.withOpacity(0.04),
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18),
-                side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1)),
-              child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-                Container(width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: isFemale ? [const Color(0xFFEC4899), const Color(0xFFF43F5E)] : [const Color(0xFF8B5CF6), const Color(0xFF06B6D4)]),
-                    borderRadius: BorderRadius.circular(28)),
-                  child: (s['avatar_url'] ?? '').isNotEmpty
-                    ? ClipRRect(borderRadius: BorderRadius.circular(28), child: Image.network(s['avatar_url'], width: 56, height: 56, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(isFemale ? Icons.face_3_rounded : Icons.face_rounded, color: Colors.white, size: 28)))
-                    : Icon(isFemale ? Icons.face_3_rounded : Icons.face_rounded, color: Colors.white, size: 28)),
-                const SizedBox(width: 14),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(s['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
-                  if ((s['description'] ?? '').isNotEmpty) Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(s['description'], style: const TextStyle(fontSize: 12, color: kTextSec))),
+              color:kCard,
+              margin:const EdgeInsets.only(bottom:12),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16),
+                side:BorderSide(color:kBorder.withOpacity(0.8),width:0.8)),
+              child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
+                Container(width:56,height:56,
+                  decoration:BoxDecoration(
+                    gradient:LinearGradient(colors:isFemale?[const Color(0xFFFF1744),const Color(0xFFD50000)]:[const Color(0xFFFF5252),const Color(0xFF880E4F)]),
+                    borderRadius:BorderRadius.circular(28)),
+                  child:(s['avatar_url']??'').isNotEmpty
+                    ?ClipRRect(borderRadius:BorderRadius.circular(28),child:Image.network(s['avatar_url'],width:56,height:56,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(isFemale?Icons.face_3_rounded:Icons.face_rounded,color:Colors.white,size:28)))
+                    :Icon(isFemale?Icons.face_3_rounded:Icons.face_rounded,color:Colors.white,size:28)),
+                const SizedBox(width:14),
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Text(s['name']??'',style:const TextStyle(fontWeight:FontWeight.bold,fontSize:15, color: Colors.white)),
+                  if((s['description']??'').isNotEmpty)Padding(
+                    padding:const EdgeInsets.only(top:4),
+                    child:Text(s['description'],style:const TextStyle(fontSize:12,color:kTextSec))),
                 ])),
-                if ((s['link'] ?? '').isNotEmpty) ...[
-                  const SizedBox(width: 8),
+                if((s['link']??'').isNotEmpty)...[
+                  const SizedBox(width:8),
                   FilledButton(
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      minimumSize: const Size(0, 36)),
-                    onPressed: () => ul.launchUrl(Uri.parse(s['link']), mode: ul.LaunchMode.externalApplication),
-                    child: Text(L.view, style: const TextStyle(fontSize: 12))),
+                    style:FilledButton.styleFrom(
+                      backgroundColor: kAccent,
+                      padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+                      minimumSize:const Size(0,36)),
+                    onPressed:()=>ul.launchUrl(Uri.parse(s['link']),mode:ul.LaunchMode.externalApplication),
+                    child:Text(L.view,style:const TextStyle(fontSize:12))),
                 ],
               ])),
             );
@@ -1265,93 +1152,94 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       });
   }
 
-  Widget _settingsTab() => FutureBuilder<Map<String, dynamic>?>(
-    future: ApiService.getConfig(),
-    builder: (ctx, snap) {
-      final cfg = snap.data ?? {};
-      final channel = cfg['telegram_channel'] ?? '';
-      final admin = cfg['telegram_admin'] ?? '';
-      final reportText = cfg['report_text'] ?? L.reportBug;
-      final remoteVer = cfg['app_version'] ?? '';
-      final hasUpdate = remoteVer.isNotEmpty && ApiService.isNewer(remoteVer, ApiService.appVersion);
+  Widget _settingsTab()=>FutureBuilder<Map<String,dynamic>?>(
+    future:ApiService.getConfig(),
+    builder:(ctx,snap){
+      final cfg=snap.data??{};
+      final channel=cfg['telegram_channel']??'';
+      final admin=cfg['telegram_admin']??'';
+      final reportText=cfg['report_text']??L.reportBug;
+      final remoteVer=cfg['app_version']??'';
+      final hasUpdate=remoteVer.isNotEmpty&&ApiService.isNewer(remoteVer,ApiService.appVersion);
 
-      return ListView(padding: const EdgeInsets.all(16), children: [
-        Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [kAccent.withOpacity(0.25), kCyan.withOpacity(0.12)]),
-          borderRadius: BorderRadius.circular(20), border: Border.all(color: kAccent.withOpacity(0.4))),
-          child: Row(children: [
-            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: kAccent.withOpacity(0.3), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.play_circle_fill_rounded, color: kCyan, size: 28)),
-            const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Vezoo Player', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, letterSpacing: 0.5)),
-              Text('v${ApiService.appVersion}', style: const TextStyle(fontSize: 11, color: kTextSec)),
+      return ListView(padding:const EdgeInsets.all(16),children:[
+        Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(
+          gradient:LinearGradient(colors:[kAccent.withOpacity(0.2),const Color(0xFF880E4F).withOpacity(0.2)]),
+          borderRadius:BorderRadius.circular(16),border:Border.all(color:kAccent.withOpacity(0.4))),
+          child:Row(children:[
+            Container(padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:kAccent.withOpacity(0.25),borderRadius:BorderRadius.circular(12)),
+                child:const Icon(Icons.play_circle_rounded,color:kAccent,size:26)),
+            const SizedBox(width:12),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Text('Vezoo',style:TextStyle(fontWeight:FontWeight.w700,fontSize:16, color: Colors.white)),
+              Text('v${ApiService.appVersion}',
+                  style:const TextStyle(fontSize:11,color:kTextSec)),
             ])),
-            if (snap.connectionState == ConnectionState.waiting)
-              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: kAccent)),
+            if(snap.connectionState==ConnectionState.waiting)
+              const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2, color: kAccent)),
           ])),
 
-        const SizedBox(height: 14),
+        const SizedBox(height:12),
 
         _appBtn(
-          icon: hasUpdate ? Icons.system_update_rounded : Icons.check_circle_rounded,
-          color: hasUpdate ? kAmber : kGreen,
-          label: hasUpdate ? L.updateAvailable : L.upToDate,
-          onTap: hasUpdate ? () async {
-            final url = cfg['download_url'] ?? '';
-            if (url.isNotEmpty) await ul.launchUrl(Uri.parse(url), mode: ul.LaunchMode.externalApplication);
-          } : null,
+          icon:hasUpdate?Icons.system_update_rounded:Icons.check_circle_rounded,
+          color:hasUpdate?kAmber:kGreen,
+          label:hasUpdate?L.updateAvailable:L.upToDate,
+          onTap:hasUpdate?()async{
+            final url=cfg['download_url']??'';
+            if(url.isNotEmpty)await ul.launchUrl(Uri.parse(url),mode:ul.LaunchMode.externalApplication);
+          }:null,
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height:8),
 
         _appBtn(
-          icon: Icons.auto_awesome_rounded, color: kAccent,
-          label: L.aiModels,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiModelsScreen())),
+          icon:Icons.auto_awesome_rounded,color:kAccent,
+          label:L.aiModels,
+          onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AiModelsScreen())),
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height:8),
 
-        if (channel.isNotEmpty) _appBtn(
-          icon: Icons.telegram_rounded, color: kCyan,
-          label: L.telegramChannel,
-          onTap: () => ul.launchUrl(Uri.parse(channel), mode: ul.LaunchMode.externalApplication)),
+        if(channel.isNotEmpty)_appBtn(
+          icon:Icons.telegram_rounded,color:const Color(0xFF00E5FF),
+          label:L.telegramChannel,
+          onTap:()=>ul.launchUrl(Uri.parse(channel),mode:ul.LaunchMode.externalApplication)),
 
-        const SizedBox(height: 8),
+        const SizedBox(height:8),
 
-        if (admin.isNotEmpty) _appBtn(
-          icon: Icons.bug_report_rounded, color: kPink,
-          label: reportText,
-          onTap: () => ul.launchUrl(Uri.parse(admin), mode: ul.LaunchMode.externalApplication)),
+        if(admin.isNotEmpty)_appBtn(
+          icon:Icons.bug_report_rounded,color:kAccent,
+          label:reportText,
+          onTap:()=>ul.launchUrl(Uri.parse(admin),mode:ul.LaunchMode.externalApplication)),
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         const _LangPicker(),
-        const SizedBox(height: 16),
-        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white12)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(L.features, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)), const SizedBox(height: 8),
+        const SizedBox(height:16),
+        Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(14),border:Border.all(color:kBorder)),
+            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text(L.features,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13, color: Colors.white)),const SizedBox(height:8),
               Text('• MP4/MKV/AVI/...\n• SRT/VTT/ASS/SSA\n• HDR\n• Dual Sub',
-                  style: TextStyle(fontSize: 12, color: kTextSec, height: 1.7)),
+                  style:const TextStyle(fontSize:12,color:kTextSec,height:1.7)),
             ])),
       ]);
     });
 }
 
-Widget _appBtn({required IconData icon, required Color color, required String label, VoidCallback? onTap}) {
+Widget _appBtn({required IconData icon,required Color color,required String label,VoidCallback? onTap}){
   return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: onTap != null ? color.withOpacity(0.4) : Colors.white12)),
-      child: Row(children: [
-        Icon(icon, color: onTap != null ? color : kTextDim, size: 22),
-        const SizedBox(width: 14),
-        Text(label, style: TextStyle(fontSize: 13, color: onTap != null ? Colors.white : kTextSec, fontWeight: FontWeight.w500)),
+    onTap:onTap,
+    borderRadius:BorderRadius.circular(12),
+    child:Container(
+      padding:const EdgeInsets.symmetric(horizontal:16,vertical:12),
+      decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),
+          border:Border.all(color:onTap!=null?color.withOpacity(0.3):kBorder)),
+      child:Row(children:[
+        Icon(icon,color:onTap!=null?color:kTextDim,size:20),
+        const SizedBox(width:12),
+        Text(label,style:TextStyle(fontSize:13,color:onTap!=null?Colors.white:kTextSec)),
         const Spacer(),
-        if (onTap != null) Icon(Icons.arrow_forward_ios_rounded, size: 12, color: kTextDim),
+        if(onTap!=null)Icon(Icons.arrow_forward_ios_rounded,size:12,color:kTextDim),
       ]),
     ),
   );
@@ -1361,29 +1249,28 @@ class _LangPicker extends StatefulWidget {
   const _LangPicker();
   @override State<_LangPicker> createState() => _LangPickerState();
 }
-
 class _LangPickerState extends State<_LangPicker> {
   @override Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(L.language, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(L.language, style: const TextStyle(color: kTextSec, fontSize: 12)),
         const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: kSupportedLangs.map((lang) =>
+        Wrap(spacing: 6, runSpacing: 6, children: kSupportedLangs.map((lang) =>
           GestureDetector(
             onTap: () async { await L.set(lang); if (mounted) setState(() {}); },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: L.current == lang ? kAccent : Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(20),
+                color: L.current == lang ? kAccent : kCard,
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: L.current == lang ? kAccent : Colors.white24)),
+                  color: L.current == lang ? kAccent : kBorder)),
               child: Text(kLangNames[lang]!,
                 style: TextStyle(
                   fontSize: 12,
-                  color: L.current == lang ? Colors.white : Colors.white70,
-                  fontWeight: L.current == lang ? FontWeight.bold : FontWeight.normal))),
+                  color: L.current == lang ? Colors.white : kTextSec,
+                  fontWeight: L.current == lang ? FontWeight.w600 : FontWeight.normal))),
         )).toList()),
       ]),
     );
