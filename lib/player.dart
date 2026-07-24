@@ -82,6 +82,7 @@ class _PlayerState extends State<PlayerScreen>{
   String _voskTranslateTo = 'fa';
   int _voskPollMs = 100;
   bool _voskTranslateOnFinish = true;
+  bool _voskShowOriginal = true; // نمایش زیرنویس اصلی یا فقط ترجمه
   Timer? _translateDebounceTimer;
 
   // زبان‌هایی که partial رو Latin برمیگردونن — فقط final نشون بده
@@ -539,6 +540,7 @@ class _PlayerState extends State<PlayerScreen>{
       _useAndroidStt = engine == 'android';
       _useVosk = engine == 'vosk';
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
+      _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       // درخواست permission میکروفون
       final micStatus = await permission_handler.Permission.microphone.request();
       if (!micStatus.isGranted) {
@@ -648,8 +650,8 @@ class _PlayerState extends State<PlayerScreen>{
                 // اگه ترجمه فعاله partial با متن اصلی نشون بده (بدون تأخیر)
                 if (!fin && _voskFinalOnly && !_voskTranslate) return;
                 if (!fin && _voskTranslate) {
-                  // partial اصلی → نشون بده تا ترجمه بیاد
-                  if (t != _dgText && !_dgText.startsWith(t)) setState(() => _dgText = '$t...');
+                  // partial اصلی فقط اگه showOriginal فعاله
+                  if (_voskShowOriginal && t != _dgText && !_dgText.startsWith(t)) setState(() => _dgText = '$t...');
                   return;
                 }
                 final newText = fin ? t : '$t...';
@@ -723,8 +725,8 @@ class _PlayerState extends State<PlayerScreen>{
                             }
                           });
                         });
-                        // متن اصلی فوری نشون بده
-                        if (_mounted) setState(() => _dgText = t);
+                        // متن اصلی فقط اگه showOriginal فعاله نشون بده
+                        if (_mounted && _voskShowOriginal) setState(() => _dgText = t);
                       } else {
                         // حالت همزمان: بلافاصله ترجمه کن
                         _translateWithWorker(t, _voskTranslateTo).then((r) {
@@ -2473,7 +2475,8 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   int _pollMs = 100;
   VoskModel? _selectedModel;
   String _engine = 'vosk';
-  bool _translateOnFinish = true; // vosk, android
+  bool _translateOnFinish = true;
+  bool _showOriginal = true; // vosk, android
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2763,6 +2766,16 @@ StatefulBuilder(builder: (_, ss2) {
           Text(_translateOnFinish ? 'بعد از سکوت' : 'همزمان',
             style: const TextStyle(color: Colors.white54, fontSize: 11)),
         ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('نمایش متن اصلی', style: TextStyle(color: Colors.white, fontSize: 13)),
+            Text('خاموش: فقط ترجمه نشون بده', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ])),
+          Switch(value: _showOriginal,
+            onChanged: (v) => setState(() => _showOriginal = v),
+            activeColor: const Color(0xFF7C3AED)),
+        ]),
       ],
 
       if (_translate) ...[
@@ -2796,6 +2809,7 @@ StatefulBuilder(builder: (_, ss2) {
           'modelId': _selectedModel?.id,
           'engine': _engine,
           'translateOnFinish': _translateOnFinish,
+          'showOriginal': _showOriginal,
         }),
         child: const Text('شروع')),
     ],
