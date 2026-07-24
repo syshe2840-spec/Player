@@ -642,7 +642,13 @@ class _PlayerState extends State<PlayerScreen>{
               final t = (data as Map)['text'] as String;
               final fin = (data as Map)['final'] as bool;
               if (t.isNotEmpty) {
-                if (!fin && _voskFinalOnly) return;
+                // اگه ترجمه فعاله partial با متن اصلی نشون بده (بدون تأخیر)
+                if (!fin && _voskFinalOnly && !_voskTranslate) return;
+                if (!fin && _voskTranslate) {
+                  // partial اصلی → نشون بده تا ترجمه بیاد
+                  if (t != _dgText && !_dgText.startsWith(t)) setState(() => _dgText = '$t...');
+                  return;
+                }
                 final newText = fin ? t : '$t...';
                 if (newText != _dgText) {
                   setState(() {
@@ -698,15 +704,19 @@ class _PlayerState extends State<PlayerScreen>{
                     _lastFinalTime = now;
 
                     if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
-                      // ترجمه → entry با متن ترجمه شده ذخیره بشه
+                      // partial اصلی فوری نشون داده میشه (بدون تأخیر)
+                      // ترجمه final وقتی آماده شد جایگزین میشه
                       _translateWithWorker(t, _voskTranslateTo).then((r) {
-                        final text = (r.isNotEmpty && r != t) ? r : t;
-                        _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, text));
+                        final translated = (r.isNotEmpty && r != t) ? r : t;
+                        _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, translated));
                         if (_mounted) {
-                          setState(() => _dgText = text);
+                          // فقط اگه متن جاری هنوز همون partial هست جایگزین کن
+                          setState(() => _dgText = translated);
                           _saveVoskSrt(silent: true);
                         }
                       });
+                      // partial رو بدون تأخیر نشون بده
+                      if (_mounted) setState(() => _dgText = t);
                     } else {
                       _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, t));
                       _saveVoskSrt(silent: true);
