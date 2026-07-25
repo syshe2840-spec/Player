@@ -418,7 +418,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         decoration:BoxDecoration(color:kSurface.withOpacity(0.85),borderRadius:BorderRadius.circular(28),border:Border.all(color:kBorder.withOpacity(0.7)),
         boxShadow:[BoxShadow(color:Color(0xFFE53935).withOpacity(0.2),blurRadius:24,spreadRadius:0,offset:Offset(0,6)),BoxShadow(color:Colors.black.withOpacity(0.6),blurRadius:12,spreadRadius:0,offset:Offset(0,4))]),
         child:Row(mainAxisSize:MainAxisSize.min,children:[
-          _fabBtn(Icons.access_time_rounded_1,L.history,kTextSec,()=>_openPanel(0)),
+          _fabBtn(Icons.history_rounded,L.history,kTextSec,()=>_openPanel(0)),
           const SizedBox(width:4),_fabBtn(Icons.bookmark_rounded,L.bookmarks,kAmber,()=>_openPanel(1)),
           const SizedBox(width:4),_fabBtn(Icons.favorite_rounded,L.favorites,kPink,()=>_openPanel(2)),
           const SizedBox(width:4),_fabBtn(Icons.push_pin_rounded,L.folders,kGreen,()=>_openPanel(3)),
@@ -486,12 +486,12 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         tooltip:L.onlineVideo,
         onPressed:()=>showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,builder:(_)=>const OnlinePlayerSheet())),
       if(!_searching)IconButton(
-        icon:const Icon(Icons.video_library_outlined_time,size:20,color:Color(0xFF22c55e)),
+        icon:const Icon(Icons.video_library_rounded,size:20,color:Color(0xFF22c55e)),
         tooltip:'IPTV',
         onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const IptvScreen()))),
       if(!_searching)...[
         if(_path!=root)IconButton(
-          icon:Icon(isSaved?Icons.push_pin_rounded:Icons.push_pin_rounded_slash,color:isSaved?kAmber:kTextSec,size:20),
+          icon:Icon(isSaved?Icons.push_pin_rounded:Icons.push_pin_outlined,color:isSaved?kAmber:kTextSec,size:20),
           onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
         ),
         PopupMenuButton<String>(
@@ -526,7 +526,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           itemBuilder:(_)=>[
             _pmSort(_SortBy.name,L.sortName,Icons.sort_rounded),
             _pmSort(_SortBy.date,L.sortDate,Icons.access_time_rounded),
-            _pmSort(_SortBy.size,L.sortSize,Icons.data_usage_outlined_1),
+            _pmSort(_SortBy.size,L.sortSize,Icons.data_usage_rounded),
             _pmSort(_SortBy.type,L.sortType,Icons.video_file_rounded),
           ],
         ),
@@ -547,7 +547,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     title:Text('${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
     actions:[
       if(_selected.isNotEmpty)IconButton(
-        icon:const Icon(Icons.play_arrow_rounded_cricle,color:kAccent,size:26),
+        icon:const Icon(Icons.play_circle_rounded,color:kAccent,size:26),
         tooltip:L.play,
         onPressed:(){
           final sorted=_filteredVideos.where((v)=>_selected.contains(v.path)).toList();
@@ -867,7 +867,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(!widget.noHandle)...[const SizedBox(height:10),Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kBorder,borderRadius:BorderRadius.circular(2)))),const SizedBox(height:4)],
     TabBar(controller:_tab,isScrollable:true,indicatorColor:kAccent,labelColor:kAccent,unselectedLabelColor:kTextSec,
         labelStyle:const TextStyle(fontSize:12,fontWeight:FontWeight.w600),unselectedLabelStyle:const TextStyle(fontSize:12),
-        tabs:[Tab(icon:Icon(Icons.access_time_rounded_1,size:16),text:L.history),
+        tabs:[Tab(icon:Icon(Icons.history_rounded,size:16),text:L.history),
           Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:L.bookmarks),
           Tab(icon:Icon(Icons.favorite_rounded,size:16),text:L.favorites),
           Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:L.folders),
@@ -899,7 +899,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                 FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete))],
             ));if(ok==true){await Store.clearHistory();setState((){});}})
       ])),
-    Expanded(child:_vList(Store.watchHistory,Icons.access_time_rounded_1,kTextSec,
+    Expanded(child:_vList(Store.watchHistory,Icons.history_rounded,kTextSec,
         onLongPress:(path)async{await Store.removeFromHistory(path);setState((){});})),
   ]);
 
@@ -941,7 +941,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     final folders=Store.savedFolders;
     if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
-          child:const Icon(Icons.push_pin_rounded_slash,size:32,color:kTextDim)),
+          child:const Icon(Icons.push_pin_outlined,size:32,color:kTextDim)),
       const SizedBox(height:12),Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
       const SizedBox(height:6),Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
@@ -1107,7 +1107,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           borderRadius:BorderRadius.circular(12),border:Border.all(color:kAccent.withOpacity(0.2))),
           child:Row(children:[
             Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:kAccent.withOpacity(0.2),borderRadius:BorderRadius.circular(8)),
-                child:const Icon(Icons.play_arrow_rounded_cricle,color:kAccent,size:24)),
+                child:const Icon(Icons.play_circle_rounded,color:kAccent,size:24)),
             const SizedBox(width:12),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               const Text('Vezoo',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
