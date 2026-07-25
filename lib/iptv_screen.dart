@@ -494,7 +494,11 @@ class _VodTabState extends State<_VodTab> {
               ]));
           })),
       ]);
-  } { countMap[v.categoryId] = (countMap[v.categoryId]??0)+1; }
+  }
+
+  Widget _buildGroupGrid() {
+    Map<String,int> countMap = {};
+    for (final v in _vods) { countMap[v.categoryId] = (countMap[v.categoryId]??0)+1; }
     final allCats = [IptvCategory('__all__','All Movies | همه فیلم‌ها'), ..._cats];
     return Column(children: [
       Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
@@ -535,15 +539,7 @@ class _VodTabState extends State<_VodTab> {
     ]);
   }
 
-  Widget _catChip(IptvCategory? cat, String label) => Padding(
-    padding: const EdgeInsets.only(right: 6),
-    child: GestureDetector(
-      onTap: () => setState(() { _selCat=cat; _applyFilter(); }),
-      child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: _selCat?.id==cat?.id&&(_selCat!=null||cat==null)?kAccent:kCard,
-          borderRadius: BorderRadius.circular(16)),
-        child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)))));
+}
 
 // ── Series ──
 class _SeriesTab extends StatefulWidget {
