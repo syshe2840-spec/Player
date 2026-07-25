@@ -493,7 +493,7 @@ class _VodTabState extends State<_VodTab> {
                 Text(v.name, style: const TextStyle(color: Colors.white70, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
               ]));
           })),
-      ]);
+      ]));
   }
 
   Widget _buildGroupGrid() {
@@ -581,8 +581,10 @@ class _SeriesTabState extends State<_SeriesTab> {
 
   @override Widget build(BuildContext context) {
     if (_showGrid && _cats.isNotEmpty) return _buildGroupGrid();
-    return _loading ? const Center(child: CircularProgressIndicator())
-    : Column(children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (_, __) => setState(() { _showGrid=true; _selCat=null; _search=''; _applyFilter(); }),
+      child: _loading ? const Center(child: CircularProgressIndicator()) : Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
           child: Row(children: [
             if (_cats.isNotEmpty) IconButton(
@@ -620,7 +622,7 @@ class _SeriesTabState extends State<_SeriesTab> {
                 Text(s.name, style: const TextStyle(color: Colors.white70, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
               ]));
           })),
-      ]);
+      ]));
   }
 
   Widget _buildGroupGrid() {
