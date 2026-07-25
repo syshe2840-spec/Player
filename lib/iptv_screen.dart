@@ -304,7 +304,7 @@ class _LiveTabState extends State<_LiveTab> {
   @override Widget build(BuildContext context) {
     final kb = MediaQuery.of(context).viewInsets.bottom;
     // اگه گروهی انتخاب نشده → نمایش گروه‌ها به صورت grid
-    if (_selCat == null && _search.isEmpty && _cats.isNotEmpty) {
+    if (_showGrid && _cats.isNotEmpty) {
       return _buildGroupGrid();
     }
     return _loading
@@ -315,14 +315,14 @@ class _LiveTabState extends State<_LiveTab> {
           child: Row(children: [
             if (_selCat != null) IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
-              onPressed: () => setState(() { _selCat = null; _search = ''; _applyFilter(); }),
+              onPressed: () => setState(() { _showGrid = true; _selCat = null; _search = ''; _applyFilter(); }),
               padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-            if (_selCat != null) const SizedBox(width: 8),
+            const SizedBox(width: 8),
             Expanded(child: TextField(
               onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
               style: const TextStyle(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
-                hintText: _selCat != null ? _selCat!.name : 'Search channels...',
+                hintText: _selCat != null ? _selCat!.name : 'All Channels | همه کانال‌ها',
                 hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
                 prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Colors.white38),
                 filled: true, fillColor: kCard,
@@ -350,7 +350,7 @@ class _LiveTabState extends State<_LiveTab> {
     // تعداد کانال هر گروه
     Map<String, int> countMap = {};
     for (final ch in _channels) { countMap[ch.categoryId] = (countMap[ch.categoryId] ?? 0) + 1; }
-    final allCats = [IptvCategory('__all__', 'همه کانال‌ها'), ..._cats];
+    final allCats = [IptvCategory('__all__', 'All Channels | همه کانال‌ها'), ..._cats];
     return Column(children: [
       Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
         child: TextField(
@@ -378,10 +378,11 @@ class _LiveTabState extends State<_LiveTab> {
           final count = cat.id == '__all__' ? _channels.length : (countMap[cat.id] ?? 0);
           return GestureDetector(
             onTap: () => setState(() {
+              _showGrid = false;
               _selCat = cat.id == '__all__' ? null : cat;
               _search = '';
               _applyFilter();
-              if (cat.id == '__all__') _filtered = _channels;
+              if (cat.id == '__all__') _filtered = List.from(_channels);
             }),
             child: Container(
               decoration: BoxDecoration(
@@ -428,7 +429,7 @@ class _VodTabState extends State<_VodTab> {
   List<IptvCategory> _cats = [];
   List<IptvVod> _vods = [], _filtered = [];
   IptvCategory? _selCat;
-  bool _loading = true;
+  bool _loading = true, _showGrid = true;
   String _search = '';
 
   @override void initState() { super.initState(); _load(); }
@@ -449,7 +450,7 @@ class _VodTabState extends State<_VodTab> {
   }
 
   @override Widget build(BuildContext context) {
-    if (_selCat == null && _search.isEmpty && _cats.isNotEmpty) {
+    if (_showGrid && _cats.isNotEmpty) {
       return _buildGroupGrid();
     }
     return _loading ? const Center(child: CircularProgressIndicator())
@@ -497,7 +498,7 @@ class _VodTabState extends State<_VodTab> {
   Widget _buildGroupGrid() {
     Map<String,int> countMap = {};
     for (final v in _vods) { countMap[v.categoryId] = (countMap[v.categoryId]??0)+1; }
-    final allCats = [IptvCategory('__all__','همه فیلم‌ها'), ..._cats];
+    final allCats = [IptvCategory('__all__','All Movies | همه فیلم‌ها'), ..._cats];
     return Column(children: [
       Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
         child: TextField(onChanged: (v) => setState(() { _search=v; if (v.isNotEmpty) { _selCat=null; _applyFilter(); } }),
@@ -519,7 +520,7 @@ class _VodTabState extends State<_VodTab> {
           final cat = allCats[i];
           final count = cat.id=='__all__' ? _vods.length : (countMap[cat.id]??0);
           return GestureDetector(
-            onTap: () => setState(() { _selCat=cat.id=='__all__'?null:cat; _search=''; _applyFilter(); if(cat.id=='__all__')_filtered=_vods; }),
+            onTap: () => setState(() { _showGrid=false; _selCat=cat.id=='__all__'?null:cat; _search=''; _applyFilter(); if(cat.id=='__all__')_filtered=List.from(_vods); }),
             child: Container(
               decoration: BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder),
                 boxShadow:[BoxShadow(color:kAccent.withOpacity(0.08),blurRadius:12,offset:const Offset(0,4))]),
