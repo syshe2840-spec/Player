@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
@@ -241,7 +242,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     return showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
       title:Text(title),
       content:Column(mainAxisSize:MainAxisSize.min,children:all.map((folder)=>ListTile(
-        leading:const Icon(Icons.folder,color:kAmber),title:Text(p.basename(folder)),
+        leading:const Icon(Iconsax.folder_2,color:kAmber),title:Text(p.basename(folder)),
         onTap:()=>Navigator.pop(ctx,folder),
       )).toList()),
     ));
@@ -286,7 +287,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>GestureDetector(
           onTap:()=>ss(()=>rating=i+1),
           child:Padding(padding:const EdgeInsets.all(4),
-              child:Icon(i<rating?Icons.star_rounded:Icons.star_outline_rounded,color:kAmber,size:36)),
+              child:Icon(i<rating?Iconsax.star5:Iconsax.star,color:kAmber,size:36)),
         ))),
       ]),
       actions:[
@@ -331,28 +332,28 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         Expanded(child:Text(p.basename(f.path),style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
       ]),
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        _iRow(Icons.folder_outlined,kTextSec,L.path,p.dirname(f.path)),
-        _iRow(Icons.video_file_rounded,kCyan,L.format,ext.toUpperCase()),
-        _iRow(Icons.data_usage_outlined,kTextSec,L.sortSize,sizeStr(f)),
-        if(fileSize>0)_iRow(Icons.straighten_rounded,kTextSec,L.precise,'${fileSize} bytes'),
-        if(dur>0)_iRow(Icons.timer_outlined,kCyan,L.duration,fmt(Duration(seconds:dur))),
-        _iRow(Icons.calendar_today_outlined,kTextSec,L.sortDate,modified),
-        _iRow(Icons.info_outline_rounded,kAccent,L.probableCodec,codecHint),
-        _iRow(Icons.visibility_outlined,Store.watched.contains(f.path)?kGreen:kTextSec,
+        _iRow(Iconsax.folder_2_outlined,kTextSec,L.path,p.dirname(f.path)),
+        _iRow(Iconsax.video_square,kCyan,L.format,ext.toUpperCase()),
+        _iRow(Iconsax.chart,kTextSec,L.sortSize,sizeStr(f)),
+        if(fileSize>0)_iRow(Iconsax.ruler,kTextSec,L.precise,'${fileSize} bytes'),
+        if(dur>0)_iRow(Iconsax.timer_1,kCyan,L.duration,fmt(Duration(seconds:dur))),
+        _iRow(Iconsax.calendar,kTextSec,L.sortDate,modified),
+        _iRow(Iconsax.info_circle,kAccent,L.probableCodec,codecHint),
+        _iRow(Iconsax.eye,Store.watched.contains(f.path)?kGreen:kTextSec,
             L.status,Store.watched.contains(f.path)?L.watched:L.notWatched),
-        if(rating>0)_iRow(Icons.star_rounded,kAmber,L.rating,'${'★'*rating}${'☆'*(5-rating)}'),
-        if(note.isNotEmpty)_iRow(Icons.notes_rounded,kTextSec,L.note,note),
+        if(rating>0)_iRow(Iconsax.star5,kAmber,L.rating,'${'★'*rating}${'☆'*(5-rating)}'),
+        if(note.isNotEmpty)_iRow(Iconsax.note_text,kTextSec,L.note,note),
         if(allSubs.isNotEmpty)...[
-          _iRow(Icons.subtitles_rounded,kGreen,L.subtitle,'${allSubs.length}'),
+          _iRow(Iconsax.subtitle,kGreen,L.subtitle,'${allSubs.length}'),
           ...allSubs.map((s)=>Padding(
             padding:const EdgeInsets.only(right:24,top:2),
             child:Row(children:[
-              Icon(Icons.fiber_manual_record_rounded,size:8,color:kGreen.withOpacity(0.6)),
+              Icon(Iconsax.record,size:8,color:kGreen.withOpacity(0.6)),
               const SizedBox(width:6),
               Expanded(child:Text(p.basename(s),style:const TextStyle(fontSize:11,color:kTextSec))),
             ]),
           )),
-        ]else _iRow(Icons.subtitles_off_rounded,kTextDim,L.subtitle,L.notFound),
+        ]else _iRow(Iconsax.subtitle,kTextDim,L.subtitle,L.notFound),
       ])),
       actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.close))],
     ));
@@ -416,11 +417,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
         decoration:BoxDecoration(color:kSurface.withOpacity(0.85),borderRadius:BorderRadius.circular(28),border:Border.all(color:kBorder.withOpacity(0.7))),
         child:Row(mainAxisSize:MainAxisSize.min,children:[
-          _fabBtn(Icons.history_rounded,L.history,kTextSec,()=>_openPanel(0)),
-          const SizedBox(width:4),_fabBtn(Icons.bookmark_rounded,L.bookmarks,kAmber,()=>_openPanel(1)),
-          const SizedBox(width:4),_fabBtn(Icons.favorite_rounded,L.favorites,kPink,()=>_openPanel(2)),
-          const SizedBox(width:4),_fabBtn(Icons.push_pin_rounded,L.folders,kGreen,()=>_openPanel(3)),
-          const SizedBox(width:4),_fabBtn(Icons.tune_rounded,L.settings,kTextSec,()=>_openPanel(4)),
+          _fabBtn(Iconsax.clock_1,L.history,kTextSec,()=>_openPanel(0)),
+          const SizedBox(width:4),_fabBtn(Iconsax.bookmark,L.bookmarks,kAmber,()=>_openPanel(1)),
+          const SizedBox(width:4),_fabBtn(Iconsax.heart5,L.favorites,kPink,()=>_openPanel(2)),
+          const SizedBox(width:4),_fabBtn(Iconsax.magnet,L.folders,kGreen,()=>_openPanel(3)),
+          const SizedBox(width:4),_fabBtn(Iconsax.setting_4,L.settings,kTextSec,()=>_openPanel(4)),
         ]),
       ),
     ),
@@ -434,7 +435,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
 
   PreferredSizeWidget _normalBar(bool isSaved)=>AppBar(
     automaticallyImplyLeading:false,
-    leading:_path!=root?IconButton(icon:const Icon(Icons.arrow_back_ios_new_rounded,size:18),onPressed:_goUp):null,
+    leading:_path!=root?IconButton(icon:const Icon(Iconsax.arrow_left_2,size:18),onPressed:_goUp):null,
     title:_searching
         ?Row(children:[
             Expanded(child:TextField(controller:_searchCtrl,autofocus:true,
@@ -469,40 +470,40 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
               border:Border.all(color:_globalSearch?kAccent:kBorder),
             ),
             child:Row(mainAxisSize:MainAxisSize.min,children:[
-              Icon(Icons.public_rounded,size:13,color:_globalSearch?Colors.white:kTextSec),
+              Icon(Iconsax.global,size:13,color:_globalSearch?Colors.white:kTextSec),
               const SizedBox(width:4),
               Text(L.searchAll,style:TextStyle(fontSize:11,color:_globalSearch?Colors.white:kTextSec,fontWeight:FontWeight.w600)),
             ]),
           ),
         ),
       ],
-      IconButton(icon:Icon(_searching?Icons.close_rounded:Icons.search_rounded,size:20),
+      IconButton(icon:Icon(_searching?Iconsax.close_circle_rounded:Iconsax.search_normal_1,size:20),
           onPressed:(){setState((){_searching=!_searching;if(!_searching){_searchQuery='';_searchCtrl.clear();_searchResults=[];_globalSearch=false;}});}),
       // دکمه پخش آنلاین
       if(!_searching)IconButton(
-        icon:const Icon(Icons.wifi_tethering_rounded,size:20),
+        icon:const Icon(Iconsax.wifi,size:20),
         tooltip:L.onlineVideo,
         onPressed:()=>showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,builder:(_)=>const OnlinePlayerSheet())),
       if(!_searching)IconButton(
-        icon:const Icon(Icons.live_tv_rounded,size:20,color:Color(0xFF22c55e)),
+        icon:const Icon(Iconsax.video_time,size:20,color:Color(0xFF22c55e)),
         tooltip:'IPTV',
         onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const IptvScreen()))),
       if(!_searching)...[
         if(_path!=root)IconButton(
-          icon:Icon(isSaved?Icons.push_pin_rounded:Icons.push_pin_outlined,color:isSaved?kAmber:kTextSec,size:20),
+          icon:Icon(isSaved?Iconsax.magnet:Iconsax.magnet_1,color:isSaved?kAmber:kTextSec,size:20),
           onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
         ),
         PopupMenuButton<String>(
-          icon:const Icon(Icons.storage_rounded,size:20),
+          icon:const Icon(Iconsax.cpu,size:20),
           tooltip:L.selectStorage,
           itemBuilder:(_){
             final items=<PopupMenuEntry<String>>[
-              _pmStr(Icons.phone_android_rounded,'/storage/emulated/0','📱 ${L.internalStorage}'),
-              _pmStr(Icons.download_rounded,'/storage/emulated/0/Download','⬇ ${L.downloads}'),
-              _pmStr(Icons.movie_rounded,'/storage/emulated/0/Movies','🎬 ${L.movies}'),
+              _pmStr(Iconsax.mobile,'/storage/emulated/0','📱 ${L.internalStorage}'),
+              _pmStr(Iconsax.receive_square,'/storage/emulated/0/Download','⬇ ${L.downloads}'),
+              _pmStr(Iconsax.video_play,'/storage/emulated/0/Movies','🎬 ${L.movies}'),
             ];
-            for(final d in _getStorageDevices()){items.add(_pmStr(Icons.sd_card_rounded,d.path,'💾 ${p.basename(d.path)}'));}
-            items..add(const PopupMenuDivider())..add(_pmStr(Icons.edit_rounded,'__custom__','📂 ${L.customPath}'));
+            for(final d in _getStorageDevices()){items.add(_pmStr(Iconsax.card,d.path,'💾 ${p.basename(d.path)}'));}
+            items..add(const PopupMenuDivider())..add(_pmStr(Iconsax.edit_2,'__custom__','📂 ${L.customPath}'));
             return items;
           },
           onSelected:(v){
@@ -519,13 +520,13 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           },
         ),
         PopupMenuButton<_SortBy>(
-          icon:const Icon(Icons.sort_rounded,size:20),
+          icon:const Icon(Iconsax.sort,size:20),
           onSelected:(v)=>setState((){if(_sortBy==v)_sortDesc=!_sortDesc;else{_sortBy=v;_sortDesc=false;}}),
           itemBuilder:(_)=>[
-            _pmSort(_SortBy.name,L.sortName,Icons.sort_by_alpha_rounded),
-            _pmSort(_SortBy.date,L.sortDate,Icons.access_time_rounded),
-            _pmSort(_SortBy.size,L.sortSize,Icons.data_usage_rounded),
-            _pmSort(_SortBy.type,L.sortType,Icons.video_file_rounded),
+            _pmSort(_SortBy.name,L.sortName,Iconsax.text_align_justify_center),
+            _pmSort(_SortBy.date,L.sortDate,Iconsax.clock),
+            _pmSort(_SortBy.size,L.sortSize,Iconsax.chart_1),
+            _pmSort(_SortBy.type,L.sortType,Iconsax.video_square),
           ],
         ),
       ],
@@ -541,11 +542,11 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   PreferredSizeWidget _selectBar()=>AppBar(
     automaticallyImplyLeading:false,
     backgroundColor:kAccent.withOpacity(0.15),
-    leading:IconButton(icon:const Icon(Icons.close_rounded,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
+    leading:IconButton(icon:const Icon(Iconsax.close_circle_rounded,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
     title:Text('${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
     actions:[
       if(_selected.isNotEmpty)IconButton(
-        icon:const Icon(Icons.play_circle_rounded,color:kAccent,size:26),
+        icon:const Icon(Iconsax.play_cricle,color:kAccent,size:26),
         tooltip:L.play,
         onPressed:(){
           final sorted=_filteredVideos.where((v)=>_selected.contains(v.path)).toList();
@@ -556,9 +557,9 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
             playlistIndex:0,
           )));
         }),
-      TextButton.icon(icon:const Icon(Icons.select_all_rounded,size:18),label:Text(L.allItems,style:TextStyle(fontSize:13)),
+      TextButton.icon(icon:const Icon(Iconsax.task_square,size:18),label:Text(L.allItems,style:TextStyle(fontSize:13)),
           onPressed:()=>setState(()=>_selected.addAll(_filteredVideos.map((v)=>v.path)))),
-      IconButton(icon:const Icon(Icons.delete_outline_rounded,color:kRed,size:22),
+      IconButton(icon:const Icon(Iconsax.trash,color:kRed,size:22),
           onPressed:_selected.isEmpty?null:()=>_confirmDelete(_selected.map((s)=>File(s)).toList())),
     ],
   );
@@ -567,18 +568,18 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     if(_checking)return Center(child:CircularProgressIndicator());
     if(!_granted)return Center(child:Padding(padding:const EdgeInsets.all(32),child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder)),
-          child:const Icon(Icons.folder_off_rounded,size:48,color:kTextSec)),
+          child:const Icon(Iconsax.folder_2_off_rounded,size:48,color:kTextSec)),
       const SizedBox(height:20),
       Text(L.permissionNeeded,textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
       const SizedBox(height:20),
-      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Icons.lock_open_rounded),label:Text(L.grantPermission)),
+      FilledButton.icon(onPressed:_ensurePermission,icon:const Icon(Iconsax.unlock),label:Text(L.grantPermission)),
       const SizedBox(height:8),TextButton(onPressed:openAppSettings,child:Text(L.appSettings)),
     ])));
 
     return Column(children:[
       Container(width:double.infinity,padding:const EdgeInsets.symmetric(horizontal:16,vertical:6),color:kSurface,
           child:Row(children:[
-            Icon(Icons.folder_open_rounded,size:12,color:kAccent.withOpacity(0.7)),const SizedBox(width:6),
+            Icon(Iconsax.folder_2_open_rounded,size:12,color:kAccent.withOpacity(0.7)),const SizedBox(width:6),
             Expanded(child:Text(_path,style:const TextStyle(fontSize:10,color:kTextDim),overflow:TextOverflow.ellipsis)),
             if(_searchRunning)const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.5,color:kAccent)),
             if(_globalSearch&&!_searchRunning&&_searchResults.isNotEmpty)
@@ -595,7 +596,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
       CircularProgressIndicator(),SizedBox(height:16),Text(L.searchingGlobal,style:TextStyle(color:kTextSec)),
     ]));
     if(total==0)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      Icon(Icons.video_library_outlined,size:48,color:kTextDim),const SizedBox(height:12),
+      Icon(Iconsax.video,size:48,color:kTextDim),const SizedBox(height:12),
       Text(L.noFilesFound,style:TextStyle(color:kTextSec)),
     ]));
 
@@ -681,10 +682,10 @@ class _DirTile extends StatelessWidget{
         Container(width:44,height:44,decoration:BoxDecoration(
           gradient:const LinearGradient(colors:[Color(0xFF92400E),Color(0xFFB45309)],begin:Alignment.topLeft,end:Alignment.bottomRight),
           borderRadius:BorderRadius.circular(10)),
-          child:const Icon(Icons.folder_rounded,color:Colors.white,size:22)),
+          child:const Icon(Iconsax.folder_2_rounded,color:Colors.white,size:22)),
         const SizedBox(width:12),
         Expanded(child:Text(p.basename(dir.path),style:const TextStyle(fontWeight:FontWeight.w500,fontSize:14),maxLines:1,overflow:TextOverflow.ellipsis)),
-        const Icon(Icons.chevron_left_rounded,color:kTextDim,size:20),
+        const Icon(Iconsax.arrow_left_2,color:kTextDim,size:20),
       ]),
     ),
   );
@@ -729,7 +730,7 @@ class _VideoTile extends StatelessWidget{
               child:selectMode
                   ?AnimatedContainer(duration:const Duration(milliseconds:150),width:48,height:48,
                       decoration:BoxDecoration(color:selected?kAccent:kBorder,borderRadius:BorderRadius.circular(10)),
-                      child:Icon(selected?Icons.check_rounded:Icons.circle_outlined,color:Colors.white,size:20))
+                      child:Icon(selected?Iconsax.tick_circle:Iconsax.record_circle,color:Colors.white,size:20))
                   :SizedBox(width:64,height:48,child:FutureBuilder<Uint8List?>(
                       future:_loadThumb(file.path),
                       builder:(ctx,snap){
@@ -738,7 +739,7 @@ class _VideoTile extends StatelessWidget{
                             Image.memory(snap.data!,fit:BoxFit.cover),
                             // overlay: اگه دیده شده
                             if(seen)Container(color:kGreen.withOpacity(0.25),alignment:Alignment.center,
-                                child:const Icon(Icons.check_circle_rounded,color:kGreen,size:20)),
+                                child:const Icon(Iconsax.tick_circle,color:kGreen,size:20)),
                           ]);
                         }
                         // در حال بارگذاری یا خطا: نمایش ext badge
@@ -778,7 +779,7 @@ class _VideoTile extends StatelessWidget{
                 borderRadius:BorderRadius.circular(18),
                 border:Border.all(color:seen?kGreen.withOpacity(0.3):kAccent.withOpacity(0.2)),
               ),
-              child:Icon(Icons.play_arrow_rounded,color:seen?kGreen:kAccent,size:20),
+              child:Icon(Iconsax.play,color:seen?kGreen:kAccent,size:20),
             ),
           ]),
         ),
@@ -803,18 +804,18 @@ class _VideoMenuState extends State<VideoMenu>{
     const SizedBox(height:8),
     Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Row(children:[
       Container(width:40,height:40,decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(10),border:Border.all(color:kBorder)),
-          child:const Icon(Icons.video_file_rounded,color:kAccent,size:20)),
+          child:const Icon(Iconsax.video_square,color:kAccent,size:20)),
       const SizedBox(width:12),
       Expanded(child:Text(p.basename(widget.file.path),style:const TextStyle(fontWeight:FontWeight.w600,fontSize:13),maxLines:2)),
     ])),
     const SizedBox(height:8),const Divider(height:1),
-    _mi(Icons.info_outline_rounded,kTextSec,L.fileInfo,widget.onInfo),
-    _mi2(Icons.bookmark_rounded,_bkm?kAmber:kTextSec,_bkm?L.removeBookmark:L.addBookmark,()async{await Store.toggleBookmark(widget.file.path);setState(()=>_bkm=!_bkm);widget.onDone();}),
-    _mi2(Icons.favorite_rounded,_fav?kPink:kTextSec,_fav?L.removeFavorite:L.favorites,()async{await Store.toggleFavorite(widget.file.path);setState(()=>_fav=!_fav);widget.onDone();}),
-    _mi(Icons.star_outline_rounded,kAmber,L.rating,widget.onRate),
-    _mi(Icons.notes_rounded,kTextSec,L.note,widget.onNote),
+    _mi(Iconsax.info_circle,kTextSec,L.fileInfo,widget.onInfo),
+    _mi2(Iconsax.bookmark,_bkm?kAmber:kTextSec,_bkm?L.removeBookmark:L.addBookmark,()async{await Store.toggleBookmark(widget.file.path);setState(()=>_bkm=!_bkm);widget.onDone();}),
+    _mi2(Iconsax.heart5,_fav?kPink:kTextSec,_fav?L.removeFavorite:L.favorites,()async{await Store.toggleFavorite(widget.file.path);setState(()=>_fav=!_fav);widget.onDone();}),
+    _mi(Iconsax.star,kAmber,L.rating,widget.onRate),
+    _mi(Iconsax.note_text,kTextSec,L.note,widget.onNote),
     const Divider(height:1),
-    _mi(Icons.queue_music_rounded,kCyan,L.addToPlaylist,()async{
+    _mi(Iconsax.music_playlist,kCyan,L.addToPlaylist,()async{
       final playlists=Store.playlists.keys.toList();
       if(playlists.isEmpty){
         showSnack(context, L.noPlaylist);
@@ -823,7 +824,7 @@ class _VideoMenuState extends State<VideoMenu>{
       final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
         title:Text(L.playlist),
         content:Column(mainAxisSize:MainAxisSize.min,children:playlists.map((pl)=>ListTile(
-          dense:true,leading:const Icon(Icons.queue_music_rounded,color:kCyan,size:18),
+          dense:true,leading:const Icon(Iconsax.music_playlist,color:kCyan,size:18),
           title:Text(pl,style:const TextStyle(fontSize:13)),
           onTap:()=>Navigator.pop(ctx,pl))).toList()),
         actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:Text(L.cancel))],
@@ -833,11 +834,11 @@ class _VideoMenuState extends State<VideoMenu>{
         showSnack(context, '${L.addedTo} "$name"');
       }
     }),
-    _mi(Icons.copy_rounded,kTextSec,L.copyTo,widget.onCopy),
-    _mi(Icons.drive_file_move_outline,kTextSec,L.moveTo,widget.onMove),
-    _mi(Icons.edit_rounded,kTextSec,L.rename_,widget.onRename),
-    _mi(Icons.select_all_rounded,kTextSec,L.selectGroup,widget.onSelect),
-    _mi(Icons.delete_outline_rounded,kRed,L.delete,widget.onDelete),
+    _mi(Iconsax.copy,kTextSec,L.copyTo,widget.onCopy),
+    _mi(Iconsax.send_square,kTextSec,L.moveTo,widget.onMove),
+    _mi(Iconsax.edit_2,kTextSec,L.rename_,widget.onRename),
+    _mi(Iconsax.task_square,kTextSec,L.selectGroup,widget.onSelect),
+    _mi(Iconsax.trash,kRed,L.delete,widget.onDelete),
     const SizedBox(height:8),
   ])));
   Widget _mi(IconData icon,Color iconColor,String title,VoidCallback onTap)=>ListTile(dense:true,
@@ -863,20 +864,20 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     if(!widget.noHandle)...[const SizedBox(height:10),Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:kBorder,borderRadius:BorderRadius.circular(2)))),const SizedBox(height:4)],
     TabBar(controller:_tab,isScrollable:true,indicatorColor:kAccent,labelColor:kAccent,unselectedLabelColor:kTextSec,
         labelStyle:const TextStyle(fontSize:12,fontWeight:FontWeight.w600),unselectedLabelStyle:const TextStyle(fontSize:12),
-        tabs:[Tab(icon:Icon(Icons.history_rounded,size:16),text:L.history),
-          Tab(icon:Icon(Icons.bookmark_rounded,size:16),text:L.bookmarks),
-          Tab(icon:Icon(Icons.favorite_rounded,size:16),text:L.favorites),
-          Tab(icon:Icon(Icons.push_pin_rounded,size:16),text:L.folders),
-          Tab(icon:Icon(Icons.queue_music_rounded,size:16),text:L.playlist),
-          Tab(icon:Icon(Icons.star_rounded,size:16),text:L.sponsors),
-          Tab(icon:Icon(Icons.build_rounded,size:16),text:L.tools),
+        tabs:[Tab(icon:Icon(Iconsax.clock_1,size:16),text:L.history),
+          Tab(icon:Icon(Iconsax.bookmark,size:16),text:L.bookmarks),
+          Tab(icon:Icon(Iconsax.heart5,size:16),text:L.favorites),
+          Tab(icon:Icon(Iconsax.magnet,size:16),text:L.folders),
+          Tab(icon:Icon(Iconsax.music_playlist,size:16),text:L.playlist),
+          Tab(icon:Icon(Iconsax.star5,size:16),text:L.sponsors),
+          Tab(icon:Icon(Iconsax.setting_3,size:16),text:L.tools),
 
-          Tab(icon:Icon(Icons.settings_rounded,size:16),text:L.app)]),
+          Tab(icon:Icon(Iconsax.setting_2,size:16),text:L.app)]),
     Expanded(child:TabBarView(controller:_tab,children:[
       _histTab(),
-      _vList(Store.bookmarked.toList().reversed.toList(),Icons.bookmark_rounded,kAmber,
+      _vList(Store.bookmarked.toList().reversed.toList(),Iconsax.bookmark,kAmber,
         onRemove:(path)async{await Store.toggleBookmark(path);setState((){}); }),
-      _vList(Store.favorited.toList().reversed.toList(),Icons.favorite_rounded,kPink,
+      _vList(Store.favorited.toList().reversed.toList(),Iconsax.heart5,kPink,
         onRemove:(path)async{await Store.toggleFavorite(path);setState((){}); }),
       _folderList(),_playlistTab(),_sponsorTab(),const ToolsTabBody(),_settingsTab(),
     ])),
@@ -888,14 +889,14 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
       child:Row(children:[
         Expanded(child:Text(L.recentViews,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
-        TextButton.icon(icon:const Icon(Icons.delete_sweep_rounded,size:15,color:kRed),label:Text(L.deleteAll,style:TextStyle(fontSize:12,color:kRed)),
+        TextButton.icon(icon:const Icon(Iconsax.trash,size:15,color:kRed),label:Text(L.deleteAll,style:TextStyle(fontSize:12,color:kRed)),
             onPressed:()async{final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
               title:Text(L.deleteAllHistory),
               actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(L.cancel)),
                 FilledButton(style:FilledButton.styleFrom(backgroundColor:kRed),onPressed:()=>Navigator.pop(ctx,true),child:Text(L.delete))],
             ));if(ok==true){await Store.clearHistory();setState((){});}})
       ])),
-    Expanded(child:_vList(Store.watchHistory,Icons.history_rounded,kTextSec,
+    Expanded(child:_vList(Store.watchHistory,Iconsax.clock_1,kTextSec,
         onLongPress:(path)async{await Store.removeFromHistory(path);setState((){});})),
   ]);
 
@@ -913,12 +914,12 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       final displaySub = isUrl ? path : p.dirname(path);
       return ListTile(dense:true,
         leading:Container(width:30,height:30,decoration:BoxDecoration(color:color.withOpacity(0.1),borderRadius:BorderRadius.circular(7)),
-            child:Icon(isUrl ? Icons.link_rounded : icon,color:exists?color:kTextDim,size:15)),
+            child:Icon(isUrl ? Iconsax.link_2 : icon,color:exists?color:kTextDim,size:15)),
         title:Text(displayName,maxLines:1,overflow:TextOverflow.ellipsis,
             style:TextStyle(fontSize:13,color:exists?Colors.white:kTextDim)),
         subtitle:Text(displaySub,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
         trailing:onRemove!=null?IconButton(
-          icon:const Icon(Icons.close,size:14,color:kRed),
+          icon:const Icon(Iconsax.close_circle,size:14,color:kRed),
           onPressed:()=>onRemove(path)):null,
         onTap:exists?(){
           if(isUrl) widget.onVideoTap(path);
@@ -937,7 +938,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     final folders=Store.savedFolders;
     if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
-          child:const Icon(Icons.push_pin_outlined,size:32,color:kTextDim)),
+          child:const Icon(Iconsax.magnet_1,size:32,color:kTextDim)),
       const SizedBox(height:12),Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
       const SizedBox(height:6),Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
@@ -945,10 +946,10 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       final folder=folders[i];final exists=Directory(folder).existsSync();
       return ListTile(dense:true,
         leading:Container(width:30,height:30,decoration:BoxDecoration(color:kAmber.withOpacity(0.1),borderRadius:BorderRadius.circular(7)),
-            child:Icon(Icons.folder_rounded,color:exists?kAmber:kTextDim,size:15)),
+            child:Icon(Iconsax.folder_2_rounded,color:exists?kAmber:kTextDim,size:15)),
         title:Text(p.basename(folder),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13)),
         subtitle:Text(folder,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
-        trailing:IconButton(icon:const Icon(Icons.push_pin_rounded,size:14,color:kRed),
+        trailing:IconButton(icon:const Icon(Iconsax.magnet,size:14,color:kRed),
             onPressed:()async{await Store.toggleSavedFolder(folder);setState((){});}),
         onTap:exists?()=>widget.onFolderTap(folder):null);
     });
@@ -962,7 +963,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           Expanded(child:Text(L.playlist,style:TextStyle(fontWeight:FontWeight.w600,fontSize:13))),
           FilledButton.icon(
             style:FilledButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:10),minimumSize:const Size(0,32)),
-            icon:const Icon(Icons.add_rounded,size:16),label:Text(L.newItem,style:TextStyle(fontSize:12)),
+            icon:const Icon(Iconsax.add_circle,size:16),label:Text(L.newItem,style:TextStyle(fontSize:12)),
             onPressed:()async{
               final ctrl=TextEditingController();
               final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
@@ -978,7 +979,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       const Divider(height:1),
       if(playlists.isEmpty)Expanded(child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
         Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
-            child:const Icon(Icons.queue_music_rounded,size:32,color:kTextDim)),
+            child:const Icon(Iconsax.music_playlist,size:32,color:kTextDim)),
         const SizedBox(height:12),Text(L.noPlaylists,style:TextStyle(color:kTextSec)),
         const SizedBox(height:4),Text(L.createPlaylist,style:TextStyle(fontSize:11,color:kTextDim)),
       ])))
@@ -988,11 +989,11 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         return ListTile(dense:true,
           leading:Container(width:32,height:32,decoration:BoxDecoration(
               gradient:LinearGradient(colors:[kAccent,kCyan]),borderRadius:BorderRadius.circular(8)),
-              child:const Icon(Icons.queue_music_rounded,size:16,color:Colors.white)),
+              child:const Icon(Iconsax.music_playlist,size:16,color:Colors.white)),
           title:Text(name,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w500)),
           subtitle:Text('${paths.length}',style:const TextStyle(fontSize:11,color:kTextDim)),
           trailing:PopupMenuButton<String>(
-            icon:const Icon(Icons.more_vert_rounded,size:18,color:kTextSec),
+            icon:const Icon(Iconsax.more,size:18,color:kTextSec),
             itemBuilder:(_)=>[
               PopupMenuItem(value:'play',child:Text(L.play,style:TextStyle(fontSize:13))),
               PopupMenuItem(value:'delete',child:Text(L.delete,style:TextStyle(fontSize:13,color:kRed))),
@@ -1038,7 +1039,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         if(list.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
           Container(padding:const EdgeInsets.all(16),
             decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
-            child:const Icon(Icons.star_rounded,size:32,color:kTextDim)),
+            child:const Icon(Iconsax.star5,size:32,color:kTextDim)),
           const SizedBox(height:12),
           Text(L.noSponsors,style:TextStyle(color:kTextSec)),
         ]));
@@ -1060,8 +1061,8 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
                     gradient:LinearGradient(colors:isFemale?[const Color(0xFFEC4899),const Color(0xFFF43F5E)]:[const Color(0xFF7C3AED),const Color(0xFF0EA5E9)]),
                     borderRadius:BorderRadius.circular(28)),
                   child:(s['avatar_url']??'').isNotEmpty
-                    ?ClipRRect(borderRadius:BorderRadius.circular(28),child:Image.network(s['avatar_url'],width:56,height:56,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(isFemale?Icons.face_3_rounded:Icons.face_rounded,color:Colors.white,size:28)))
-                    :Icon(isFemale?Icons.face_3_rounded:Icons.face_rounded,color:Colors.white,size:28)),
+                    ?ClipRRect(borderRadius:BorderRadius.circular(28),child:Image.network(s['avatar_url'],width:56,height:56,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(isFemale?Iconsax.profile_circle:Iconsax.profile_circle,color:Colors.white,size:28)))
+                    :Icon(isFemale?Iconsax.profile_circle:Iconsax.profile_circle,color:Colors.white,size:28)),
                 const SizedBox(width:14),
                 // متن
                 Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -1103,7 +1104,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
           borderRadius:BorderRadius.circular(12),border:Border.all(color:kAccent.withOpacity(0.2))),
           child:Row(children:[
             Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:kAccent.withOpacity(0.2),borderRadius:BorderRadius.circular(8)),
-                child:const Icon(Icons.play_circle_rounded,color:kAccent,size:24)),
+                child:const Icon(Iconsax.play_cricle,color:kAccent,size:24)),
             const SizedBox(width:12),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               const Text('Vezoo',style:TextStyle(fontWeight:FontWeight.w700,fontSize:15)),
@@ -1118,7 +1119,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         // دکمه چک آپدیت
         _appBtn(
-          icon:hasUpdate?Icons.system_update_rounded:Icons.check_circle_rounded,
+          icon:hasUpdate?Iconsax.refresh:Iconsax.tick_circle,
           color:hasUpdate?kAmber:kGreen,
           label:hasUpdate?L.updateAvailable:L.upToDate,
           onTap:hasUpdate?()async{
@@ -1131,7 +1132,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         // زیرنویس AI
         _appBtn(
-          icon:Icons.auto_awesome_rounded,color:const Color(0xFF7C3AED),
+          icon:Iconsax.magic_star,color:const Color(0xFF7C3AED),
           label:L.aiModels,
           onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AiModelsScreen())),
         ),
@@ -1140,7 +1141,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         // کانال تلگرام
         if(channel.isNotEmpty)_appBtn(
-          icon:Icons.telegram_rounded,color:kCyan,
+          icon:Iconsax.send_2,color:kCyan,
           label:L.telegramChannel,
           onTap:()=>ul.launchUrl(Uri.parse(channel),mode:ul.LaunchMode.externalApplication)),
 
@@ -1149,7 +1150,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         // گزارش مشکل / پیشنهاد
         if(admin.isNotEmpty)_appBtn(
-          icon:Icons.bug_report_rounded,color:kPink,
+          icon:Iconsax.bug,color:kPink,
           label:reportText,
           onTap:()=>ul.launchUrl(Uri.parse(admin),mode:ul.LaunchMode.externalApplication)),
 
@@ -1179,7 +1180,7 @@ Widget _appBtn({required IconData icon,required Color color,required String labe
         const SizedBox(width:12),
         Text(label,style:TextStyle(fontSize:13,color:onTap!=null?Colors.white:kTextSec)),
         const Spacer(),
-        if(onTap!=null)Icon(Icons.arrow_forward_ios_rounded,size:12,color:kTextDim),
+        if(onTap!=null)Icon(Iconsax.arrow_right_3,size:12,color:kTextDim),
       ]),
     ),
   );
