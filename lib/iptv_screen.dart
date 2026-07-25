@@ -631,7 +631,7 @@ class _SeriesTabState extends State<_SeriesTab> {
     final allCats = [IptvCategory('__all__','All Series | همه سریال‌ها'), ..._cats];
     return Column(children: [
       Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
-        child: TextField(onChanged: (v) => setState(() { _search=v; if(v.isNotEmpty){_showGrid=false;_applyFilter();} }),
+        child: TextField(onChanged: (v) { setState(() { _search=v; if(v.isNotEmpty){_showGrid=false;_selCat=null;} }); _applyFilter(); },
           style: const TextStyle(color: Colors.white, fontSize: 13),
           decoration: InputDecoration(hintText: 'جستجوی سریال...', hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
             prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Colors.white38),
