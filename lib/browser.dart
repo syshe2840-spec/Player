@@ -490,7 +490,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const IptvScreen()))),
       if(!_searching)...[
         if(_path!=root)IconButton(
-          icon:Icon(isSaved?Iconsax.location:Iconsax.location_1,color:isSaved?kAmber:kTextSec,size:20),
+          icon:Icon(isSaved?Iconsax.location:Iconsax.location_slash,color:isSaved?kAmber:kTextSec,size:20),
           onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
         ),
         PopupMenuButton<String>(
@@ -938,7 +938,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     final folders=Store.savedFolders;
     if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
-          child:const Icon(Iconsax.location_1,size:32,color:kTextDim)),
+          child:const Icon(Iconsax.location_slash,size:32,color:kTextDim)),
       const SizedBox(height:12),Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
       const SizedBox(height:6),Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
