@@ -307,9 +307,10 @@ class _LiveTabState extends State<_LiveTab> {
     if (_showGrid && _cats.isNotEmpty) {
       return _buildGroupGrid();
     }
-    return _loading
-    ? const Center(child: CircularProgressIndicator())
-    : Column(children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (_, __) => setState(() { _showGrid = true; _selCat = null; _search = ''; _applyFilter(); }),
+      child: _loading ? const Center(child: CircularProgressIndicator()) : Column(children: [
         // search + back to groups
         Padding(padding: EdgeInsets.only(left:10, right:10, top:10, bottom: kb > 0 ? 0 : 10),
           child: Row(children: [
@@ -343,7 +344,7 @@ class _LiveTabState extends State<_LiveTab> {
               title: Text(ch.name, style: const TextStyle(color: Colors.white, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
               onTap: () => widget.onPlay(ch.url, ch.name));
           })),
-      ]);
+      ]));
   }
 
   Widget _buildGroupGrid() {
@@ -556,34 +557,51 @@ class _SeriesTab extends StatefulWidget {
   @override State<_SeriesTab> createState() => _SeriesTabState();
 }
 class _SeriesTabState extends State<_SeriesTab> {
+  List<IptvCategory> _cats = [];
   List<IptvSeries> _series = [], _filtered = [];
-  bool _loading = true;
+  IptvCategory? _selCat;
+  bool _loading = true, _showGrid = true;
   String _search = '';
 
   @override void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _series = await IptvService.getSeries(widget.account); _applyFilter(); } catch (_) {}
+    try {
+      _cats = await IptvService.getSeriesCategories(widget.account);
+      _series = await IptvService.getSeries(widget.account);
+      _applyFilter();
+    } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
   void _applyFilter() {
-    _filtered = _search.isEmpty ? _series
-      : _series.where((s) => s.name.toLowerCase().contains(_search.toLowerCase())).toList();
+    var list = _series;
+    if (_selCat != null) list = list.where((s) => s.categoryId == _selCat!.id).toList();
+    _filtered = _search.isEmpty ? list : list.where((s) => s.name.toLowerCase().contains(_search.toLowerCase())).toList();
   }
 
-  @override Widget build(BuildContext context) => _loading
-    ? const Center(child: CircularProgressIndicator())
+  @override Widget build(BuildContext context) {
+    if (_showGrid && _cats.isNotEmpty) return _buildGroupGrid();
+    return _loading ? const Center(child: CircularProgressIndicator())
     : Column(children: [
-        Padding(padding: const EdgeInsets.all(10),
-          child: TextField(onChanged: (v) => setState(() { _search=v; _applyFilter(); }),
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            decoration: InputDecoration(hintText: 'Search series...', hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-              prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Colors.white38),
-              filled: true, fillColor: kCard,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(vertical: 8)))),
+        Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
+          child: Row(children: [
+            if (_cats.isNotEmpty) IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+              onPressed: () => setState(() { _showGrid=true; _selCat=null; _search=''; _applyFilter(); }),
+              padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+            if (_cats.isNotEmpty) const SizedBox(width: 8),
+            Expanded(child: TextField(onChanged: (v) => setState(() { _search=v; _applyFilter(); }),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: _selCat?.name ?? 'All Series | همه سریال‌ها',
+                hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Colors.white38),
+                filled: true, fillColor: kCard,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(vertical: 8)))),
+          ])),
         Expanded(child: GridView.builder(
-          padding: const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 16),
+          padding: const EdgeInsets.only(left: 10, right: 10, top: 6, bottom: 16),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2, childAspectRatio: 0.7, crossAxisSpacing: 10, mainAxisSpacing: 10),
@@ -603,6 +621,47 @@ class _SeriesTabState extends State<_SeriesTab> {
               ]));
           })),
       ]);
+  }
+
+  Widget _buildGroupGrid() {
+    Map<String,int> countMap = {};
+    for (final s in _series) { countMap[s.categoryId] = (countMap[s.categoryId]??0)+1; }
+    final allCats = [IptvCategory('__all__','All Series | همه سریال‌ها'), ..._cats];
+    return Column(children: [
+      Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
+        child: TextField(onChanged: (v) => setState(() { _search=v; if(v.isNotEmpty){_showGrid=false;_applyFilter();} }),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(hintText: 'جستجوی سریال...', hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+            prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Colors.white38),
+            filled: true, fillColor: kCard,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(vertical: 8)))),
+      Expanded(child: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(10,0,10,20),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, childAspectRatio: 2.2, mainAxisSpacing: 10, crossAxisSpacing: 10),
+        itemCount: allCats.length,
+        itemBuilder: (_, i) {
+          final cat = allCats[i];
+          final count = cat.id=='__all__' ? _series.length : (countMap[cat.id]??0);
+          return GestureDetector(
+            onTap: () => setState(() { _showGrid=false; _selCat=cat.id=='__all__'?null:cat; _search=''; _applyFilter(); if(cat.id=='__all__')_filtered=List.from(_series); }),
+            child: Container(
+              decoration: BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder),
+                boxShadow:[BoxShadow(color:kAccent.withOpacity(0.08),blurRadius:12,offset:const Offset(0,4))]),
+              padding: const EdgeInsets.symmetric(horizontal:12,vertical:10),
+              child: Row(children: [
+                Container(width:36,height:36,decoration:BoxDecoration(color:kAccent.withOpacity(0.15),borderRadius:BorderRadius.circular(8)),
+                  child:Icon(cat.id=='__all__'?Icons.video_library_rounded:Icons.folder_rounded,color:kAccent,size:18)),
+                const SizedBox(width:10),
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Text(cat.name,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w600),maxLines:1,overflow:TextOverflow.ellipsis),
+                  Text('$count سریال',style:const TextStyle(color:Colors.white38,fontSize:10)),
+                ])),
+              ])));
+        })),
+    ]);
+  }
 
   void _showEpisodes(IptvSeries s) {
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: kCard,
