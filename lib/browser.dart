@@ -19,26 +19,26 @@ import 'player.dart';
 import 'main.dart' show showSnack;
 import 'l10n.dart';
 
-const kBg      = Color(0xFF0D0D0D);
-const kSurface = Color(0xFF150505);
-const kCard    = Color(0xFF1C0A0A);
-const kBorder  = Color(0xFF3D1515);
-const kAccent  = Color(0xFFE53935);
-const kCyan    = Color(0xFFFF6B6B);
-const kGreen   = Color(0xFFFF3D3D);
-const kAmber   = Color(0xFFFF5252);
-const kRed     = Color(0xFFC62828);
+const kBg      = Color(0xFF08080F);
+const kSurface = Color(0xFF0D0D1E);
+const kCard    = Color(0xFF12122A);
+const kBorder  = Color(0xFF232350);
+const kAccent  = Color(0xFF7C3AED);
+const kCyan    = Color(0xFF0EA5E9);
+const kGreen   = Color(0xFF10B981);
+const kAmber   = Color(0xFFF59E0B);
+const kRed     = Color(0xFFEF4444);
 const kPink    = Color(0xFFEC4899);
-const kTextSec = Color(0xFFBDBDBD);
-const kTextDim = Color(0xFF757575);
+const kTextSec = Color(0xFF94A3B8);
+const kTextDim = Color(0xFF64748B);
 
 enum _SortBy{name,date,size,type}
 
 LinearGradient _extGrad(String ext){
   switch(ext){
-    case 'mp4': return const LinearGradient(colors:[Color(0xFFE53935),Color(0xFF7F0000)],begin:Alignment.topLeft,end:Alignment.bottomRight);
-    case 'mkv': return const LinearGradient(colors:[Color(0xFFC62828),Color(0xFF7F0000)],begin:Alignment.topLeft,end:Alignment.bottomRight);
-    case 'avi': return const LinearGradient(colors:[Color(0xFFB71C1C),Color(0xFF7F0000)],begin:Alignment.topLeft,end:Alignment.bottomRight);
+    case 'mp4': return const LinearGradient(colors:[Color(0xFF7C3AED),Color(0xFF4F46E5)]);
+    case 'mkv': return const LinearGradient(colors:[Color(0xFF0EA5E9),Color(0xFF0284C7)]);
+    case 'avi': return const LinearGradient(colors:[Color(0xFF10B981),Color(0xFF059669)]);
     case 'mov': return const LinearGradient(colors:[Color(0xFFE53935),Color(0xFFB71C1C)]);
     case 'webm':return const LinearGradient(colors:[Color(0xFFD50000),Color(0xFF9A0000)]);
     case 'flv': return const LinearGradient(colors:[Color(0xFFB71C1C),Color(0xFF7F0000)]);
@@ -415,8 +415,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
       filter:ImageFilter.blur(sigmaX:20,sigmaY:20),
       child:Container(
         padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
-        decoration:BoxDecoration(color:kSurface.withOpacity(0.85),borderRadius:BorderRadius.circular(28),border:Border.all(color:kBorder.withOpacity(0.7)),
-        boxShadow:[BoxShadow(color:Color(0xFFE53935).withOpacity(0.2),blurRadius:24,spreadRadius:0,offset:Offset(0,6)),BoxShadow(color:Colors.black.withOpacity(0.6),blurRadius:12,spreadRadius:0,offset:Offset(0,4))]),
+        decoration:BoxDecoration(color:kSurface.withOpacity(0.85),borderRadius:BorderRadius.circular(28),border:Border.all(color:kBorder.withOpacity(0.7))),
         child:Row(mainAxisSize:MainAxisSize.min,children:[
           _fabBtn(Icons.history_rounded,L.history,kTextSec,()=>_openPanel(0)),
           const SizedBox(width:4),_fabBtn(Icons.bookmark_rounded,L.bookmarks,kAmber,()=>_openPanel(1)),
@@ -568,8 +567,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   Widget _buildBody(){
     if(_checking)return Center(child:CircularProgressIndicator());
     if(!_granted)return Center(child:Padding(padding:const EdgeInsets.all(32),child:Column(mainAxisSize:MainAxisSize.min,children:[
-      Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder),
-        boxShadow:[BoxShadow(color:Color(0xFFE53935).withOpacity(0.15),blurRadius:20,spreadRadius:0,offset:Offset(0,4)),BoxShadow(color:Colors.black.withOpacity(0.5),blurRadius:10,spreadRadius:0,offset:Offset(0,2))]),
+      Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder)),
           child:const Icon(Icons.folder_off_rounded,size:48,color:kTextSec)),
       const SizedBox(height:20),
       Text(L.permissionNeeded,textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
@@ -679,8 +677,7 @@ class _DirTile extends StatelessWidget{
   @override Widget build(BuildContext context)=>GestureDetector(
     onTap:onTap,
     child:Container(margin:const EdgeInsets.only(bottom:6),padding:const EdgeInsets.symmetric(horizontal:14,vertical:12),
-      decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder.withOpacity(0.6)),
-        boxShadow:[BoxShadow(color:Color(0xFFE53935).withOpacity(0.12),blurRadius:16,spreadRadius:0,offset:Offset(0,4)),BoxShadow(color:Colors.black.withOpacity(0.4),blurRadius:8,spreadRadius:0,offset:Offset(0,2))]),
+      decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(12),border:Border.all(color:kBorder.withOpacity(0.6))),
       child:Row(children:[
         Container(width:44,height:44,decoration:BoxDecoration(
           gradient:const LinearGradient(colors:[Color(0xFF92400E),Color(0xFFB45309)],begin:Alignment.topLeft,end:Alignment.bottomRight),
