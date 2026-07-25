@@ -264,7 +264,7 @@ class _LiveTabState extends State<_LiveTab> {
   List<IptvChannel> _channels = [];
   List<IptvChannel> _filtered = [];
   IptvCategory? _selCat;
-  bool _loading = true;
+  bool _loading = true, _showGrid = true;
   String _search = '';
 
   @override void initState() { super.initState(); _loadWithRefresh(); }
