@@ -7,6 +7,7 @@ import 'l10n.dart';
 const kAccent = Color(0xFF7C3AED);
 const kBg = Color(0xFF08080F);
 const kCard = Color(0xFF12121C);
+const kBorder = Color(0xFF232350);
 
 class IptvScreen extends StatefulWidget {
   const IptvScreen({super.key});
