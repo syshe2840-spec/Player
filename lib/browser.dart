@@ -420,7 +420,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           _fabBtn(Iconsax.clock_1,L.history,kTextSec,()=>_openPanel(0)),
           const SizedBox(width:4),_fabBtn(Iconsax.bookmark,L.bookmarks,kAmber,()=>_openPanel(1)),
           const SizedBox(width:4),_fabBtn(Iconsax.heart5,L.favorites,kPink,()=>_openPanel(2)),
-          const SizedBox(width:4),_fabBtn(Iconsax.pin,L.folders,kGreen,()=>_openPanel(3)),
+          const SizedBox(width:4),_fabBtn(Iconsax.location,L.folders,kGreen,()=>_openPanel(3)),
           const SizedBox(width:4),_fabBtn(Iconsax.setting_4,L.settings,kTextSec,()=>_openPanel(4)),
         ]),
       ),
@@ -490,7 +490,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const IptvScreen()))),
       if(!_searching)...[
         if(_path!=root)IconButton(
-          icon:Icon(isSaved?Iconsax.pin:Iconsax.pin_1,color:isSaved?kAmber:kTextSec,size:20),
+          icon:Icon(isSaved?Iconsax.location:Iconsax.location_1,color:isSaved?kAmber:kTextSec,size:20),
           onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
         ),
         PopupMenuButton<String>(
@@ -867,7 +867,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         tabs:[Tab(icon:Icon(Iconsax.clock_1,size:16),text:L.history),
           Tab(icon:Icon(Iconsax.bookmark,size:16),text:L.bookmarks),
           Tab(icon:Icon(Iconsax.heart5,size:16),text:L.favorites),
-          Tab(icon:Icon(Iconsax.pin,size:16),text:L.folders),
+          Tab(icon:Icon(Iconsax.location,size:16),text:L.folders),
           Tab(icon:Icon(Iconsax.music_playlist,size:16),text:L.playlist),
           Tab(icon:Icon(Iconsax.star5,size:16),text:L.sponsors),
           Tab(icon:Icon(Iconsax.setting_3,size:16),text:L.tools),
@@ -938,7 +938,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     final folders=Store.savedFolders;
     if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
-          child:const Icon(Iconsax.pin_1,size:32,color:kTextDim)),
+          child:const Icon(Iconsax.location_1,size:32,color:kTextDim)),
       const SizedBox(height:12),Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
       const SizedBox(height:6),Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
@@ -949,7 +949,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
             child:Icon(Iconsax.folder_2,color:exists?kAmber:kTextDim,size:15)),
         title:Text(p.basename(folder),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13)),
         subtitle:Text(folder,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
-        trailing:IconButton(icon:const Icon(Iconsax.pin,size:14,color:kRed),
+        trailing:IconButton(icon:const Icon(Iconsax.location,size:14,color:kRed),
             onPressed:()async{await Store.toggleSavedFolder(folder);setState((){});}),
         onTap:exists?()=>widget.onFolderTap(folder):null);
     });
@@ -1150,7 +1150,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
 
         // گزارش مشکل / پیشنهاد
         if(admin.isNotEmpty)_appBtn(
-          icon:Iconsax.bug,color:kPink,
+          icon:Iconsax.danger,color:kPink,
           label:reportText,
           onTap:()=>ul.launchUrl(Uri.parse(admin),mode:ul.LaunchMode.externalApplication)),
 
