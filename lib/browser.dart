@@ -332,7 +332,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         Expanded(child:Text(p.basename(f.path),style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
       ]),
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        _iRow(Iconsax.folder_2_outlined,kTextSec,L.path,p.dirname(f.path)),
+        _iRow(Iconsax.folder_open,kTextSec,L.path,p.dirname(f.path)),
         _iRow(Iconsax.video_square,kCyan,L.format,ext.toUpperCase()),
         _iRow(Iconsax.chart,kTextSec,L.sortSize,sizeStr(f)),
         if(fileSize>0)_iRow(Iconsax.ruler,kTextSec,L.precise,'${fileSize} bytes'),
@@ -420,7 +420,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           _fabBtn(Iconsax.clock_1,L.history,kTextSec,()=>_openPanel(0)),
           const SizedBox(width:4),_fabBtn(Iconsax.bookmark,L.bookmarks,kAmber,()=>_openPanel(1)),
           const SizedBox(width:4),_fabBtn(Iconsax.heart5,L.favorites,kPink,()=>_openPanel(2)),
-          const SizedBox(width:4),_fabBtn(Iconsax.magnet,L.folders,kGreen,()=>_openPanel(3)),
+          const SizedBox(width:4),_fabBtn(Iconsax.pin,L.folders,kGreen,()=>_openPanel(3)),
           const SizedBox(width:4),_fabBtn(Iconsax.setting_4,L.settings,kTextSec,()=>_openPanel(4)),
         ]),
       ),
@@ -477,7 +477,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           ),
         ),
       ],
-      IconButton(icon:Icon(_searching?Iconsax.close_circle_rounded:Iconsax.search_normal_1,size:20),
+      IconButton(icon:Icon(_searching?Iconsax.close_circle:Iconsax.search_normal_1,size:20),
           onPressed:(){setState((){_searching=!_searching;if(!_searching){_searchQuery='';_searchCtrl.clear();_searchResults=[];_globalSearch=false;}});}),
       // دکمه پخش آنلاین
       if(!_searching)IconButton(
@@ -490,7 +490,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
         onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const IptvScreen()))),
       if(!_searching)...[
         if(_path!=root)IconButton(
-          icon:Icon(isSaved?Iconsax.magnet:Iconsax.magnet_1,color:isSaved?kAmber:kTextSec,size:20),
+          icon:Icon(isSaved?Iconsax.pin:Iconsax.pin_1,color:isSaved?kAmber:kTextSec,size:20),
           onPressed:()async{await Store.toggleSavedFolder(_path);setState((){});},
         ),
         PopupMenuButton<String>(
@@ -523,7 +523,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
           icon:const Icon(Iconsax.sort,size:20),
           onSelected:(v)=>setState((){if(_sortBy==v)_sortDesc=!_sortDesc;else{_sortBy=v;_sortDesc=false;}}),
           itemBuilder:(_)=>[
-            _pmSort(_SortBy.name,L.sortName,Iconsax.text_align_justify_center),
+            _pmSort(_SortBy.name,L.sortName,Iconsax.sort),
             _pmSort(_SortBy.date,L.sortDate,Iconsax.clock),
             _pmSort(_SortBy.size,L.sortSize,Iconsax.chart_1),
             _pmSort(_SortBy.type,L.sortType,Iconsax.video_square),
@@ -542,7 +542,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
   PreferredSizeWidget _selectBar()=>AppBar(
     automaticallyImplyLeading:false,
     backgroundColor:kAccent.withOpacity(0.15),
-    leading:IconButton(icon:const Icon(Iconsax.close_circle_rounded,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
+    leading:IconButton(icon:const Icon(Iconsax.close_circle,size:20),onPressed:()=>setState((){_selectMode=false;_selected.clear();})),
     title:Text('${_selected.length} ${L.select}',style:const TextStyle(fontSize:15)),
     actions:[
       if(_selected.isNotEmpty)IconButton(
@@ -568,7 +568,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     if(_checking)return Center(child:CircularProgressIndicator());
     if(!_granted)return Center(child:Padding(padding:const EdgeInsets.all(32),child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(20),border:Border.all(color:kBorder)),
-          child:const Icon(Iconsax.folder_2_off_rounded,size:48,color:kTextSec)),
+          child:const Icon(Iconsax.folder_minus,size:48,color:kTextSec)),
       const SizedBox(height:20),
       Text(L.permissionNeeded,textAlign:TextAlign.center,style:TextStyle(color:kTextSec)),
       const SizedBox(height:20),
@@ -579,7 +579,7 @@ class _BrowserState extends State<BrowserScreen> with TickerProviderStateMixin{
     return Column(children:[
       Container(width:double.infinity,padding:const EdgeInsets.symmetric(horizontal:16,vertical:6),color:kSurface,
           child:Row(children:[
-            Icon(Iconsax.folder_2_open_rounded,size:12,color:kAccent.withOpacity(0.7)),const SizedBox(width:6),
+            Icon(Iconsax.folder_open,size:12,color:kAccent.withOpacity(0.7)),const SizedBox(width:6),
             Expanded(child:Text(_path,style:const TextStyle(fontSize:10,color:kTextDim),overflow:TextOverflow.ellipsis)),
             if(_searchRunning)const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.5,color:kAccent)),
             if(_globalSearch&&!_searchRunning&&_searchResults.isNotEmpty)
@@ -682,7 +682,7 @@ class _DirTile extends StatelessWidget{
         Container(width:44,height:44,decoration:BoxDecoration(
           gradient:const LinearGradient(colors:[Color(0xFF92400E),Color(0xFFB45309)],begin:Alignment.topLeft,end:Alignment.bottomRight),
           borderRadius:BorderRadius.circular(10)),
-          child:const Icon(Iconsax.folder_2_rounded,color:Colors.white,size:22)),
+          child:const Icon(Iconsax.folder_2,color:Colors.white,size:22)),
         const SizedBox(width:12),
         Expanded(child:Text(p.basename(dir.path),style:const TextStyle(fontWeight:FontWeight.w500,fontSize:14),maxLines:1,overflow:TextOverflow.ellipsis)),
         const Icon(Iconsax.arrow_left_2,color:kTextDim,size:20),
@@ -867,7 +867,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
         tabs:[Tab(icon:Icon(Iconsax.clock_1,size:16),text:L.history),
           Tab(icon:Icon(Iconsax.bookmark,size:16),text:L.bookmarks),
           Tab(icon:Icon(Iconsax.heart5,size:16),text:L.favorites),
-          Tab(icon:Icon(Iconsax.magnet,size:16),text:L.folders),
+          Tab(icon:Icon(Iconsax.pin,size:16),text:L.folders),
           Tab(icon:Icon(Iconsax.music_playlist,size:16),text:L.playlist),
           Tab(icon:Icon(Iconsax.star5,size:16),text:L.sponsors),
           Tab(icon:Icon(Iconsax.setting_3,size:16),text:L.tools),
@@ -938,7 +938,7 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
     final folders=Store.savedFolders;
     if(folders.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:kCard,borderRadius:BorderRadius.circular(16),border:Border.all(color:kBorder)),
-          child:const Icon(Iconsax.magnet_1,size:32,color:kTextDim)),
+          child:const Icon(Iconsax.pin_1,size:32,color:kTextDim)),
       const SizedBox(height:12),Text(L.noSavedFolders,style:TextStyle(color:kTextSec)),
       const SizedBox(height:6),Text(L.pinFolderHint,style:TextStyle(fontSize:11,color:kTextDim)),
     ]));
@@ -946,10 +946,10 @@ class _BottomPanelState extends State<BottomPanel> with SingleTickerProviderStat
       final folder=folders[i];final exists=Directory(folder).existsSync();
       return ListTile(dense:true,
         leading:Container(width:30,height:30,decoration:BoxDecoration(color:kAmber.withOpacity(0.1),borderRadius:BorderRadius.circular(7)),
-            child:Icon(Iconsax.folder_2_rounded,color:exists?kAmber:kTextDim,size:15)),
+            child:Icon(Iconsax.folder_2,color:exists?kAmber:kTextDim,size:15)),
         title:Text(p.basename(folder),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13)),
         subtitle:Text(folder,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:kTextDim)),
-        trailing:IconButton(icon:const Icon(Iconsax.magnet,size:14,color:kRed),
+        trailing:IconButton(icon:const Icon(Iconsax.pin,size:14,color:kRed),
             onPressed:()async{await Store.toggleSavedFolder(folder);setState((){});}),
         onTap:exists?()=>widget.onFolderTap(folder):null);
     });
