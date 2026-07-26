@@ -2862,7 +2862,6 @@ StatefulBuilder(builder: (_, ss2) {
                 Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
               ])))),
         ]),
-      ],
 
       if (_translate) ...[
         const SizedBox(height: 8),
