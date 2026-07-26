@@ -2798,13 +2798,6 @@ StatefulBuilder(builder: (_, ss2) {
         onChanged: (v) => setState(() => _pollMs = v!),
       ),
       const SizedBox(height: 12),
-
-      // ترجمه toggle
-      Row(children: [
-        const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
-        Switch(value: _translate, onChanged: (v) => setState(() => _translate = v),
-          activeColor: const Color(0xFF7C3AED)),
-      ]),
       if (_translate) ...[
         const SizedBox(height: 10),
         // نمایش
@@ -2837,7 +2830,8 @@ StatefulBuilder(builder: (_, ss2) {
                 Text('فقط ترجمه', style: TextStyle(color: !_showOriginal ? Colors.white : Colors.white38, fontSize: 11)),
               ])))),
         ]),
-        const SizedBox(height: 10),
+      ],
+      const SizedBox(height: 10),
         // زمان نمایش
         const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
         const SizedBox(height: 6),
