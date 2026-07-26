@@ -499,6 +499,58 @@ class _PlayerState extends State<PlayerScreen>{
     ));
   }
 
+  void _handleVoskFinal(String t) {
+    // ثبت timing
+    final now = DateTime.now();
+    final endT = now.difference(_voskStartTime ?? now);
+    final startT = _lastFinalTime != null
+        ? _lastFinalTime!.difference(_voskStartTime ?? now)
+        : (endT > const Duration(milliseconds: 500)
+            ? endT - const Duration(milliseconds: 500) : Duration.zero);
+    _lastFinalTime = now;
+
+    void addEntry(String text) {
+      _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startT, endT, text));
+      _saveVoskSrt(silent: true);
+    }
+
+    void show(String text) {
+      if (_mounted) setState(() => _dgText = text);
+    }
+
+    final doTranslate = _voskTranslate && !_voskShowOriginal && _voskTranslateTo.isNotEmpty;
+
+    if (_voskTranslateOnFinish) {
+      // بعد از پایان صدا — debounce 400ms
+      _translateDebounceTimer?.cancel();
+      _translateDebounceTimer = Timer(const Duration(milliseconds: 400), () {
+        if (!_mounted) return;
+        if (doTranslate) {
+          _translateWithWorker(t, _voskTranslateTo).then((r) {
+            final out = (r.isNotEmpty && r != t) ? r : t;
+            if (_mounted) { addEntry(out); show(out); }
+          });
+        } else {
+          addEntry(t);
+          show(t);
+        }
+      });
+    } else {
+      // همزمان با صدا
+      if (doTranslate) {
+        // ترجمه — اصلی نشون نده، فقط منتظر ترجمه بمون
+        _translateWithWorker(t, _voskTranslateTo).then((r) {
+          final out = (r.isNotEmpty && r != t) ? r : t;
+          if (_mounted) { addEntry(out); show(out); }
+        });
+      } else {
+        // اصلی — فوری نشون بده
+        addEntry(t);
+        show(t);
+      }
+    }
+  }
+
   Future<String> _translateWithWorker(String text, String targetLang) async {
     try {
       final client = HttpClient();
@@ -649,63 +701,18 @@ class _PlayerState extends State<PlayerScreen>{
               if (t.isNotEmpty) {
                 // ── PARTIAL ──
                 if (!fin) {
-                  // non-Latin زبان → فقط final
+                  // non-Latin → فقط final نشون بده
                   if (_voskFinalOnly) return;
                   // "فقط ترجمه" → partial نشون نده
                   if (_voskTranslate && !_voskShowOriginal) return;
                   // "بعد از پایان صدا" → partial نشون نده
                   if (_voskTranslateOnFinish) return;
-                  // نمایش همزمان partial
-                  if (t != _dgText) setState(() => _dgText = '$t...');
+                  // نمایش partial همزمان
+                  if (_mounted && t != _dgText) setState(() => _dgText = '$t...');
                   return;
                 }
                 // ── FINAL ──
-                showFn(String text) {
-                  if (_mounted) setState(() => _dgText = text);
-                }
-                saveSrt(String text) {
-                  final now = DateTime.now();
-                  final endT = now.difference(_voskStartTime ?? now);
-                  final startT = _lastFinalTime != null
-                      ? _lastFinalTime!.difference(_voskStartTime ?? now)
-                      : (endT > const Duration(milliseconds:500) ? endT - const Duration(milliseconds:500) : Duration.zero);
-                  _lastFinalTime = now;
-                  _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length+1, startT, endT, text));
-                  _saveVoskSrt(silent: true);
-                }
-                if (_voskTranslate && !_voskShowOriginal && _voskTranslateTo.isNotEmpty) {
-                  // فقط ترجمه — اصلی هرگز نشون نده
-                  if (_voskTranslateOnFinish) {
-                    _translateDebounceTimer?.cancel();
-                    final ct = t;
-                    _translateDebounceTimer = Timer(const Duration(milliseconds: 400), () {
-                      _translateWithWorker(ct, _voskTranslateTo).then((r) {
-                        final out = (r.isNotEmpty && r != ct) ? r : ct;
-                        saveSrt(out);
-                        showFn(out);
-                      });
-                    });
-                  } else {
-                    _translateWithWorker(t, _voskTranslateTo).then((r) {
-                      final out = (r.isNotEmpty && r != t) ? r : t;
-                      saveSrt(out);
-                      showFn(out);
-                    });
-                  }
-                } else {
-                  // نمایش اصلی
-                  if (_voskTranslateOnFinish) {
-                    _translateDebounceTimer?.cancel();
-                    final ct = t;
-                    _translateDebounceTimer = Timer(const Duration(milliseconds: 400), () {
-                      saveSrt(ct);
-                      showFn(ct);
-                    });
-                  } else {
-                    saveSrt(t);
-                    showFn(t);
-                  }
-                }
+                _handleVoskFinal(t);
               }
             } else if (type == 'error') {
               setState(() { _dgActive = false; _dgText = ''; _aiLog.add('[$tsStr] ❌ $data'); });
