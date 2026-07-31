@@ -72,6 +72,7 @@ class _PlayerState extends State<PlayerScreen>{
   List<String> _aiLog=[];
   bool _useVosk = true;
   bool _useAndroidStt = false;
+  late int _curChannelIdx;
   String? _title; // عنوان ویدیوی جاری
   Timer? _voskPollTimer;
   Timer? _androidSttPollTimer;
@@ -239,6 +240,7 @@ class _PlayerState extends State<PlayerScreen>{
   @override
   void initState(){
     super.initState();
+    _curChannelIdx = widget.channelIndex;
     _idx=widget.playlistIndex.clamp(0,(widget.playlist.length-1).clamp(0,999999));
     final saved=Store.loadVideoSettings(_curPath);
     if(saved!=null)_vs=saved;
