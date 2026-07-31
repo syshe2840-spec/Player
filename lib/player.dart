@@ -540,6 +540,8 @@ class _PlayerState extends State<PlayerScreen>{
     }
 
     final doTranslate = _voskTranslate && !_voskShowOriginal && _voskTranslateTo.isNotEmpty;
+    // debug log
+    if (_mounted) setState(() => _aiLog.add('[DBG] translate=$_voskTranslate showOrig=$_voskShowOriginal onFinish=$_voskTranslateOnFinish doTrans=$doTranslate'));
 
     if (_voskTranslateOnFinish) {
       // بعد از پایان صدا — debounce 400ms
