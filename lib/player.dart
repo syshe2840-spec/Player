@@ -2226,12 +2226,12 @@ class _PlayerState extends State<PlayerScreen>{
       Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
         _abRow(),const SizedBox(height:8),
         Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-          IconButton(iconSize:44,icon:Icon(Icons.skip_previous,color:_hasPrev?Colors.white:Colors.white24),onPressed:_hasPrev?()=>_switchVideo(_idx-1):null),
+          if (!widget.isLive) IconButton(iconSize:44,icon:Icon(Icons.skip_previous,color:_hasPrev?Colors.white:Colors.white24),onPressed:_hasPrev?()=>_switchVideo(_idx-1):null),
           const SizedBox(width:24),
           IconButton(iconSize:68,icon:Icon(_playing?Icons.pause_circle_filled:Icons.play_circle_filled),
               onPressed:(){_playing?player.pause():player.play();_startHideTimer();}),
           const SizedBox(width:24),
-          IconButton(iconSize:44,icon:Icon(Icons.skip_next,color:_hasNext?Colors.white:Colors.white24),onPressed:_hasNext?()=>_switchVideo(_idx+1):null),
+          if (!widget.isLive) IconButton(iconSize:44,icon:Icon(Icons.skip_next,color:_hasNext?Colors.white:Colors.white24),onPressed:_hasNext?()=>_switchVideo(_idx+1):null),
           // دکمه کانال بعدی (فقط IPTV)
           if (widget.isLive && widget.channelList != null && widget.channelList!.length > 1) ...[
             const SizedBox(width: 8),
