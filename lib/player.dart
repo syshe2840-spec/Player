@@ -44,8 +44,10 @@ class PlayerScreen extends StatefulWidget {
   final List<File> playlist;
   final int playlistIndex;
   final bool isOnlineUrl; // آدرس آنلاین (نه فایل محلی)
-  final bool isLive; // پخش زنده IPTV
-  const PlayerScreen({super.key,this.subtitlePath,required this.playlist,required this.playlistIndex,this.isOnlineUrl=false,this.isLive=false});
+  final bool isLive;
+  final List<Map<String,String>>? channelList; // [{url, name}] برای IPTV
+  final int channelIndex;
+  const PlayerScreen({super.key,this.subtitlePath,required this.playlist,required this.playlistIndex,this.isOnlineUrl=false,this.isLive=false,this.channelList,this.channelIndex=0});
   @override State<PlayerScreen> createState()=>_PlayerState();
 }
 
@@ -496,6 +498,23 @@ class _PlayerState extends State<PlayerScreen>{
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
                 SrtEditorScreen(srtPath: savedPath!))))));
         }),
+    ));
+  }
+
+  void _switchChannel(int delta) {
+    final list = widget.channelList;
+    if (list == null || list.isEmpty) return;
+    final newIdx = (_curChannelIdx + delta).clamp(0, list.length - 1);
+    if (newIdx == _curChannelIdx) return;
+    setState(() => _curChannelIdx = newIdx);
+    final ch = list[newIdx];
+    player.open(Media(ch['url']!));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('📺 ${ch['name'] ?? ''}'),
+      backgroundColor: const Color(0xFF1A1A2A),
+      duration: const Duration(seconds: 2),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
     ));
   }
 
@@ -2211,6 +2230,28 @@ class _PlayerState extends State<PlayerScreen>{
               onPressed:(){_playing?player.pause():player.play();_startHideTimer();}),
           const SizedBox(width:24),
           IconButton(iconSize:44,icon:Icon(Icons.skip_next,color:_hasNext?Colors.white:Colors.white24),onPressed:_hasNext?()=>_switchVideo(_idx+1):null),
+          // دکمه کانال بعدی (فقط IPTV)
+          if (widget.isLive && widget.channelList != null && widget.channelList!.length > 1) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 1, height: 28,
+              color: Colors.white12),
+            const SizedBox(width: 8),
+            IconButton(
+              iconSize: 36,
+              icon: Icon(Icons.skip_previous_rounded,
+                color: _curChannelIdx > 0 ? Colors.white70 : Colors.white24),
+              onPressed: _curChannelIdx > 0 ? () => _switchChannel(-1) : null,
+              tooltip: 'کانال قبلی'),
+            Text('${_curChannelIdx+1}/${widget.channelList!.length}',
+              style: const TextStyle(color: Colors.white38, fontSize: 11)),
+            IconButton(
+              iconSize: 36,
+              icon: Icon(Icons.skip_next_rounded,
+                color: _curChannelIdx < widget.channelList!.length-1 ? Colors.white70 : Colors.white24),
+              onPressed: _curChannelIdx < widget.channelList!.length-1 ? () => _switchChannel(1) : null,
+              tooltip: 'کانال بعدی'),
+          ],
         ]),
       ])),
 
@@ -2525,18 +2566,28 @@ class _TranslationInfoPanelState extends State<_TranslationInfoPanel> {
 
 // ── دیالوگ تنظیمات Vosk ──
 class _VoskSettingsDialog extends StatefulWidget {
+  final bool initTranslate;
+  final bool initShowOriginal;
+  final bool initTranslateOnFinish;
+  final String initTranslateTo;
+  const _VoskSettingsDialog({
+    this.initTranslate = false,
+    this.initShowOriginal = false,
+    this.initTranslateOnFinish = true,
+    this.initTranslateTo = 'fa',
+  });
   @override State<_VoskSettingsDialog> createState() => _VoskSettingsDialogState();
 }
 
 class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _lang = 'fa';
-  bool _translate = false;
-  String _translateTo = 'fa';
+  late bool _translate = widget.initTranslate;
+  late String _translateTo = widget.initTranslateTo;
   int _pollMs = 100;
   VoskModel? _selectedModel;
   String _engine = 'vosk';
-  bool _translateOnFinish = true;
-  bool _showOriginal = true; // vosk, android
+  late bool _translateOnFinish = widget.initTranslateOnFinish;
+  late bool _showOriginal = widget.initShowOriginal; // vosk, android
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2779,7 +2830,7 @@ StatefulBuilder(builder: (_, ss2) {
 
       Row(children: [
         const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
-        Switch(value: _translate, onChanged: (v) => setState(() => _translate = v),
+        Switch(value: _translate, onChanged: (v) => setState(() { _translate = v; if (v) _showOriginal = false; }),
           activeColor: const Color(0xFF7C3AED)),
       ]),
 
