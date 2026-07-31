@@ -89,9 +89,13 @@ class _IptvScreenState extends State<IptvScreen> with SingleTickerProviderStateM
     setState(() { _accounts = a; if (a.isNotEmpty) _current = a.first; });
   }
 
-  void _play(String url, String title) {
+  void _play(String url, String title, {List<Map<String,String>>? channels, int chanIdx=0}) {
     Navigator.push(context, MaterialPageRoute(builder: (_) =>
-      PlayerScreen(playlist: [File(url)], playlistIndex: 0, isLive: true, isOnlineUrl: true)));
+      PlayerScreen(
+        playlist: [File(url)], playlistIndex: 0,
+        isLive: true, isOnlineUrl: true,
+        channelList: channels,
+        channelIndex: chanIdx)));
   }
 
   void _showAddAccount() {
@@ -255,7 +259,7 @@ class _IptvScreenState extends State<IptvScreen> with SingleTickerProviderStateM
 
 // ── Live TV ──
 class _LiveTab extends StatefulWidget {
-  final IptvAccount account; final void Function(String, String) onPlay;
+  final IptvAccount account; final void Function(String, String, {List<Map<String,String>>? channels, int chanIdx}) onPlay;
   const _LiveTab({super.key, required this.account, required this.onPlay});
   @override State<_LiveTab> createState() => _LiveTabState();
 }
@@ -342,7 +346,7 @@ class _LiveTabState extends State<_LiveTab> {
                 ? ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.network(ch.logo, width: 52, height: 36, fit: BoxFit.contain, errorBuilder: (_,__,___) => const Icon(Icons.live_tv_rounded, color: Colors.white38, size: 28)))
                 : const Icon(Icons.live_tv_rounded, color: Colors.white38, size: 28),
               title: Text(ch.name, style: const TextStyle(color: Colors.white, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-              onTap: () => widget.onPlay(ch.url, ch.name));
+              onTap: () => widget.onPlay(ch.url, ch.name, channels: _channels.map((c)=>{'url':c.url,'name':c.name}).toList(), chanIdx: _channels.indexOf(ch)));
           })),
       ]));
   }
@@ -422,7 +426,7 @@ class _LiveTabState extends State<_LiveTab> {
 // ── Movies ──
 
 class _VodTab extends StatefulWidget {
-  final IptvAccount account; final void Function(String, String) onPlay;
+  final IptvAccount account; final void Function(String, String, {List<Map<String,String>>? channels, int chanIdx}) onPlay;
   const _VodTab({super.key, required this.account, required this.onPlay});
   @override State<_VodTab> createState() => _VodTabState();
 }
@@ -543,7 +547,7 @@ class _VodTabState extends State<_VodTab> {
 
 // ── Series ──
 class _SeriesTab extends StatefulWidget {
-  final IptvAccount account; final void Function(String, String) onPlay;
+  final IptvAccount account; final void Function(String, String, {List<Map<String,String>>? channels, int chanIdx}) onPlay;
   const _SeriesTab({super.key, required this.account, required this.onPlay});
   @override State<_SeriesTab> createState() => _SeriesTabState();
 }
@@ -665,7 +669,7 @@ class _SeriesTabState extends State<_SeriesTab> {
 
 class _EpisodesSheet extends StatefulWidget {
   final IptvAccount account; final IptvSeries series;
-  final void Function(String, String) onPlay;
+  final void Function(String, String, {List<Map<String,String>>? channels, int chanIdx}) onPlay;
   const _EpisodesSheet({super.key, required this.account, required this.series, required this.onPlay});
   @override State<_EpisodesSheet> createState() => _EpisodesSheetState();
 }
