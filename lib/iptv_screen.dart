@@ -235,7 +235,7 @@ class _IptvScreenState extends State<IptvScreen> with SingleTickerProviderStateM
           Tab(text: 'Series', icon: Icon(Icons.video_library_rounded, size: 16)),
         ])),
     body: SafeArea(
-      bottom: true,
+      bottom: true, minimum: const EdgeInsets.only(bottom: 16),
       child: _current == null
       ? _emptyState()
       : TabBarView(controller: _tab, children: [
@@ -244,7 +244,8 @@ class _IptvScreenState extends State<IptvScreen> with SingleTickerProviderStateM
           _SeriesTab(account: _current!, onPlay: _play, key: ValueKey(_refreshKey)),
         ])));
 
-  Widget _emptyState() => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+  Widget _emptyState() => SafeArea(
+    child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
     const Icon(Icons.live_tv_rounded, size: 64, color: Colors.white12),
     const SizedBox(height: 16),
     const Text('No IPTV account', style: TextStyle(color: Colors.white54, fontSize: 16)),
@@ -254,7 +255,8 @@ class _IptvScreenState extends State<IptvScreen> with SingleTickerProviderStateM
     FilledButton.icon(onPressed: _showAddAccount,
       icon: const Icon(Icons.add_rounded), label: const Text('Add Account'),
       style: FilledButton.styleFrom(backgroundColor: kAccent)),
-  ]));
+    const SizedBox(height: 32),
+  ])));
 }
 
 // ── Live TV ──
