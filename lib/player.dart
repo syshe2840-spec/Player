@@ -540,8 +540,6 @@ class _PlayerState extends State<PlayerScreen>{
     }
 
     final doTranslate = _voskTranslate && !_voskShowOriginal && _voskTranslateTo.isNotEmpty;
-    // debug log
-    if (_mounted) setState(() => _aiLog.add('[DBG] translate=$_voskTranslate showOrig=$_voskShowOriginal onFinish=$_voskTranslateOnFinish doTrans=$doTranslate'));
 
     if (_voskTranslateOnFinish) {
       // بعد از پایان صدا — debounce 400ms
@@ -550,8 +548,14 @@ class _PlayerState extends State<PlayerScreen>{
         if (!_mounted) return;
         if (doTranslate) {
           _translateWithWorker(t, _voskTranslateTo).then((r) {
-            final out = (r.isNotEmpty && r != t) ? r : t;
-            if (_mounted) { addEntry(out); show(out); }
+            if (!_mounted) return;
+            if (r.isNotEmpty && r != t) {
+              addEntry(r); show(r); // ترجمه موفق
+            } else {
+              // ترجمه fail — لاگ بزن، اصلی نشون نده
+              setState(() => _aiLog.add('[TRANS] ❌ failed, keeping previous'));
+              addEntry(t); // SRT ذخیره کن ولی نشون نده
+            }
           });
         } else {
           addEntry(t);
@@ -561,10 +565,14 @@ class _PlayerState extends State<PlayerScreen>{
     } else {
       // همزمان با صدا
       if (doTranslate) {
-        // ترجمه — اصلی نشون نده، فقط منتظر ترجمه بمون
         _translateWithWorker(t, _voskTranslateTo).then((r) {
-          final out = (r.isNotEmpty && r != t) ? r : t;
-          if (_mounted) { addEntry(out); show(out); }
+          if (!_mounted) return;
+          if (r.isNotEmpty && r != t) {
+            addEntry(r); show(r);
+          } else {
+            setState(() => _aiLog.add('[TRANS] ❌ failed'));
+            addEntry(t);
+          }
         });
       } else {
         // اصلی — فوری نشون بده
