@@ -762,75 +762,17 @@ class _PlayerState extends State<PlayerScreen>{
           final ts = DateTime.now();
           final tsStr = '${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}';
           if (type == 'transcript') {
-            final t = (data as Map)['text'] as String;
-            final fin = (data as Map)['final'] as bool;
-            if (t.isNotEmpty) {
-              setState(() {
-                if (fin) {
-                  _dgText = t;
-                                // ذخیره SRT با timing دقیق
-                  if (_voskStartTime != null) {
-                    final now = DateTime.now();
-                    final endTime = now.difference(_voskStartTime!);
-                    final startTime = _lastFinalTime != null
-                        ? _lastFinalTime!.difference(_voskStartTime!)
-                        : (endTime > const Duration(milliseconds: 500)
-                            ? endTime - const Duration(milliseconds: 500)
-                            : Duration.zero);
-                    _lastFinalTime = now;
-
-                    if (_voskTranslate && _voskTranslateTo.isNotEmpty) {
-                      if (_voskTranslateOnFinish) {
-                        // حالت debounce: 400ms صبر کن، اگه سکوت بود ترجمه کن
-                        _translateDebounceTimer?.cancel();
-                        final capturedT = t;
-                        final capturedStart = startTime;
-                        final capturedEnd = endTime;
-                        _translateDebounceTimer = Timer(const Duration(milliseconds: 400), () {
-                          _translateWithWorker(capturedT, _voskTranslateTo).then((r) {
-                            final translated = (r.isNotEmpty && r != capturedT) ? r : capturedT;
-                            _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, capturedStart, capturedEnd, translated));
-                            if (_mounted) {
-                              setState(() => _dgText = translated);
-                              _saveVoskSrt(silent: true);
-                            }
-                          });
-                        });
-                        // متن اصلی فقط اگه showOriginal فعاله نشون بده
-                        if (_mounted && _voskShowOriginal) setState(() => _dgText = t);
-                      } else {
-                        // حالت همزمان: بلافاصله ترجمه کن
-                        _translateWithWorker(t, _voskTranslateTo).then((r) {
-                          final translated = (r.isNotEmpty && r != t) ? r : t;
-                          _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, translated));
-                          if (_mounted) {
-                            setState(() => _dgText = translated);
-                            _saveVoskSrt(silent: true);
-                          }
-                        });
-                        if (_mounted) setState(() => _dgText = t);
-                      }
-                    } else {
-                      // فقط اصلی — بدون ترجمه
-                      if (_voskTranslateOnFinish) {
-                        // بعد از پایان صحبت
-                        _translateDebounceTimer?.cancel();
-                        final capturedT = t; final capturedStart = startTime; final capturedEnd = endTime;
-                        _translateDebounceTimer = Timer(const Duration(milliseconds: 400), () {
-                          _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, capturedStart, capturedEnd, capturedT));
-                          if (_mounted) { setState(() => _dgText = capturedT); _saveVoskSrt(silent: true); }
-                        });
-                      } else {
-                        _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length + 1, startTime, endTime, t));
-                        if (_mounted) setState(() => _dgText = t);
-                        _saveVoskSrt(silent: true);
-                      }
-                    }
-                  }
-                } else {
-                  if (!_voskFinalOnly) _dgPartial = t;
-                }
-              });
+            final t = (data as Map)['text'] as String? ?? '';
+            final fin = (data as Map)['final'] as bool? ?? false;
+            if (t.isEmpty) {}
+            else if (!fin) {
+              // ── PARTIAL ──
+              if (!_voskFinalOnly && !(_voskTranslate && !_voskShowOriginal) && !_voskTranslateOnFinish) {
+                if (_mounted && t != _dgText) setState(() => _dgText = '$t...');
+              }
+            } else {
+              // ── FINAL ── فقط از _handleVoskFinal استفاده کن
+              _handleVoskFinal(t);
             }
           } else if (type == 'status') {
             // status log حذف شد
