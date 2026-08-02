@@ -18,9 +18,11 @@ _UrlType _detectType(String url) {
   // فایل مستقیم → پخش مستقیم
   final lower = url.toLowerCase();
   final isDirect = lower.contains('.mp4') || lower.contains('.mkv') ||
-    lower.contains('.m3u8') || lower.contains('.mpd') || lower.contains('.avi') ||
-    lower.contains('.mov') || lower.contains('.ts') || lower.contains('.flv') ||
-    lower.contains('rtmp://') || lower.contains('rtsp://');
+    lower.contains('.m3u8') || lower.contains('.m3u') || lower.contains('.mpd') ||
+    lower.contains('.avi') || lower.contains('.mov') || lower.contains('.ts') ||
+    lower.contains('.flv') || lower.contains('.mkv') ||
+    lower.contains('rtmp://') || lower.contains('rtsp://') ||
+    lower.contains('/live/') && (lower.contains('.ts') || lower.contains('.m3u'));
   if (isDirect) return _UrlType.direct;
   // بقیه → yt-dlp
   return _UrlType.ytdlp;
@@ -223,18 +225,30 @@ class _State extends State<OnlinePlayerSheet> {
   // ── YouTube ──
   Future<void> _analyzeYoutube(String url) async {
     setState(() => _dlStatus = L.fetchingInfo);
-    final video = await _yt.videos.get(VideoId(url));
-    if (_cancelled) return;
-    setState(() => _dlStatus = L.loadingQualities);
-    final manifest = await _yt.videos.streams.getManifest(
-      VideoId(url), ytClients: [YoutubeApiClient.ios, YoutubeApiClient.androidVr]);
-    if (_cancelled) return;
-    final list = <_Quality>[];
-    for (final s in manifest.muxed.sortByVideoQuality()) {
-      list.add(_Quality('${s.qualityLabel} ${s.container.name.toUpperCase()}', s.url.toString()));
+    try {
+      final video = await _yt.videos.get(VideoId(url));
+      if (_cancelled) return;
+      setState(() => _dlStatus = L.loadingQualities);
+      final manifest = await _yt.videos.streams.getManifest(
+        VideoId(url), ytClients: [
+          YoutubeApiClient.safari,
+          YoutubeApiClient.androidVr,
+          YoutubeApiClient.android,
+          YoutubeApiClient.tv,
+        ]);
+      if (_cancelled) return;
+      final list = <_Quality>[];
+      for (final s in manifest.muxed.sortByVideoQuality()) {
+        list.add(_Quality('${s.qualityLabel} ${s.container.name.toUpperCase()}', s.url.toString()));
+      }
+      await _saveRecent(url);
+      if (mounted) setState(() { _title = video.title; _qualities = list; _loading = false; _dlStatus = ''; });
+    } catch (e) {
+      if (_cancelled) return;
+      // fallback به yt-dlp
+      if (mounted) setState(() => _dlStatus = '⚠️ Trying yt-dlp fallback...');
+      await _analyzeYtDlp(url);
     }
-    await _saveRecent(url);
-    if (mounted) setState(() { _title = video.title; _qualities = list; _loading = false; _dlStatus = ''; });
   }
 
   // ── Torrent ──
