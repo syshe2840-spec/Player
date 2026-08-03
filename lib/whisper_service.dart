@@ -1059,8 +1059,17 @@ Future<String> transcribeLive({
   LiveSubState.useOverlap = config.overlapMs > 0;
 
   final srtFile = await liveSrtPath(videoPath, config.language);
-  await Directory(p.dirname(srtFile)).create(recursive: true);
-  File(srtFile).writeAsStringSync('', encoding: utf8);
+  // تلاش برای ساخت directory با fallback
+  try {
+    await Directory(p.dirname(srtFile)).create(recursive: true);
+  } catch (_) {
+    // اگه ساخت download dir ناموفق بود، از app dir استفاده کن
+  }
+  try {
+    File(srtFile).writeAsStringSync('', encoding: utf8);
+  } catch (_) {
+    // silent - فایل خالی اولیه اختیاریه
+  }
 
   final mPath = await WhisperService.modelFilePath(config.model);
   if (!File(mPath).existsSync()) throw Exception('${L.error}: model not found');
@@ -1131,9 +1140,10 @@ Future<String> transcribeLive({
             allSegs.add(_Seg(Duration(milliseconds: fromMs), Duration(milliseconds: toMs), text));
           }
         }
-        await Directory(p.dirname(srtFile)).create(recursive: true);
-        Directory(p.dirname(srtFile)).createSync(recursive: true);
-        File(srtFile).writeAsStringSync(_liveSegsToSrt(allSegs), encoding: utf8);
+        try { await Directory(p.dirname(srtFile)).create(recursive: true); } catch(_) {}
+        try { File(srtFile).writeAsStringSync(_liveSegsToSrt(allSegs), encoding: utf8); } catch(writeErr) {
+          debugPrint('[LiveSub] write failed: $writeErr path: $srtFile');
+        }
         LiveSubState.transcribedMs = chunkEnd;
         LiveSubState.chunksDone = i + 1;
         LiveSubState.notify();
