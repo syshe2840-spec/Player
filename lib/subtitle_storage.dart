@@ -14,9 +14,12 @@ class SubtitleStorage {
 
   /// ریشه پوشه‌بندی (پوشه ویدیو یا Download برای URL)
   static String _baseDir(String videoPath) {
-    if (_isUrl(videoPath)) return '/storage/emulated/0/Download/Vezoo Subtitles';
+    if (_isUrl(videoPath)) return _onlineSubDir;
     return p.dirname(videoPath);
   }
+
+  // پوشه زیرنویس آنلاین — در Downloads/Vezoo/Subtitles
+  static const _onlineSubDir = '/storage/emulated/0/Download/Vezoo/Subtitles';
 
   static String _baseName(String videoPath) {
     if (_isUrl(videoPath)) {
@@ -72,7 +75,7 @@ class SubtitleStorage {
       info = ParsedFileInfo(title: '', isSeries: false);
     }
     final dir = _buildSubDir(baseDir, info, name);
-    await Directory(dir).create(recursive: true);
+    try { await Directory(dir).create(recursive: true); } catch(_) {}
     return dir;
   }
 
