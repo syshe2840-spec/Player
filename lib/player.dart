@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -476,8 +477,30 @@ class _PlayerState extends State<PlayerScreen>{
     final srtContent = _voskSrtEntries.map((e) => e.toSrt()).join('\n');
     String? savedPath;
     try {
-      final dir = Directory('/storage/emulated/0/Download/Vezoo/Subtitles');
-      await dir.create(recursive: true);
+      // درخواست permission storage
+      final status = await permission_handler.Permission.manageExternalStorage.status;
+      if (!status.isGranted) {
+        await permission_handler.Permission.manageExternalStorage.request();
+      }
+      // مسیرهای جایگزین اگه /Download مشکل داشت
+      Directory? dir;
+      final paths = [
+        '/storage/emulated/0/Download/Vezoo/Subtitles',
+        '/sdcard/Download/Vezoo/Subtitles',
+      ];
+      for (final p in paths) {
+        try {
+          final d = Directory(p);
+          await d.create(recursive: true);
+          if (d.existsSync()) { dir = d; break; }
+        } catch (_) {}
+      }
+      // fallback به app-private
+      dir ??= await getApplicationDocumentsDirectory().then((d) {
+        final sub = Directory('${d.path}/Subtitles');
+        sub.createSync(recursive: true);
+        return sub;
+      });
       final file = File('${dir.path}/$baseName.srt');
       await file.writeAsString(srtContent, flush: true);
       savedPath = file.path;
