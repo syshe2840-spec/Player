@@ -1374,7 +1374,15 @@ class _PlayerState extends State<PlayerScreen>{
         _liveStopwatch.stop();
         if (_liveSubPaused) { _liveSubPaused = false; player.play(); }
         if (!e.toString().contains(L.cancel)) {
-          showSnack(context, L.errorMsg(e), color: Colors.red);
+          // نمایش خطای کامل در dialog
+          final fullErr = e.toString();
+          showDialog(context:context, builder:(_)=>AlertDialog(
+            backgroundColor:const Color(0xFF12121C),
+            title:const Text('خطای AI زیرنویس', style:TextStyle(color:Colors.red, fontSize:14)),
+            content:SingleChildScrollView(child:SelectableText(fullErr,
+              style:const TextStyle(color:Colors.white70, fontSize:11, fontFamily:'monospace'))),
+            actions:[TextButton(onPressed:()=>Navigator.pop(context), child:const Text('بستن', style:TextStyle(color:Color(0xFF7C3AED))))],
+          ));
         }
       }
     });
