@@ -1058,17 +1058,20 @@ Future<String> transcribeLive({
   LiveSubState.language = config.language;
   LiveSubState.useOverlap = config.overlapMs > 0;
 
-  final srtFile = await liveSrtPath(videoPath, config.language);
-  // تلاش برای ساخت directory با fallback
+  // پیدا کردن path امن برای ذخیره
+  String srtFile;
   try {
+    srtFile = await liveSrtPath(videoPath, config.language);
     await Directory(p.dirname(srtFile)).create(recursive: true);
-  } catch (_) {
-    // اگه ساخت download dir ناموفق بود، از app dir استفاده کن
-  }
-  try {
     File(srtFile).writeAsStringSync('', encoding: utf8);
   } catch (_) {
-    // silent - فایل خالی اولیه اختیاریه
+    // fallback: app support dir — همیشه کار میکنه
+    final appDir = await getApplicationSupportDirectory();
+    final fallbackDir = Directory('${appDir.path}/Subtitles');
+    await fallbackDir.create(recursive: true);
+    final baseName = p.basenameWithoutExtension(videoPath.split('?').first.split('/').last);
+    srtFile = '${fallbackDir.path}/${baseName.isEmpty ? 'subtitle' : baseName}_live_${config.language}.srt';
+    try { File(srtFile).writeAsStringSync('', encoding: utf8); } catch(_) {}
   }
 
   final mPath = await WhisperService.modelFilePath(config.model);
