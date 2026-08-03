@@ -77,14 +77,16 @@ class SubtitleStorage {
     final dir = _buildSubDir(baseDir, info, name);
     try {
       await Directory(dir).create(recursive: true);
+      // test نوشتن — مطمئن بشیم واقعاً کار میکنه
+      final testFile = File('${dir}/.test_write');
+      testFile.writeAsStringSync('');
+      testFile.deleteSync();
     } catch(_) {
-      // fallback: app external files
-      final extDir = await getExternalStorageDirectory();
-      if (extDir != null) {
-        final fallback = Directory('${extDir.path}/Subtitles');
-        await fallback.create(recursive: true);
-        return fallback.path;
-      }
+      // write ممکن نیست → fallback حتمی
+      final appDir = await getApplicationSupportDirectory();
+      final fallback = Directory('${appDir.path}/Subtitles');
+      await fallback.create(recursive: true);
+      return fallback.path;
     }
     return dir;
   }
