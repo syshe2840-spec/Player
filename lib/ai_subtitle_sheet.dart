@@ -86,8 +86,15 @@ class _State extends State<AiSubtitleSheet> {
         },
       );
       if(mounted) setState((){ _running=false; _mode='done'; _srtPath=path; });
-    } catch(e){
-      if(mounted) setState((){ _running=false; _mode='new'; _status=L.errorMsg(e); });
+    } catch(e, st){
+      final fullErr = '$e\n\n$st';
+      if(mounted) setState((){ _running=false; _mode='new'; _status=fullErr; });
+      if(mounted) showDialog(context:context, builder:(_)=>AlertDialog(
+        backgroundColor:const Color(0xFF12121C),
+        title:const Text('خطا', style:TextStyle(color:Colors.red)),
+        content:SingleChildScrollView(child:SelectableText(fullErr, style:const TextStyle(color:Colors.white70, fontSize:11, fontFamily:'monospace'))),
+        actions:[TextButton(onPressed:()=>Navigator.pop(context), child:const Text('بستن'))],
+      ));
     } finally {
       WhisperService.hideProgressNotification(); // fire-and-forget
     }
