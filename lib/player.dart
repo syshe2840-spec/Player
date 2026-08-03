@@ -501,7 +501,7 @@ class _PlayerState extends State<PlayerScreen>{
         sub.createSync(recursive: true);
         return sub;
       });
-      final file = File('${dir.path}/$baseName.srt');
+      final file = File('${dir!.path}/$baseName.srt');
       await file.writeAsString(srtContent, flush: true);
       savedPath = file.path;
       if (_mounted) setState((){_aiLog.add('[SRT] ✅ saved: $baseName.srt (${_voskSrtEntries.length} lines)');});
