@@ -635,6 +635,7 @@ class WhisperService {
     }
 
     final out = await srtPathAsync(videoPath, language);
+    await Directory(p.dirname(out)).create(recursive: true);
     File(out).writeAsStringSync(srt, encoding: utf8);
     await _addToHistory(videoPath);
 
@@ -699,6 +700,7 @@ class WhisperService {
       final srt = _v2RawToSrt(raw);
 
       final out = await srtPathAsync(videoPath, language);
+      await Directory(p.dirname(out)).create(recursive: true);
       File(out).writeAsStringSync(srt, encoding: utf8);
       await _addToHistory(videoPath);
 
@@ -747,6 +749,7 @@ class WhisperService {
     improved = _fixHalfSpaces(improved);
 
     final out = srtPath.replaceFirst(RegExp(r'(_ai_[a-z]{2,5})\.srt$'), r'$1_improved.srt');
+    await Directory(p.dirname(out)).create(recursive: true);
     File(out).writeAsStringSync(_segsToSrtRaw(improved), encoding: utf8);
     return out;
   }
@@ -1123,6 +1126,7 @@ Future<String> transcribeLive({
             allSegs.add(_Seg(Duration(milliseconds: fromMs), Duration(milliseconds: toMs), text));
           }
         }
+        await Directory(p.dirname(srtFile)).create(recursive: true);
         File(srtFile).writeAsStringSync(_liveSegsToSrt(allSegs), encoding: utf8);
         LiveSubState.transcribedMs = chunkEnd;
         LiveSubState.chunksDone = i + 1;
