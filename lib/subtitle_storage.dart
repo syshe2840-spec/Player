@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'opensubtitles_service.dart' show OpenSubtitlesService, ParsedFileInfo;
 
@@ -14,12 +15,11 @@ class SubtitleStorage {
 
   /// ریشه پوشه‌بندی (پوشه ویدیو یا Download برای URL)
   static String _baseDir(String videoPath) {
-    if (_isUrl(videoPath)) return _onlineSubDir;
-    return p.dirname(videoPath);
+    // برای فایل محلی — کنار خود فایل
+    if (!_isUrl(videoPath)) return p.dirname(videoPath);
+    // برای URL — Downloads/Vezoo/Subtitles
+    return '/storage/emulated/0/Download/Vezoo/Subtitles';
   }
-
-  // پوشه زیرنویس آنلاین — در Downloads/Vezoo/Subtitles
-  static const _onlineSubDir = '/storage/emulated/0/Download/Vezoo/Subtitles';
 
   static String _baseName(String videoPath) {
     if (_isUrl(videoPath)) {
@@ -75,7 +75,17 @@ class SubtitleStorage {
       info = ParsedFileInfo(title: '', isSeries: false);
     }
     final dir = _buildSubDir(baseDir, info, name);
-    try { await Directory(dir).create(recursive: true); } catch(_) {}
+    try {
+      await Directory(dir).create(recursive: true);
+    } catch(_) {
+      // fallback: app external files
+      final extDir = await getExternalStorageDirectory();
+      if (extDir != null) {
+        final fallback = Directory('${extDir.path}/Subtitles');
+        await fallback.create(recursive: true);
+        return fallback.path;
+      }
+    }
     return dir;
   }
 
