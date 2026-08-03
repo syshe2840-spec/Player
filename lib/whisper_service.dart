@@ -347,8 +347,11 @@ class WhisperService {
 
   // ── کش زیرنویس — بر اساس زبان ──
   /// مسیر فایل SRT (async — از SubtitleStorage استفاده می‌کند)
-  static Future<String> srtPathAsync(String videoPath, String language) =>
-    SubtitleStorage.aiSubtitlePath(videoPath, language);
+  static Future<String> srtPathAsync(String videoPath, String language) async {
+    final path = await SubtitleStorage.aiSubtitlePath(videoPath, language);
+    await Directory(p.dirname(path)).create(recursive: true);
+    return path;
+  }
 
   /// مسیر همزمان (fallback — فقط برای سازگاری قدیم)
   static String srtPath(String videoPath, String language) {
@@ -923,6 +926,7 @@ List<SrtEntry> readSrtEntries(String path) {
 
 /// نوشتن لیست ویرایش‌شده به فایل SRT
 void writeSrtEntries(String path, List<SrtEntry> entries) {
+  Directory(p.dirname(path)).createSync(recursive: true);
   final b = StringBuffer();
   for (int i = 0; i < entries.length; i++) {
     final e = entries[i];
@@ -1055,6 +1059,7 @@ Future<String> transcribeLive({
   LiveSubState.useOverlap = config.overlapMs > 0;
 
   final srtFile = await liveSrtPath(videoPath, config.language);
+  await Directory(p.dirname(srtFile)).create(recursive: true);
   File(srtFile).writeAsStringSync('', encoding: utf8);
 
   final mPath = await WhisperService.modelFilePath(config.model);
@@ -1127,6 +1132,7 @@ Future<String> transcribeLive({
           }
         }
         await Directory(p.dirname(srtFile)).create(recursive: true);
+        Directory(p.dirname(srtFile)).createSync(recursive: true);
         File(srtFile).writeAsStringSync(_liveSegsToSrt(allSegs), encoding: utf8);
         LiveSubState.transcribedMs = chunkEnd;
         LiveSubState.chunksDone = i + 1;
