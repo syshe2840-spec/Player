@@ -349,7 +349,7 @@ class WhisperService {
   /// مسیر فایل SRT (async — از SubtitleStorage استفاده می‌کند)
   static Future<String> srtPathAsync(String videoPath, String language) async {
     final path = await SubtitleStorage.aiSubtitlePath(videoPath, language);
-    await Directory(p.dirname(path)).create(recursive: true);
+    try { await Directory(p.dirname(path)).create(recursive: true); } catch(_) {}
     return path;
   }
 
