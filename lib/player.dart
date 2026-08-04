@@ -1310,7 +1310,14 @@ class _PlayerState extends State<PlayerScreen>{
     _liveBadgeVisible = true; // هر session جدید badge دیده میشه
     setState(() => _liveSubActive = true);
 
-    final srtPath = await liveSrtPath(_curPath, config.language);
+    // srtPath اولیه — ممکنه بعداً از transcribeLive آپدیت بشه
+    String srtPath;
+    try {
+      srtPath = await liveSrtPath(_curPath, config.language);
+    } catch(_) {
+      final appDir = await getApplicationSupportDirectory();
+      srtPath = '${appDir.path}/Subtitles/live_${config.language}.srt';
+    }
     _liveSubSrtPath = srtPath;
 
     // timer بررسی sync + refresh SRT هر ۳ ثانیه
@@ -1349,7 +1356,7 @@ class _PlayerState extends State<PlayerScreen>{
         // stopwatch ادامه میده — reset نمیشه
       },
       onSrtUpdated: () {
-        if (mounted) _loadSub(srtPath, secondary: false);
+        if (mounted) _loadSub(_liveSubSrtPath ?? srtPath, secondary: false);
         if (config.syncTranslate && _liveTransSync != null) {
           // async wrapper برای await داخل callback معمولی
           () async {
@@ -1359,7 +1366,11 @@ class _PlayerState extends State<PlayerScreen>{
         }
       },
 
-    ).then((_) {
+    ).then((actualPath) {
+      if (mounted && actualPath != null && actualPath.isNotEmpty) {
+        srtPath = actualPath;
+        _liveSubSrtPath = actualPath;
+      }
       if (mounted) {
         setState(() => _liveSubActive = false);
         _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
