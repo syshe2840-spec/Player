@@ -689,22 +689,6 @@ class _PlayerState extends State<PlayerScreen>{
             if(t.isNotEmpty){
               if(isFinal){
                 // SRT
-                if (_voskStartTime != null) {
-                  final now=DateTime.now();
-                  final el=now.difference(_voskStartTime!);
-                  _voskSrtEntries.add(_SrtEntry(_voskSrtEntries.length+1,el-const Duration(seconds:2),el,t));
-                  _saveVoskSrt(silent:true);
-                }
-                // ترجمه
-                if(_voskTranslate && _voskTranslateTo.isNotEmpty){
-                  setState((){_aiLog.add('[TRANS] → $_voskTranslateTo: "$t"');});
-                  _translateWithWorker(t,_voskTranslateTo).then((r){
-                    if(_mounted){
-                      setState((){_aiLog.add('[TRANS] result: "$r"');});
-                      if(r.isNotEmpty&&r!=t)setState(()=>_dgText=r);
-                    }
-                  });
-                }
               }
               if(mounted)setState((){
                 _dgText=isFinal?t:'$t...';
