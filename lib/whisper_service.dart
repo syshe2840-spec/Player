@@ -638,10 +638,19 @@ class WhisperService {
     }
 
     final out = await srtPathAsync(videoPath, language);
-    await Directory(p.dirname(out)).create(recursive: true);
-    File(out).writeAsStringSync(srt, encoding: utf8);
+    try {
+      await Directory(p.dirname(out)).create(recursive: true);
+      File(out).writeAsStringSync(srt, encoding: utf8);
+    } catch(e) {
+      final appDir = await getApplicationSupportDirectory();
+      final fallback = '${appDir.path}/Subtitles/${p.basename(out)}';
+      await Directory(p.dirname(fallback)).create(recursive: true);
+      File(fallback).writeAsStringSync(srt, encoding: utf8);
+      await _addToHistory(videoPath);
+      onStatus(L.saved, 1.0);
+      return fallback;
+    }
     await _addToHistory(videoPath);
-
     onStatus(L.saved, 1.0);
     return out;
   }
@@ -703,10 +712,19 @@ class WhisperService {
       final srt = _v2RawToSrt(raw);
 
       final out = await srtPathAsync(videoPath, language);
-      await Directory(p.dirname(out)).create(recursive: true);
-      File(out).writeAsStringSync(srt, encoding: utf8);
+      try {
+        await Directory(p.dirname(out)).create(recursive: true);
+        File(out).writeAsStringSync(srt, encoding: utf8);
+      } catch(e) {
+        final appDir = await getApplicationSupportDirectory();
+        final fallback = '${appDir.path}/Subtitles/${p.basename(out)}';
+        await Directory(p.dirname(fallback)).create(recursive: true);
+        File(fallback).writeAsStringSync(srt, encoding: utf8);
+        await _addToHistory(videoPath);
+        onStatus(L.saved, 1.0);
+        return fallback;
+      }
       await _addToHistory(videoPath);
-
       onStatus(L.saved, 1.0);
       return out;
     } finally {
@@ -752,8 +770,10 @@ class WhisperService {
     improved = _fixHalfSpaces(improved);
 
     final out = srtPath.replaceFirst(RegExp(r'(_ai_[a-z]{2,5})\.srt$'), r'$1_improved.srt');
-    await Directory(p.dirname(out)).create(recursive: true);
-    File(out).writeAsStringSync(_segsToSrtRaw(improved), encoding: utf8);
+    try {
+      await Directory(p.dirname(out)).create(recursive: true);
+      File(out).writeAsStringSync(_segsToSrtRaw(improved), encoding: utf8);
+    } catch(_) {}
     return out;
   }
 
@@ -926,7 +946,7 @@ List<SrtEntry> readSrtEntries(String path) {
 
 /// نوشتن لیست ویرایش‌شده به فایل SRT
 void writeSrtEntries(String path, List<SrtEntry> entries) {
-  Directory(p.dirname(path)).createSync(recursive: true);
+  try { Directory(p.dirname(path)).createSync(recursive: true); } catch(_) {}
   final b = StringBuffer();
   for (int i = 0; i < entries.length; i++) {
     final e = entries[i];
@@ -935,7 +955,7 @@ void writeSrtEntries(String path, List<SrtEntry> entries) {
     b.writeln(e.text.trim());
     b.writeln();
   }
-  File(path).writeAsStringSync(b.toString(), encoding: utf8);
+  try { File(path).writeAsStringSync(b.toString(), encoding: utf8); } catch(_) {}
 }
 
 String _fmtSrtDur(Duration d) =>
