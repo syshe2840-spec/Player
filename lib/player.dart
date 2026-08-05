@@ -1314,11 +1314,14 @@ class _PlayerState extends State<PlayerScreen>{
     String srtPath;
     try {
       srtPath = await liveSrtPath(_curPath, config.language);
-    } catch(_) {
+      if (_mounted) setState((){_aiLog.add('[PATH] liveSrtPath OK: $srtPath');});
+    } catch(e) {
       final appDir = await getApplicationSupportDirectory();
-      srtPath = '${appDir.path}/Subtitles/live_${config.language}.srt';
+      srtPath = '\${appDir.path}/Subtitles/live_\${config.language}.srt';
+      if (_mounted) setState((){_aiLog.add('[PATH] ❌ liveSrtPath fail: \$e → fallback: \$srtPath');});
     }
     _liveSubSrtPath = srtPath;
+    if (_mounted) setState((){_aiLog.add('[PATH] _liveSubSrtPath=\$srtPath');});
 
     // timer بررسی sync + refresh SRT هر ۳ ثانیه
     _liveSubRefreshTimer?.cancel(); _liveSubSecondTimer?.cancel();
@@ -1356,7 +1359,9 @@ class _PlayerState extends State<PlayerScreen>{
         // stopwatch ادامه میده — reset نمیشه
       },
       onSrtUpdated: () {
-        if (mounted) _loadSub(_liveSubSrtPath ?? srtPath, secondary: false);
+        final loadPath = _liveSubSrtPath ?? srtPath;
+        if (_mounted) setState((){_aiLog.add('[LOAD] loading: \$loadPath exists:\${File(loadPath).existsSync()}');});
+        if (mounted) _loadSub(loadPath, secondary: false);
         if (config.syncTranslate && _liveTransSync != null) {
           // async wrapper برای await داخل callback معمولی
           () async {
@@ -1367,6 +1372,7 @@ class _PlayerState extends State<PlayerScreen>{
       },
 
     ).then((actualPath) {
+      if (_mounted) setState((){_aiLog.add('[DONE] actualPath=\$actualPath');});
       if (mounted && actualPath != null && actualPath.isNotEmpty) {
         srtPath = actualPath;
         _liveSubSrtPath = actualPath;
