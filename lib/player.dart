@@ -543,6 +543,7 @@ class _PlayerState extends State<PlayerScreen>{
 
     final doTranslate = _voskTranslate && !_voskShowOriginal && _voskTranslateTo.isNotEmpty;
 
+    if (_mounted) setState((){_aiLog.add('[H] doTrans=$doTranslate onFinish=$_voskTranslateOnFinish showOrig=$_voskShowOriginal');});
     if (_voskTranslateOnFinish) {
       // بعد از پایان صدا — debounce 400ms
       _translateDebounceTimer?.cancel();
@@ -741,10 +742,16 @@ class _PlayerState extends State<PlayerScreen>{
                   // "بعد از پایان صدا" → partial نشون نده
                   if (_voskTranslateOnFinish) return;
                   // نمایش partial همزمان
-                  if (_mounted && t != _dgText) setState(() => _dgText = '$t...');
+                  if (_mounted && t != _dgText) {
+                    setState(() {
+                      _dgText = '$t...';
+                      _aiLog.add('[P] show partial: ${t.length > 20 ? t.substring(0,20) : t}');
+                    });
+                  }
                   return;
                 }
                 // ── FINAL ──
+                if (_mounted) setState((){_aiLog.add('[F] final t=${t.length>20?t.substring(0,20):t} translate=$_voskTranslate showOrig=$_voskShowOriginal onFinish=$_voskTranslateOnFinish');});
                 _handleVoskFinal(t);
               }
             } else if (type == 'error') {
