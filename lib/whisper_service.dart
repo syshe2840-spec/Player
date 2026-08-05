@@ -1079,12 +1079,17 @@ Future<String> transcribeLive({
   LiveSubState.useOverlap = config.overlapMs > 0;
 
   // پیدا کردن path امن برای ذخیره
+  debugPrint('[LiveSub] videoPath=${videoPath.substring(0, videoPath.length.clamp(0,80))}');
   String srtFile;
   try {
     srtFile = await liveSrtPath(videoPath, config.language);
+    debugPrint('[LiveSub] liveSrtPath=$srtFile');
     await Directory(p.dirname(srtFile)).create(recursive: true);
+    debugPrint('[LiveSub] dir created: ${p.dirname(srtFile)}');
     File(srtFile).writeAsStringSync('', encoding: utf8);
-  } catch (_) {
+    debugPrint('[LiveSub] init write OK');
+  } catch (initErr) {
+    debugPrint('[LiveSub] init FAILED: $initErr');
     // fallback: app support dir — همیشه کار میکنه
     final appDir = await getApplicationSupportDirectory();
     final fallbackDir = Directory('${appDir.path}/Subtitles');
@@ -1136,7 +1141,7 @@ Future<String> transcribeLive({
           'startMs': extractStart, 'durationMs': extractDur,
         });
       } catch (e) {
-        debugPrint('[LiveSub] chunk $i extract: $e');
+        debugPrint('[LiveSub] chunk $i extract FAILED: $e path=$tmpWav');
         try { File(tmpWav).deleteSync(); } catch (_) {}
         continue;
       }
