@@ -1054,7 +1054,7 @@ Future<String> transcribeLive({
   required String videoPath,
   required LiveSubConfig config,
   required void Function(int startMs, int totalMs, int done, int total) onChunk,
-  required void Function() onSrtUpdated,
+  required void Function(String srtPath) onSrtUpdated,
 }) async {
   LiveSubState.reset();
 
@@ -1175,7 +1175,7 @@ Future<String> transcribeLive({
         LiveSubState.transcribedMs = chunkEnd;
         LiveSubState.chunksDone = i + 1;
         LiveSubState.notify();
-        onSrtUpdated();
+        onSrtUpdated(srtFile);
       }
     }
 
