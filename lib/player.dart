@@ -538,6 +538,8 @@ class _PlayerState extends State<PlayerScreen>{
     }
 
     void show(String text) {
+      // اگه فقط ترجمه فعاله و متن همون اصلیه → نشون نده
+      if (!_voskShowOriginal && text == t) return;
       if (_mounted) setState(() => _dgText = text);
     }
 
