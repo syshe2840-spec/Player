@@ -43,7 +43,7 @@ dependencies:
   flutter_go_torrent_streamer: ^0.0.8
   dio: ^5.4.0
   http: ^1.2.0
-  iconsax: ^0.0.8
+  google_mlkit_translation: ^0.11.0
 
 dev_dependencies:
   flutter_test:
@@ -51,4 +51,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
