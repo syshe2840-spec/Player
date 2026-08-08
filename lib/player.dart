@@ -66,6 +66,7 @@ class _PlayerState extends State<PlayerScreen>{
   bool _showLiveLog=true;
   bool _dgActive=false;
   String _dgText='';
+  String _dgText2=''; // ترجمه live — زیرنویس ۲
   String _dgConfirmed=''; // متن تأیید شده (final)
   String _dgPartial='';  // متن در حال تشخیص (partial)
   String _dgLang='fa';
@@ -538,9 +539,10 @@ class _PlayerState extends State<PlayerScreen>{
     }
 
     void show(String text) {
-      // اگه فقط ترجمه فعاله و متن همون اصلیه → نشون نده
-      if (!_voskShowOriginal && text == t) return;
       if (_mounted) setState(() => _dgText = text);
+    }
+    void showTranslation(String text) {
+      if (_mounted) setState(() => _dgText2 = text);
     }
 
     final doTranslate = _voskTranslate && !_voskShowOriginal && _voskTranslateTo.isNotEmpty;
@@ -555,11 +557,13 @@ class _PlayerState extends State<PlayerScreen>{
           _translateWithWorker(t, _voskTranslateTo).then((r) {
             if (!_mounted) return;
             if (r.isNotEmpty && r != t) {
-              addEntry(r); show(r); // ترجمه موفق
+              addEntry(r);
+              show(t);          // sub1 = اصلی
+              showTranslation(r); // sub2 = ترجمه
             } else {
-              // ترجمه fail — لاگ بزن، اصلی نشون نده
-              setState(() => _aiLog.add('[TRANS] ❌ failed, keeping previous'));
-              addEntry(t); // SRT ذخیره کن ولی نشون نده
+              setState(() => _aiLog.add('[TRANS] ❌ failed'));
+              addEntry(t);
+              show(t);
             }
           });
         } else {
@@ -614,7 +618,7 @@ class _PlayerState extends State<PlayerScreen>{
     if(_dgActive){
       await DeepgramService.stop();
       _dgSub?.cancel();
-      setState((){_dgActive=false;_dgText='';});
+      setState((){_dgActive=false;_dgText='';_dgText2='';});
     } else {
       // انتخاب زبان + تنظیمات ترجمه
       final result=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>_VoskSettingsDialog());
@@ -699,7 +703,7 @@ class _PlayerState extends State<PlayerScreen>{
           } else if(type=='status'){
             if(mounted)setState((){_aiLog.add('[$tsStr] 🔗 $data');if(_aiLog.length>30)_aiLog.removeAt(0);});
           } else if(type=='error'){
-            if(mounted)setState((){_dgActive=false;_dgText='';_aiLog.add('[$tsStr] ❌ $data');});
+            if(mounted)setState((){_dgActive=false;_dgText='';_dgText2='';_aiLog.add('[$tsStr] ❌ $data');});
           }
         });
         _voskSrtEntries = [];
@@ -1669,7 +1673,24 @@ class _PlayerState extends State<PlayerScreen>{
           )),
         ))),
 
-        // ── Deepgram AI Subtitle ──
+        // ── Deepgram AI Subtitle — sub2 (ترجمه) ──
+        if(_dgActive&&_dgText2.isNotEmpty&&_sub2Visible)Positioned(
+          bottom:_vs.bottomPadding+navBottom+130,left:16,right:16,
+          child:IgnorePointer(child:Container(
+            padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+            decoration:BoxDecoration(
+              color:Color(_vs2.bgColor).withOpacity(_vs2.bgOpacity.clamp(0.5,0.95)),
+              borderRadius:BorderRadius.circular(10)),
+            child:Text(_dgText2,
+              textAlign:TextAlign.center,
+              style:TextStyle(
+                color:Color(_vs2.textColor),
+                fontSize:_vs2.fontSize,
+                fontWeight:_vs2.bold?FontWeight.bold:FontWeight.normal,
+                shadows:_vs2.shadow?[Shadow(color:Colors.black87,blurRadius:4)]:null,
+              ))))),
+
+        // ── Deepgram AI Subtitle — sub1 (اصلی) ──
         if(_dgActive&&_dgText.isNotEmpty&&!_dgText.startsWith('⏳'))Positioned(
           bottom:_vs.bottomPadding+navBottom+80,left:16,right:16,
           child:IgnorePointer(child:Container(
