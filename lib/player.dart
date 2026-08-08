@@ -1687,7 +1687,7 @@ class _PlayerState extends State<PlayerScreen>{
                 color:Color(_vs2.textColor),
                 fontSize:_vs2.fontSize,
                 fontWeight:_vs2.bold?FontWeight.bold:FontWeight.normal,
-                shadows:_vs2.shadow?[Shadow(color:Colors.black87,blurRadius:4)]:null,
+                shadows:_vs2.shadowSize>0?[Shadow(color:Colors.black87,blurRadius:_vs2.shadowSize)]:null,
               ))))),
 
         // ── Deepgram AI Subtitle — sub1 (اصلی) ──
