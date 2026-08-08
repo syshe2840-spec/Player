@@ -5,7 +5,7 @@ class MlKitTranslationService {
   static final Map<String, OnDeviceTranslator> _translators = {};
   static final _modelManager = OnDeviceTranslatorModelManager();
 
-  /// نگاشت کد زبان ما به ML Kit
+  /// نگاشت کد زبان ما به ML Kit tag
   static const _langMap = {
     'af': TranslateLanguage.afrikaans,
     'ar': TranslateLanguage.arabic,
@@ -31,10 +31,8 @@ class MlKitTranslationService {
     'he': TranslateLanguage.hebrew,
     'hi': TranslateLanguage.hindi,
     'hr': TranslateLanguage.croatian,
-    'ht': TranslateLanguage.haitianCreole,
     'hu': TranslateLanguage.hungarian,
     'id': TranslateLanguage.indonesian,
-    'is': TranslateLanguage.icelandic,
     'it': TranslateLanguage.italian,
     'ja': TranslateLanguage.japanese,
     'ka': TranslateLanguage.georgian,
@@ -55,7 +53,6 @@ class MlKitTranslationService {
     'sk': TranslateLanguage.slovak,
     'sl': TranslateLanguage.slovenian,
     'sq': TranslateLanguage.albanian,
-    'sr': TranslateLanguage.serbian,
     'sv': TranslateLanguage.swedish,
     'sw': TranslateLanguage.swahili,
     'ta': TranslateLanguage.tamil,
@@ -70,68 +67,48 @@ class MlKitTranslationService {
     'zh-cn': TranslateLanguage.chinese,
   };
 
-  /// آیا زبان توسط ML Kit پشتیبانی میشه؟
   static bool isSupported(String langCode) =>
       _langMap.containsKey(langCode.toLowerCase());
 
-  /// چک کردن دانلود بودن مدل
   static Future<bool> isModelDownloaded(String langCode) async {
     final lang = _langMap[langCode.toLowerCase()];
     if (lang == null) return false;
-    return _modelManager.isModelDownloaded(lang);
+    return _modelManager.isModelDownloaded(lang.toLanguageTag());
   }
 
-  /// دانلود مدل‌های ترجمه (source + target)
   static Future<void> downloadModels(String sourceLang, String targetLang) async {
     final src = _langMap[sourceLang.toLowerCase()];
     final tgt = _langMap[targetLang.toLowerCase()];
-    if (src != null) await _modelManager.downloadModel(src);
-    if (tgt != null) await _modelManager.downloadModel(tgt);
+    if (src != null) await _modelManager.downloadModel(src.toLanguageTag());
+    if (tgt != null) await _modelManager.downloadModel(tgt.toLanguageTag());
   }
 
-  /// ترجمه متن — آفلاین، زیر 50ms
-  static Future<String> translate(
-    String text, {
-    required String from,
-    required String to,
-  }) async {
+  static Future<String> translate(String text, {required String from, required String to}) async {
     if (text.trim().isEmpty) return text;
-
     final srcLang = _langMap[from.toLowerCase()];
     final tgtLang = _langMap[to.toLowerCase()];
-
     if (srcLang == null || tgtLang == null) return text;
     if (srcLang == tgtLang) return text;
 
     final key = '${from}_$to';
-
-    // reuse translator اگه قبلاً ساخته شده
     if (!_translators.containsKey(key)) {
       _translators[key] = OnDeviceTranslator(
         sourceLanguage: srcLang,
         targetLanguage: tgtLang,
       );
     }
-
     try {
       return await _translators[key]!.translateText(text);
-    } catch (_) {
-      return text;
-    }
+    } catch (_) { return text; }
   }
 
-  /// آزاد کردن منابع
   static Future<void> dispose() async {
-    for (final t in _translators.values) {
-      await t.close();
-    }
+    for (final t in _translators.values) { await t.close(); }
     _translators.clear();
   }
 
-  /// حذف مدل
   static Future<void> deleteModel(String langCode) async {
     final lang = _langMap[langCode.toLowerCase()];
-    if (lang != null) await _modelManager.deleteModel(lang);
+    if (lang != null) await _modelManager.deleteModel(lang.toLanguageTag());
   }
 }
-
