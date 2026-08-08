@@ -26,6 +26,7 @@ import 'srt_translate_sheet.dart';
 import 'srt_translation_service.dart' show SrtTranslationService, SrtTranslationServiceStatus, kTranslateLangDisplay;
 import 'lyrics_sheet.dart';
 import 'live_translation_sync.dart';
+import 'mlkit_translation_service.dart';
 import 'subtitle_storage.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
@@ -87,7 +88,8 @@ class _PlayerState extends State<PlayerScreen>{
   String _voskTranslateTo = 'fa';
   int _voskPollMs = 100;
   bool _voskTranslateOnFinish = true;
-  bool _voskShowOriginal = true; // نمایش زیرنویس اصلی یا فقط ترجمه
+  bool _voskShowOriginal = true;
+  bool _voskUseOfflineTranslate = true; // true=ML Kit آفلاین، false=Cloudflare // نمایش زیرنویس اصلی یا فقط ترجمه
   Timer? _translateDebounceTimer;
 
   // زبان‌هایی که partial رو Latin برمیگردونن — فقط final نشون بده
@@ -523,6 +525,20 @@ class _PlayerState extends State<PlayerScreen>{
     ));
   }
 
+  Future<String> _translateVosk(String text) async {
+    // اگه ML Kit مدل داره و حالت آفلاین انتخابه → آفلاین سریع
+    if (_voskUseOfflineTranslate && MlKitTranslationService.isSupported(_voskTranslateTo)) {
+      final fromLang = _dgLang.isEmpty ? 'en' : _dgLang;
+      try {
+        final result = await MlKitTranslationService.translate(
+          text, from: fromLang, to: _voskTranslateTo);
+        if (result.isNotEmpty && result != text) return result;
+      } catch (_) {}
+    }
+    // fallback به Cloudflare Worker
+    return _translateWithWorker(text, _voskTranslateTo);
+  }
+
   void _handleVoskFinal(String t) {
     // ثبت timing
     final now = DateTime.now();
@@ -626,6 +642,15 @@ class _PlayerState extends State<PlayerScreen>{
       final lang=result['lang'] as String;
       _voskTranslate=result['translate'] as bool;
       _voskTranslateTo=result['translateTo'] as String;
+      // اگه ترجمه فعاله، sub2 رو خودکار روشن کن
+      if (_voskTranslate) {
+        setState(() => _sub2Visible = true);
+        // دانلود مدل ML Kit در background
+        final fromLang = _dgLang.isEmpty ? 'en' : _dgLang;
+        MlKitTranslationService.downloadModels(fromLang, _voskTranslateTo)
+          .then((_) => debugPrint('[MLKit] models ready'))
+          .catchError((e) => debugPrint('[MLKit] download error: $e'));
+      }
       _voskPollMs=result['pollMs'] as int;
       final modelId=result['modelId'] as String?;
       final engine=result['engine'] as String? ?? 'vosk';
@@ -633,6 +658,7 @@ class _PlayerState extends State<PlayerScreen>{
       _useVosk = engine == 'vosk';
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
+      _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
       // درخواست permission میکروفون
       final micStatus = await permission_handler.Permission.microphone.request();
       if (!micStatus.isGranted) {
@@ -1823,6 +1849,19 @@ class _PlayerState extends State<PlayerScreen>{
             ]),
           ),
 
+        // ── sub2 drag toolbar (وقتی sub2 visible) ──
+        if(!_locked&&_sub2Visible&&(sub2!=null||_dgText2.isNotEmpty))
+          Positioned(
+            right:8,
+            bottom:_vs2.bottomPadding+navBottom+_vs2.fontSize*1.8+10,
+            child:Listener(
+              behavior:HitTestBehavior.opaque,
+              onPointerDown:(_){_subPaddingStart=_vs2.bottomPadding;},
+              onPointerMove:(e)=>setState(()=>
+                _vs2.bottomPadding=(_vs2.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
+              child:_subSmallBtn(Icons.drag_indicator,'جابجایی زیرنویس ۲'),
+            )),
+
         // ── سربرگ زیرنویس: فقط وقتی متن زیرنویس روی صفحه هست ──
         if(sub!=null&&!_locked&&_vs.showSubToolbar)
           Positioned(
@@ -1843,6 +1882,19 @@ class _PlayerState extends State<PlayerScreen>{
               ),
             ]),
           ),
+
+        // ── sub2 drag toolbar (وقتی sub2 visible) ──
+        if(!_locked&&_sub2Visible&&(sub2!=null||_dgText2.isNotEmpty))
+          Positioned(
+            right:8,
+            bottom:_vs2.bottomPadding+navBottom+_vs2.fontSize*1.8+10,
+            child:Listener(
+              behavior:HitTestBehavior.opaque,
+              onPointerDown:(_){_subPaddingStart=_vs2.bottomPadding;},
+              onPointerMove:(e)=>setState(()=>
+                _vs2.bottomPadding=(_vs2.bottomPadding-e.delta.dy).clamp(0.0,_size.height*0.85)),
+              child:_subSmallBtn(Icons.drag_indicator,'جابجایی زیرنویس ۲'),
+            )),
 
 
         // ── thumbnail preview روی اسلایدر ──
@@ -2578,7 +2630,11 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   VoskModel? _selectedModel;
   String _engine = 'vosk';
   late bool _translateOnFinish = widget.initTranslateOnFinish;
-  late bool _showOriginal = widget.initShowOriginal; // vosk, android
+  late bool _showOriginal = widget.initShowOriginal;
+  bool _useOffline = true;
+  bool _mlkitDownloading = false;
+  double _mlkitProgress = 0;
+  bool _mlkitReady = false;
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2913,6 +2969,89 @@ StatefulBuilder(builder: (_, ss2) {
         ]),
 
       if (_translate) ...[
+        const SizedBox(height: 12),
+        // حالت ترجمه
+        Row(children: [
+          Expanded(child: GestureDetector(
+            onTap: () async {
+              setState(() => _useOffline = true);
+              // چک دانلود مدل
+              final from = _lang == _translateTo ? 'en' : _lang;
+              final ready = await MlKitTranslationService.isModelDownloaded(_translateTo);
+              if (mounted) setState(() => _mlkitReady = ready);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                color: _useOffline ? const Color(0xFF7C3AED).withOpacity(0.2) : const Color(0xFF1A1A2A),
+                border: Border.all(color: _useOffline ? const Color(0xFF7C3AED) : Colors.white12),
+                borderRadius: BorderRadius.circular(10)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Icon(Icons.wifi_off_rounded, size: 14, color: _useOffline ? const Color(0xFF7C3AED) : Colors.white38),
+                  const SizedBox(width: 6),
+                  Text('Offline (ML Kit)', style: TextStyle(color: _useOffline ? Colors.white : Colors.white38, fontSize: 12, fontWeight: FontWeight.w600)),
+                ]),
+                const SizedBox(height: 4),
+                const Text('Fast · Private · 30 languages', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                const Text('Requires ~30MB download per language', style: TextStyle(color: Colors.white24, fontSize: 9)),
+              ])))),
+          const SizedBox(width: 8),
+          Expanded(child: GestureDetector(
+            onTap: () => setState(() => _useOffline = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                color: !_useOffline ? const Color(0xFF0EA5E9).withOpacity(0.15) : const Color(0xFF1A1A2A),
+                border: Border.all(color: !_useOffline ? const Color(0xFF0EA5E9) : Colors.white12),
+                borderRadius: BorderRadius.circular(10)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Icon(Icons.cloud_rounded, size: 14, color: !_useOffline ? const Color(0xFF0EA5E9) : Colors.white38),
+                  const SizedBox(width: 6),
+                  Text('Online (AI)', style: TextStyle(color: !_useOffline ? Colors.white : Colors.white38, fontSize: 12, fontWeight: FontWeight.w600)),
+                ]),
+                const SizedBox(height: 4),
+                const Text('92 languages · Needs internet', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                const Text('Powered by Cloudflare Worker', style: TextStyle(color: Colors.white24, fontSize: 9)),
+              ])))),
+        ]),
+        if (_useOffline) ...[
+          const SizedBox(height: 8),
+          StatefulBuilder(builder: (ctx2, ss2) => Column(children: [
+            if (!_mlkitReady && !_mlkitDownloading)
+              SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                onPressed: () async {
+                  final from = _lang == _translateTo ? 'en' : _lang;
+                  ss2(() { _mlkitDownloading = true; _mlkitProgress = 0; });
+                  setState(() { _mlkitDownloading = true; });
+                  try {
+                    await MlKitTranslationService.downloadModels(from, _translateTo);
+                    final ready = await MlKitTranslationService.isModelDownloaded(_translateTo);
+                    ss2(() { _mlkitDownloading = false; _mlkitReady = ready; });
+                    setState(() { _mlkitDownloading = false; _mlkitReady = ready; });
+                  } catch(_) {
+                    ss2(() => _mlkitDownloading = false);
+                    setState(() => _mlkitDownloading = false);
+                  }
+                },
+                icon: const Icon(Icons.download_rounded, size: 16),
+                label: Text('Download Model (${_translateTo.toUpperCase()})'),
+                style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF7C3AED), side: const BorderSide(color: Color(0xFF7C3AED))))),
+            if (_mlkitDownloading) Column(children: [
+              const SizedBox(height: 6),
+              const LinearProgressIndicator(color: Color(0xFF7C3AED), backgroundColor: Color(0xFF1A1A2A)),
+              const SizedBox(height: 4),
+              const Text('Downloading translation model...', style: TextStyle(color: Colors.white54, fontSize: 11)),
+              const Text('Supports 30 languages · Works offline', style: TextStyle(color: Colors.white38, fontSize: 10)),
+            ]),
+            if (_mlkitReady) Row(children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.green, size: 14),
+              const SizedBox(width: 6),
+              const Text('Offline model ready — ultra fast!', style: TextStyle(color: Colors.green, fontSize: 11)),
+            ]),
+          ])),
+        ],
         const SizedBox(height: 8),
         const Align(alignment: Alignment.centerRight,
           child: Text('ترجمه به', style: TextStyle(color: Colors.white60, fontSize: 12))),
@@ -2944,6 +3083,7 @@ StatefulBuilder(builder: (_, ss2) {
           'engine': _engine,
           'translateOnFinish': _translateOnFinish,
           'showOriginal': _showOriginal,
+          'useOffline': _useOffline,
         }),
         child: const Text('شروع')),
     ],
