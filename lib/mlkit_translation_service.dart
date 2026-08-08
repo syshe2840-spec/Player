@@ -1,12 +1,11 @@
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 
-/// سرویس ترجمه آفلاین با ML Kit — زیر 50ms، بدون نیاز به اینترنت
 class MlKitTranslationService {
   static final Map<String, OnDeviceTranslator> _translators = {};
   static final _modelManager = OnDeviceTranslatorModelManager();
 
-  /// نگاشت کد زبان ما به ML Kit tag
-  static const _langMap = {
+  // enum برای OnDeviceTranslator
+  static const _enumMap = {
     'af': TranslateLanguage.afrikaans,
     'ar': TranslateLanguage.arabic,
     'be': TranslateLanguage.belarusian,
@@ -67,48 +66,60 @@ class MlKitTranslationService {
     'zh-cn': TranslateLanguage.chinese,
   };
 
-  static bool isSupported(String langCode) =>
-      _langMap.containsKey(langCode.toLowerCase());
+  // tag string برای ModelManager
+  static const _tagMap = {
+    'af':'af','ar':'ar','be':'be','bg':'bg','bn':'bn','ca':'ca',
+    'cs':'cs','cy':'cy','da':'da','de':'de','el':'el','en':'en',
+    'eo':'eo','es':'es','et':'et','fa':'fa','fi':'fi','fr':'fr',
+    'ga':'ga','gl':'gl','gu':'gu','he':'iw','hi':'hi','hr':'hr',
+    'hu':'hu','id':'id','it':'it','ja':'ja','ka':'ka','kn':'kn',
+    'ko':'ko','lt':'lt','lv':'lv','mk':'mk','mr':'mr','ms':'ms',
+    'mt':'mt','nl':'nl','no':'no','pl':'pl','pt':'pt','ro':'ro',
+    'ru':'ru','sk':'sk','sl':'sl','sq':'sq','sv':'sv','sw':'sw',
+    'ta':'ta','te':'te','th':'th','tl':'tl','tr':'tr','uk':'uk',
+    'ur':'ur','vi':'vi','zh':'zh','zh-cn':'zh',
+  };
 
-  static Future<bool> isModelDownloaded(String langCode) async {
-    final lang = _langMap[langCode.toLowerCase()];
-    if (lang == null) return false;
-    return _modelManager.isModelDownloaded(lang.toLanguageTag());
+  static bool isSupported(String code) =>
+      _enumMap.containsKey(code.toLowerCase());
+
+  static Future<bool> isModelDownloaded(String code) async {
+    final tag = _tagMap[code.toLowerCase()];
+    if (tag == null) return false;
+    return _modelManager.isModelDownloaded(tag);
   }
 
-  static Future<void> downloadModels(String sourceLang, String targetLang) async {
-    final src = _langMap[sourceLang.toLowerCase()];
-    final tgt = _langMap[targetLang.toLowerCase()];
-    if (src != null) await _modelManager.downloadModel(src.toLanguageTag());
-    if (tgt != null) await _modelManager.downloadModel(tgt.toLanguageTag());
+  static Future<void> downloadModels(String src, String tgt) async {
+    final s = _tagMap[src.toLowerCase()];
+    final t = _tagMap[tgt.toLowerCase()];
+    if (s != null) await _modelManager.downloadModel(s);
+    if (t != null) await _modelManager.downloadModel(t);
   }
 
-  static Future<String> translate(String text, {required String from, required String to}) async {
+  static Future<String> translate(String text,
+      {required String from, required String to}) async {
     if (text.trim().isEmpty) return text;
-    final srcLang = _langMap[from.toLowerCase()];
-    final tgtLang = _langMap[to.toLowerCase()];
-    if (srcLang == null || tgtLang == null) return text;
-    if (srcLang == tgtLang) return text;
+    final srcE = _enumMap[from.toLowerCase()];
+    final tgtE = _enumMap[to.toLowerCase()];
+    if (srcE == null || tgtE == null || srcE == tgtE) return text;
 
     final key = '${from}_$to';
-    if (!_translators.containsKey(key)) {
-      _translators[key] = OnDeviceTranslator(
-        sourceLanguage: srcLang,
-        targetLanguage: tgtLang,
-      );
-    }
+    _translators[key] ??= OnDeviceTranslator(
+        sourceLanguage: srcE, targetLanguage: tgtE);
     try {
       return await _translators[key]!.translateText(text);
-    } catch (_) { return text; }
+    } catch (_) {
+      return text;
+    }
   }
 
   static Future<void> dispose() async {
-    for (final t in _translators.values) { await t.close(); }
+    for (final t in _translators.values) await t.close();
     _translators.clear();
   }
 
-  static Future<void> deleteModel(String langCode) async {
-    final lang = _langMap[langCode.toLowerCase()];
-    if (lang != null) await _modelManager.deleteModel(lang.toLanguageTag());
+  static Future<void> deleteModel(String code) async {
+    final tag = _tagMap[code.toLowerCase()];
+    if (tag != null) await _modelManager.deleteModel(tag);
   }
 }
