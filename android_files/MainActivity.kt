@@ -146,8 +146,9 @@ class MainActivity : FlutterActivity() {
                 "start" -> {
                     val apiKey = call.argument<String>("apiKey") ?: run { result.error("NO_KEY","",null); return@setMethodCallHandler }
                     val lang = call.argument<String>("lang") ?: "fa"
+                    val dubMode = call.argument<Boolean>("dubMode") ?: false
                     geminiService = GeminiLiveService(apiKey)
-                    geminiService?.start(lang, null)
+                    geminiService?.start(lang, null, dubMode)
                     result.success(null)
                 }
                 "sendAudio" -> {
