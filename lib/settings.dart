@@ -7,10 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'store.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'ytdlp_service.dart';
+import 'gemini_live_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
 import 'vosk_models_screen.dart';
 import 'ytdlp_service.dart';
+import 'gemini_live_service.dart';
 import 'main.dart' show showSnack;
 
 class PlayerSettings extends StatefulWidget {
@@ -488,6 +490,8 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
   Widget build(BuildContext ctx) => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── Gemini Live ──
+      _GeminiApiKeyCard(),
       // ── yt-dlp ──
       _YtDlpCard(),
       const SizedBox(height: 12),
@@ -619,4 +623,84 @@ class _YtDlpCardState extends State<_YtDlpCard> {
       ]),
     ]),
   );
+}
+
+// ── کارت Gemini API Key ──
+class _GeminiApiKeyCard extends StatefulWidget {
+  @override State<_GeminiApiKeyCard> createState() => _GeminiApiKeyCardState();
+}
+class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
+  String? _key;
+  bool _show = false;
+  final _ctrl = TextEditingController();
+
+  @override void initState() { super.initState(); _load(); }
+  @override void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  Future<void> _load() async {
+    final k = await GeminiLiveService.getApiKey();
+    if (mounted) setState(() { _key = k; _ctrl.text = k ?? ''; });
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+    color: const Color(0xFF12122A),
+    child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.translate_rounded, color: Color(0xFF7C3AED), size: 18),
+        const SizedBox(width: 8),
+        const Text('Gemini Live Translation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const Spacer(),
+        if (_key != null && _key!.isNotEmpty)
+          const Icon(Icons.check_circle_rounded, color: Colors.green, size: 16),
+      ]),
+      const SizedBox(height: 4),
+      const Text('Real-time AI translation · Requires API key from Google AI Studio',
+        style: TextStyle(color: Colors.white54, fontSize: 11)),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _ctrl,
+        obscureText: !_show,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+        decoration: InputDecoration(
+          hintText: 'AIza...',
+          hintStyle: const TextStyle(color: Colors.white24),
+          filled: true, fillColor: const Color(0xFF0D0D1E),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          suffixIcon: IconButton(
+            icon: Icon(_show ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18, color: Colors.white38),
+            onPressed: () => setState(() => _show = !_show))),
+      ),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(child: FilledButton(
+          onPressed: () async {
+            final k = _ctrl.text.trim();
+            if (k.isEmpty) return;
+            await GeminiLiveService.saveApiKey(k);
+            setState(() => _key = k);
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('✅ Gemini API key saved'), backgroundColor: Colors.green, duration: Duration(seconds: 2)));
+          },
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 8)),
+          child: const Text('Save Key', style: TextStyle(fontSize: 13)))),
+        if (_key != null && _key!.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () async {
+              await GeminiLiveService.clearApiKey();
+              _ctrl.clear();
+              setState(() => _key = null);
+            },
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 8)),
+            child: const Text('Remove', style: TextStyle(fontSize: 13))),
+        ],
+      ]),
+      const SizedBox(height: 8),
+      InkWell(
+        onTap: () {}, // لینک به AI Studio
+        child: const Text('Get free API key → aistudio.google.com',
+          style: TextStyle(color: Color(0xFF7C3AED), fontSize: 11, decoration: TextDecoration.underline))),
+    ])));
 }
