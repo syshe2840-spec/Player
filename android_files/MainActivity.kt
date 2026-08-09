@@ -151,7 +151,8 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "sendAudio" -> {
-                    val bytes = call.argument<ByteArray>("data") ?: return@setMethodCallHandler
+                    @Suppress("UNCHECKED_CAST")
+                    val bytes = (call.argument<Any>("data") as? ByteArray) ?: return@setMethodCallHandler
                     geminiService?.sendAudio(bytes)
                     result.success(null)
                 }
