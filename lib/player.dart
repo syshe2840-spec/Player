@@ -76,6 +76,8 @@ class _PlayerState extends State<PlayerScreen>{
   List<String> _aiLog=[];
   bool _useVosk = true;
   bool _useAndroidStt = false;
+  bool _useGeminiLive = false;
+  Timer? _geminiPollTimer;
   late int _curChannelIdx;
   String? _title; // عنوان ویدیوی جاری
   Timer? _voskPollTimer;
@@ -686,7 +688,6 @@ class _PlayerState extends State<PlayerScreen>{
       final lang=result['lang'] as String;
       _voskTranslate=result['translate'] as bool;
       _voskTranslateTo=result['translateTo'] as String;
-      _useGeminiLive = (engine == 'gemini');
       // اگه ترجمه فعاله، sub2 رو خودکار روشن کن
       if (_voskTranslate) {
         setState(() => _sub2Visible = true);
