@@ -166,6 +166,8 @@ class GeminiLiveService(private val apiKey: String) {
         audioThread?.start()
     }
 
+    fun sendAudio(pcm: ByteArray) = sendAudioChunk(pcm)
+
     private fun sendAudioChunk(pcm: ByteArray) {
         val b64 = Base64.encodeToString(pcm, Base64.NO_WRAP)
         val msg = JSONObject()
