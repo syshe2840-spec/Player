@@ -138,7 +138,30 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        // ── Android Built-in STT ──
+        // ── Gemini Live Translation ──
+    var geminiService: GeminiLiveService? = null
+    io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/gemini_live")
+        .setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    val apiKey = call.argument<String>("apiKey") ?: run { result.error("NO_KEY","",null); return@setMethodCallHandler }
+                    val lang = call.argument<String>("lang") ?: "fa"
+                    geminiService = GeminiLiveService(apiKey)
+                    geminiService?.start(lang, null)
+                    result.success(null)
+                }
+                "sendAudio" -> {
+                    val bytes = call.argument<ByteArray>("data") ?: return@setMethodCallHandler
+                    geminiService?.sendAudio(bytes)
+                    result.success(null)
+                }
+                "stop" -> { geminiService?.stop(); geminiService = null; result.success(null) }
+                "getNextEvent" -> result.success(geminiService?.getNextEvent())
+                else -> result.notImplemented()
+            }
+        }
+
+    // ── Android Built-in STT ──
         androidSttCallback = io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/android_stt_callback")
         io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/android_stt")
             .setMethodCallHandler { call, result ->
