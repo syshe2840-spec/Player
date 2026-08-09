@@ -77,6 +77,7 @@ class _PlayerState extends State<PlayerScreen>{
   bool _useVosk = true;
   bool _useAndroidStt = false;
   bool _useGeminiLive = false;
+  bool _geminiDubMode = false;
   Timer? _geminiPollTimer;
   late int _curChannelIdx;
   String? _title; // عنوان ویدیوی جاری
@@ -534,8 +535,9 @@ class _PlayerState extends State<PlayerScreen>{
     setState(() { _dgActive = true; _dgText = ''; _aiLog.add('[Gemini] Starting...'); });
     // شروع service
     await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
-      'apiKey': key, 'lang': _voskTranslateTo,
+      'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
     });
+    if (_mounted) setState((){_aiLog.add('[Gemini] mode=${_geminiDubMode ? "DUB" : "subtitle"}');});
     // polling timer
     _geminiPollTimer?.cancel();
     _geminiPollTimer = Timer.periodic(Duration(milliseconds: _voskPollMs), (_) async {
@@ -706,6 +708,7 @@ class _PlayerState extends State<PlayerScreen>{
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
+      _geminiDubMode = result['geminiDubMode'] as bool? ?? false;
       // درخواست permission میکروفون
       final micStatus = await permission_handler.Permission.microphone.request();
       if (!micStatus.isGranted) {
@@ -2684,6 +2687,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   bool _mlkitDownloading = false;
   double _mlkitProgress = 0;
   bool _mlkitReady = false;
+  bool _geminiDubMode = false;
 
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
@@ -2866,6 +2870,39 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
               Text('Needs API key', style: TextStyle(color: _engine=='gemini' ? Colors.white60 : Colors.white24, fontSize: 9)),
             ])))),
       ]),
+      // Gemini mode toggle
+      if (_engine == 'gemini') ...[
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: GestureDetector(
+            onTap: () => setState(() => _geminiDubMode = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: !_geminiDubMode ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: !_geminiDubMode ? const Color(0xFF10B981) : Colors.white12)),
+              child: Column(children: [
+                Icon(Icons.subtitles_rounded, size: 16, color: !_geminiDubMode ? const Color(0xFF10B981) : Colors.white38),
+                const SizedBox(height: 3),
+                Text('زیرنویس', style: TextStyle(color: !_geminiDubMode ? Colors.white : Colors.white38, fontSize: 11)),
+              ])))),
+          const SizedBox(width: 8),
+          Expanded(child: GestureDetector(
+            onTap: () => setState(() => _geminiDubMode = true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: _geminiDubMode ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _geminiDubMode ? const Color(0xFF10B981) : Colors.white12)),
+              child: Column(children: [
+                Icon(Icons.record_voice_over_rounded, size: 16, color: _geminiDubMode ? const Color(0xFF10B981) : Colors.white38),
+                const SizedBox(height: 3),
+                Text('🎙 دوبله', style: TextStyle(color: _geminiDubMode ? Colors.white : Colors.white38, fontSize: 11)),
+              ])))),
+        ]),
+      ],
       const SizedBox(height: 14),
 
       // زبان مبدا
@@ -3150,6 +3187,7 @@ StatefulBuilder(builder: (_, ss2) {
           'translateOnFinish': _translateOnFinish,
           'showOriginal': _showOriginal,
           'useOffline': _useOffline,
+          'geminiDubMode': _geminiDubMode,
         }),
         child: const Text('شروع')),
     ],
