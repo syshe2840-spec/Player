@@ -531,44 +531,67 @@ class _PlayerState extends State<PlayerScreen>{
 
   Future<void> _startGeminiLive() async {
     final key = await GeminiLiveService.getApiKey() ?? '';
-    if (key.isEmpty) return;
-    setState(() { _dgActive = true; _dgText = ''; _aiLog.add('[Gemini] Starting...'); });
-    // شروع service
-    await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
-      'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
+    if (key.isEmpty) {
+      if (_mounted) setState((){_aiLog.add('[Gemini] ❌ API key not set! Go to Settings.');});
+      if (mounted) showSnack(context, '⚠️ Set Gemini API key in Settings first', color: Colors.orange, seconds: 4);
+      setState(() => _dgActive = false);
+      return;
+    }
+    final mode = _geminiDubMode ? '🎙 DUB' : '📝 subtitle';
+    setState(() {
+      _dgActive = true; _dgText = ''; _dgText2 = '';
+      _aiLog.add('[Gemini] 🚀 Starting — mode=$mode lang=$_voskTranslateTo');
+      _aiLog.add('[Gemini] key=${key.substring(0, key.length.clamp(0, 8))}...');
     });
-    if (_mounted) setState((){_aiLog.add('[Gemini] mode=${_geminiDubMode ? "DUB" : "subtitle"}');});
+    try {
+      await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
+        'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
+      });
+      if (_mounted) setState((){_aiLog.add('[Gemini] ✅ start() called — waiting for MediaProjection...');});
+    } catch (e) {
+      if (_mounted) setState((){_aiLog.add('[Gemini] ❌ start error: $e'); _dgActive = false;});
+      return;
+    }
     // polling timer
     _geminiPollTimer?.cancel();
     _geminiPollTimer = Timer.periodic(Duration(milliseconds: _voskPollMs), (_) async {
       if (!_mounted || !_dgActive) return;
-      final event = await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod<Map>('getNextEvent');
+      Map? event;
+      try {
+        event = await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod<Map>('getNextEvent');
+      } catch (e) {
+        if (_mounted) setState((){_aiLog.add('[Gemini] ❌ poll error: $e');});
+        return;
+      }
       if (event == null || !_mounted) return;
-      final type = event['type'] as String;
+      final type = event['type'] as String? ?? '';
       final data = event['data'];
-      final ts = DateTime.now().toString().substring(11,19);
+      final ts = DateTime.now().toString().substring(11, 19);
       if (type == 'transcript') {
-        final t = (data as Map)['text'] as String? ?? '';
-        final fin = (data)['final'] as bool? ?? true;
+        final t = ((data as Map?)?['text'] as String?) ?? '';
+        final fin = (data as Map?)?['final'] as bool? ?? true;
         if (t.isNotEmpty) {
           setState(() {
             _dgText = t;
-            _aiLog.add('[Gemini] $t');
+            _aiLog.add('[Gemini] 💬 $t');
           });
-          if (fin && _voskSrtEntries != null) {
-            _handleVoskFinal(t);
-          }
+          if (fin) _handleVoskFinal(t);
         }
       } else if (type == 'status') {
-        setState(() { _aiLog.add('[Gemini] $data'); });
-        if (data == 'stopped') {
+        final s = data.toString();
+        setState(() { _aiLog.add('[Gemini] [$ts] $s'); });
+        if (s == 'stopped' || s == 'disconnected') {
           _geminiPollTimer?.cancel();
-          setState(() => _dgActive = false);
+          if (_mounted) setState(() { _dgActive = false; _aiLog.add('[Gemini] 🔴 stopped'); });
+        }
+        if (s.startsWith('audio_chunk')) {
+          if (_mounted) setState((){_aiLog.add('[Gemini] 🔊 $s');});
         }
       } else if (type == 'error') {
-        setState(() { _aiLog.add('[Gemini] ❌ $data'); _dgActive = false; });
+        final err = data.toString();
+        setState(() { _aiLog.add('[Gemini] ❌ ERROR: $err'); _dgActive = false; });
         _geminiPollTimer?.cancel();
-        if (mounted) showSnack(context, '❌ Gemini: $data', color: Colors.red, seconds: 4);
+        if (mounted) showSnack(context, '❌ Gemini: $err', color: Colors.red, seconds: 5);
       }
     });
   }
