@@ -27,6 +27,7 @@ import 'srt_translation_service.dart' show SrtTranslationService, SrtTranslation
 import 'lyrics_sheet.dart';
 import 'live_translation_sync.dart';
 import 'mlkit_translation_service.dart';
+import 'gemini_live_service.dart';
 import 'subtitle_storage.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
@@ -525,6 +526,49 @@ class _PlayerState extends State<PlayerScreen>{
     ));
   }
 
+  Future<void> _startGeminiLive() async {
+    final key = await GeminiLiveService.getApiKey() ?? '';
+    if (key.isEmpty) return;
+    setState(() { _dgActive = true; _dgText = ''; _aiLog.add('[Gemini] Starting...'); });
+    // شروع service
+    await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
+      'apiKey': key, 'lang': _voskTranslateTo,
+    });
+    // polling timer
+    _geminiPollTimer?.cancel();
+    _geminiPollTimer = Timer.periodic(Duration(milliseconds: _voskPollMs), (_) async {
+      if (!_mounted || !_dgActive) return;
+      final event = await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod<Map>('getNextEvent');
+      if (event == null || !_mounted) return;
+      final type = event['type'] as String;
+      final data = event['data'];
+      final ts = DateTime.now().toString().substring(11,19);
+      if (type == 'transcript') {
+        final t = (data as Map)['text'] as String? ?? '';
+        final fin = (data)['final'] as bool? ?? true;
+        if (t.isNotEmpty) {
+          setState(() {
+            _dgText = t;
+            _aiLog.add('[Gemini] $t');
+          });
+          if (fin && _voskSrtEntries != null) {
+            _handleVoskFinal(t);
+          }
+        }
+      } else if (type == 'status') {
+        setState(() { _aiLog.add('[Gemini] $data'); });
+        if (data == 'stopped') {
+          _geminiPollTimer?.cancel();
+          setState(() => _dgActive = false);
+        }
+      } else if (type == 'error') {
+        setState(() { _aiLog.add('[Gemini] ❌ $data'); _dgActive = false; });
+        _geminiPollTimer?.cancel();
+        if (mounted) showSnack(context, '❌ Gemini: $data', color: Colors.red, seconds: 4);
+      }
+    });
+  }
+
   Future<String> _translateVosk(String text) async {
     // اگه ML Kit مدل داره و حالت آفلاین انتخابه → آفلاین سریع
     if (_voskUseOfflineTranslate && MlKitTranslationService.isSupported(_voskTranslateTo)) {
@@ -642,6 +686,7 @@ class _PlayerState extends State<PlayerScreen>{
       final lang=result['lang'] as String;
       _voskTranslate=result['translate'] as bool;
       _voskTranslateTo=result['translateTo'] as String;
+      _useGeminiLive = (engine == 'gemini');
       // اگه ترجمه فعاله، sub2 رو خودکار روشن کن
       if (_voskTranslate) {
         setState(() => _sub2Visible = true);
@@ -656,6 +701,7 @@ class _PlayerState extends State<PlayerScreen>{
       final engine=result['engine'] as String? ?? 'vosk';
       _useAndroidStt = engine == 'android';
       _useVosk = engine == 'vosk';
+      _useGeminiLive = engine == 'gemini';
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
@@ -1537,9 +1583,11 @@ class _PlayerState extends State<PlayerScreen>{
     _androidSttPollTimer?.cancel(); _androidSttPollTimer = null;
     _translateDebounceTimer?.cancel(); _translateDebounceTimer = null;
     _dgSub?.cancel();
+    _geminiPollTimer?.cancel(); _geminiPollTimer = null;
     if(_dgActive){
       _dgActive = false;
-      if(_useAndroidStt) { try { AndroidSttService.stop(); } catch(_){} }
+      if (_useGeminiLive) { try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_){} }
+      else if(_useAndroidStt) { try { AndroidSttService.stop(); } catch(_){} }
       else if(_useVosk) { try { VoskService.stop(); } catch(_){} }
       else { try { DeepgramService.stop(); } catch(_){} }
     }
@@ -2798,6 +2846,23 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
               const SizedBox(height: 4),
               Text('Android', style: TextStyle(color: _engine=='android' ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
               Text('آنلاین - بیشتر زبان', style: TextStyle(color: _engine=='android' ? Colors.white60 : Colors.white24, fontSize: 9)),
+            ])))),
+        const SizedBox(width: 6),
+        Expanded(child: GestureDetector(
+          onTap: () => setState(() => _engine = 'gemini'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: _engine == 'gemini' ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _engine == 'gemini' ? const Color(0xFF10B981) : Colors.white12)),
+            child: Column(children: [
+              Icon(Icons.auto_awesome_rounded, size: 20,
+                color: _engine=='gemini' ? const Color(0xFF10B981) : Colors.white38),
+              const SizedBox(height: 4),
+              Text('Gemini', style: TextStyle(color: _engine=='gemini' ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+              Text('AI Live', style: TextStyle(color: _engine=='gemini' ? Colors.white70 : Colors.white38, fontSize: 10)),
+              Text('Needs API key', style: TextStyle(color: _engine=='gemini' ? Colors.white60 : Colors.white24, fontSize: 9)),
             ])))),
       ]),
       const SizedBox(height: 14),
