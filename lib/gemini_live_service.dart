@@ -26,10 +26,14 @@ class GeminiLiveService {
   }
 
   /// شروع ترجمه زنده
-  static Future<bool> start({required String targetLang}) async {
+  static Future<bool> start({required String targetLang, bool dubMode = false}) async {
     final key = await getApiKey();
     if (key == null || key.isEmpty) return false;
-    await _ch.invokeMethod('start', {'apiKey': key, 'lang': targetLang});
+    await _ch.invokeMethod('start', {
+      'apiKey': key,
+      'lang': targetLang,
+      'dubMode': dubMode,
+    });
     return true;
   }
 
