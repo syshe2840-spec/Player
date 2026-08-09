@@ -2445,7 +2445,7 @@ class _PlayerState extends State<PlayerScreen>{
             Text('AI',style:TextStyle(fontSize:11,color:_dgActive?Colors.white:Colors.white54,fontWeight:FontWeight.bold)),
           ]))),
     ],
-    if(widget.isLive||widget.isOnlineUrl||_curPath.startsWith('http'))...[
+    if(true)...[ // AI LOG روی همه ویدیوها
       const SizedBox(width:8),
       GestureDetector(
         onTap:()=>_showAiLogDialog(),
