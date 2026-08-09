@@ -104,6 +104,9 @@ class MainActivity : FlutterActivity() {
     private var voskCallbackChannel: io.flutter.plugin.common.MethodChannel? = null
     private var pendingVoskLang: String? = null
     private val PROJ_REQ_VOSK = 9999
+    private val PROJ_REQ_GEMINI = 9998
+    private var pendingGeminiLang: String? = null
+    private var pendingGeminiDub: Boolean = false
 
     // ── Android STT ──
     private var androidSttService: AndroidBuiltinSttService? = null
@@ -147,8 +150,17 @@ class MainActivity : FlutterActivity() {
                     val apiKey = call.argument<String>("apiKey") ?: run { result.error("NO_KEY","",null); return@setMethodCallHandler }
                     val lang = call.argument<String>("lang") ?: "fa"
                     val dubMode = call.argument<Boolean>("dubMode") ?: false
+                    pendingGeminiLang = lang
+                    pendingGeminiDub = dubMode
                     geminiService = GeminiLiveService(apiKey)
-                    geminiService?.start(lang, null, dubMode)
+                    // درخواست MediaProjection برای capture صدای داخلی
+                    val svcIntent = android.content.Intent(this, MediaProjectionService::class.java)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+                        startForegroundService(svcIntent) else startService(svcIntent)
+                    android.os.SystemClock.sleep(500)
+                    val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+                    if (mgr != null) startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_GEMINI)
+                    else geminiService?.start(lang, null, dubMode)
                     result.success(null)
                 }
                 "sendAudio" -> {
@@ -639,6 +651,17 @@ class MainActivity : FlutterActivity() {
     @Suppress("DEPRECATION")
     override fun onActivityResult(req: Int, result: Int, data: android.content.Intent?) {
         super.onActivityResult(req, result, data)
+        if (req == PROJ_REQ_GEMINI && result == android.app.Activity.RESULT_OK && data != null) {
+            val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+            val projection = mgr?.getMediaProjection(result, data)
+            pendingGeminiLang?.let { lang ->
+                pendingGeminiLang = null
+                Thread {
+                    try { geminiService?.start(lang, projection, pendingGeminiDub) }
+                    catch (e: Throwable) { android.util.Log.e("Gemini", "start failed: ${e.message}") }
+                }.start()
+            }
+        }
         if (req == PROJ_REQ_VOSK && result == android.app.Activity.RESULT_OK && data != null) {
             val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
             val projection = mgr?.getMediaProjection(result, data)
