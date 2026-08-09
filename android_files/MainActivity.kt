@@ -103,10 +103,11 @@ class MainActivity : FlutterActivity() {
     private var voskSink: io.flutter.plugin.common.EventChannel.EventSink? = null
     private var voskCallbackChannel: io.flutter.plugin.common.MethodChannel? = null
     private var pendingVoskLang: String? = null
-    private val PROJ_REQ_VOSK = 9999
-    private val PROJ_REQ_GEMINI = 9998
+    private var geminiService: GeminiLiveService? = null
     private var pendingGeminiLang: String? = null
     private var pendingGeminiDub: Boolean = false
+    private val PROJ_REQ_VOSK = 9999
+    private val PROJ_REQ_GEMINI = 9998
 
     // ── Android STT ──
     private var androidSttService: AndroidBuiltinSttService? = null
@@ -142,7 +143,6 @@ class MainActivity : FlutterActivity() {
             }
 
         // ── Gemini Live Translation ──
-    var geminiService: GeminiLiveService? = null
     io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/gemini_live")
         .setMethodCallHandler { call, result ->
             when (call.method) {
