@@ -773,6 +773,13 @@ class _PlayerState extends State<PlayerScreen>{
         }
       });
       if(mounted)setState((){_aiLog.add('[${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}] 🚀 Starting AI subtitle...');});
+      // === ENGINE CHECK ===
+      if (_mounted) setState((){_aiLog.add('[ENGINE] useGemini=$_useGeminiLive useVosk=$_useVosk useAndroid=$_useAndroidStt dubMode=$_geminiDubMode');});
+      if (_useGeminiLive) {
+        if (_mounted) setState((){_aiLog.add('[ENGINE] → Gemini Live branch selected');});
+        await _startGeminiLive();
+        return;
+      }
       if (_useVosk) {
         // Vosk — آفلاین + MediaProjection
         final effectiveLang = lang == 'multi' ? 'en' : lang;
