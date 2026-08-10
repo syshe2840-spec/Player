@@ -41,6 +41,14 @@ class GeminiLiveService(private val apiKey: String) {
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .pingInterval(20, TimeUnit.SECONDS)
+        // حذف permessage-deflate که Gemini قبول نمیکنه
+        .addNetworkInterceptor { chain ->
+            val req = chain.request().newBuilder()
+                .removeHeader("Sec-WebSocket-Extensions")
+                .header("User-Agent", "Vezoo/1.0")
+                .build()
+            chain.proceed(req)
+        }
         .build()
 
     fun start(targetLang: String, proj: MediaProjection?, isDubMode: Boolean = false) {
