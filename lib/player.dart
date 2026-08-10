@@ -810,6 +810,11 @@ class _PlayerState extends State<PlayerScreen>{
         _lastFinalTime = DateTime.now();
         await Future.delayed(const Duration(milliseconds:300));
         // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
+        // ── Gemini Live ──
+        if (_useGeminiLive) {
+          await _startGeminiLive();
+          return;
+        }
         // ── Android Built-in STT ──
         if (_useAndroidStt) {
           _dgSub = AndroidSttService.events().listen((e) {
