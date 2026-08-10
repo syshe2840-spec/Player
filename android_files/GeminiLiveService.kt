@@ -102,13 +102,21 @@ class GeminiLiveService(private val apiKey: String) {
 
                 webSocket.send(JSONObject().put("setup", setup).toString())
                 send("status", "connecting")
+                Log.d(TAG, "Setup sent, waiting for setupComplete...")
+                Thread {
+                    Thread.sleep(15000)
+                    if (!connected.get() && running.get()) {
+                        send("error", "Timeout: No response from Gemini after 15s. Check API key/network.")
+                    }
+                }.start()
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                Log.d(TAG, "MSG: ${text.take(200)}")
+                send("status", "raw:${text.take(120)}")
                 try {
                     val json = JSONObject(text)
 
-                    // setupComplete
                     if (!json.isNull("setupComplete")) {
                         connected.set(true)
                         send("status", "connected")
@@ -117,10 +125,9 @@ class GeminiLiveService(private val apiKey: String) {
                         return
                     }
 
-                    // error
                     val err = json.optJSONObject("error")
                     if (err != null) {
-                        val errMsg = "${err.optInt("code")} ${err.optString("status")}: ${err.optString("message")}"
+                        val errMsg = "[${err.optInt("code")}] ${err.optString("status")}: ${err.optString("message")}"
                         Log.e(TAG, "API error: $errMsg")
                         send("error", errMsg)
                         return
