@@ -24,158 +24,174 @@ class GeminiLiveService(private val apiKey: String) {
     private var audioThread: Thread? = null
     private var projection: MediaProjection? = null
     private var audioTrack: AudioTrack? = null
-    private var mode = "subtitle" // "subtitle" or "dub"
+    private var dubMode = false
 
-    // Gemini output audio sample rate
-    private val OUTPUT_SAMPLE_RATE = 24000
+    // مثل e2dub: 100ms chunks
     private val INPUT_SAMPLE_RATE = 16000
-    private val CHUNK_MS = 200
+    private val OUTPUT_SAMPLE_RATE = 24000
+    private val INPUT_CHUNK_BYTES = 3200  // 100ms @ 16kHz mono s16le
+    private val OUTPUT_FRAME_BYTES = 4800 // 100ms @ 24kHz mono s16le
 
+    // v1beta — مثل e2dub
     private val MODEL = "gemini-3.5-live-translate-preview"
-    private val WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent"
+    private val HOST = "generativelanguage.googleapis.com"
+    private val WS_URL = "wss://$HOST/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .pingInterval(15, TimeUnit.SECONDS)
+        .pingInterval(20, TimeUnit.SECONDS)
         .build()
 
-    fun start(targetLang: String, proj: MediaProjection?, dubMode: Boolean = false) {
+    fun start(targetLang: String, proj: MediaProjection?, isDubMode: Boolean = false) {
         if (running.getAndSet(true)) return
         projection = proj
-        mode = if (dubMode) "dub" else "subtitle"
+        dubMode = isDubMode
         if (dubMode) initAudioTrack()
         connectWs(targetLang)
     }
 
     private fun initAudioTrack() {
-        val bufSize = AudioTrack.getMinBufferSize(
-            OUTPUT_SAMPLE_RATE,
-            AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        ).coerceAtLeast(OUTPUT_SAMPLE_RATE * 2)
-
+        val bufSize = AudioTrack.getMinBufferSize(OUTPUT_SAMPLE_RATE,
+            AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            .coerceAtLeast(OUTPUT_SAMPLE_RATE * 2)
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build())
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
             .setAudioFormat(AudioFormat.Builder()
                 .setSampleRate(OUTPUT_SAMPLE_RATE)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build())
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
             .setBufferSizeInBytes(bufSize)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
+            .setTransferMode(AudioTrack.MODE_STREAM).build()
         audioTrack?.play()
     }
 
     private fun connectWs(targetLang: String) {
         val url = "$WS_URL?key=$apiKey"
-        val req = Request.Builder().url(url).build()
-
-        // تنظیم response mode
-        val responseModalities = if (mode == "dub")
-            JSONArray().put("AUDIO") else JSONArray().put("TEXT")
-
-        val prompt = "You are a real-time live interpreter. " +
-            "Translate everything you hear accurately into $targetLang. " +
-            if (mode == "dub") "Speak the translation naturally." else "Output ONLY the translated text."
+        val req = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", "Vezoo/1.0")
+            .build()
 
         ws = client.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                Log.d(TAG, "WS connected — mode=$mode")
+                Log.d(TAG, "WS connected — mode=${if(dubMode)"DUB" else "subtitle"}")
+                // Setup مثل e2dub — ساختار درست
+                val responseModalities = if (dubMode)
+                    JSONArray().put("AUDIO") else JSONArray().put("TEXT")
 
-                val setupBuilder = JSONObject()
+                val setup = JSONObject()
                     .put("model", "models/$MODEL")
-                    .put("system_instruction", JSONObject()
-                        .put("parts", JSONArray().put(JSONObject().put("text", prompt))))
-                    .put("generation_config", JSONObject()
-                        .put("response_modalities", responseModalities)
-                        .apply {
-                            if (mode == "dub") {
-                                put("speech_config", JSONObject()
-                                    .put("voice_config", JSONObject()
-                                        .put("prebuilt_voice_config", JSONObject()
-                                            .put("voice_name", "Charon"))))
-                            }
-                        })
+                    .put("generationConfig", JSONObject()
+                        .put("responseModalities", responseModalities)
+                        .put("translationConfig", JSONObject()
+                            .put("targetLanguageCode", targetLang)
+                            .put("echoTargetLanguage", false)))
+                    .put("realtimeInputConfig", JSONObject()
+                        .put("automaticActivityDetection", JSONObject()
+                            .put("disabled", false)
+                            .put("startOfSpeechSensitivity", "START_SENSITIVITY_HIGH")
+                            .put("endOfSpeechSensitivity", "END_SENSITIVITY_HIGH")
+                            .put("prefixPaddingMs", 20)
+                            .put("silenceDurationMs", 350)))
+                    .put("sessionResumption", JSONObject())
+                    .put("contextWindowCompression", JSONObject()
+                        .put("slidingWindow", JSONObject()))
 
-                webSocket.send(JSONObject().put("setup", setupBuilder).toString())
-                connected.set(true)
-                send("status", "connected")
-                send("status", "mode:$mode")
-                startAudioCapture()
+                webSocket.send(JSONObject().put("setup", setup).toString())
+                send("status", "connecting")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
                     val json = JSONObject(text)
+
+                    // setupComplete
+                    if (!json.isNull("setupComplete")) {
+                        connected.set(true)
+                        send("status", "connected")
+                        send("status", "recording_started")
+                        startAudioCapture()
+                        return
+                    }
+
+                    // error
+                    val err = json.optJSONObject("error")
+                    if (err != null) {
+                        val errMsg = "${err.optInt("code")} ${err.optString("status")}: ${err.optString("message")}"
+                        Log.e(TAG, "API error: $errMsg")
+                        send("error", errMsg)
+                        return
+                    }
+
+                    // serverContent
                     val sc = json.optJSONObject("serverContent") ?: return
                     val mt = sc.optJSONObject("modelTurn") ?: return
                     val parts = mt.optJSONArray("parts") ?: return
 
                     for (i in 0 until parts.length()) {
                         val part = parts.getJSONObject(i)
-
-                        if (mode == "subtitle") {
-                            // متن ترجمه
+                        if (dubMode) {
+                            // audio PCM از Gemini
+                            val inline = part.optJSONObject("inlineData")
+                            if (inline != null) {
+                                val data = inline.optString("data", "")
+                                if (data.isNotEmpty()) {
+                                    val pcm = Base64.decode(data, Base64.DEFAULT)
+                                    audioTrack?.write(pcm, 0, pcm.size)
+                                    send("status", "audio_chunk:${pcm.size}")
+                                }
+                            }
+                        } else {
+                            // text زیرنویس
                             val t = part.optString("text", "")
                             if (t.isNotEmpty()) {
                                 send("transcript", mapOf("text" to t, "final" to true))
                             }
-                        } else {
-                            // صدای دوبله — PCM base64
-                            val inline = part.optJSONObject("inlineData")
-                            if (inline != null) {
-                                val b64 = inline.optString("data", "")
-                                if (b64.isNotEmpty()) {
-                                    val pcm = Base64.decode(b64, Base64.DEFAULT)
-                                    playAudio(pcm)
-                                    send("status", "audio_chunk:${pcm.size}")
-                                }
-                            }
-                            // متن هم بخونیم اگه بود (برای لاگ)
-                            val t = part.optString("text", "")
-                            if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to false))
                         }
                     }
+
+                    // inputTranscription (تشخیص زبان مبدأ)
+                    val inputT = sc.optJSONObject("inputTranscription")
+                    if (inputT != null) {
+                        val lang = inputT.optString("languageCode", "auto")
+                        send("status", "detected_lang:$lang")
+                    }
+
                 } catch (e: Exception) {
                     Log.e(TAG, "Parse error: ${e.message}")
                 }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "WS error: ${t.message}")
+                val code = response?.code ?: 0
+                val msg = t.message ?: "unknown"
+                Log.e(TAG, "WS error [$code]: $msg")
                 connected.set(false)
-                send("error", t.message ?: "Connection failed")
+                send("error", "WS[$code]: $msg")
                 if (running.get()) {
-                    Thread.sleep(2000)
+                    Thread.sleep(3000)
                     connectWs(targetLang)
                 }
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 connected.set(false)
-                send("status", "disconnected")
+                send("status", "disconnected:$code")
             }
         })
     }
 
-    private fun playAudio(pcm: ByteArray) {
-        audioTrack?.write(pcm, 0, pcm.size)
-    }
-
     private fun startAudioCapture() {
-        val chunkSamples = INPUT_SAMPLE_RATE * CHUNK_MS / 1000
-        val bufSize = AudioRecord.getMinBufferSize(
-            INPUT_SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        ).coerceAtLeast(chunkSamples * 2)
-
         audioThread = Thread {
+            val bufSize = AudioRecord.getMinBufferSize(
+                INPUT_SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            ).coerceAtLeast(INPUT_CHUNK_BYTES * 4)
+
             val recorder = if (projection != null && android.os.Build.VERSION.SDK_INT >= 29) {
                 val config = android.media.AudioPlaybackCaptureConfiguration.Builder(projection!!)
                     .addMatchingUsage(android.media.AudioAttributes.USAGE_MEDIA)
@@ -187,10 +203,8 @@ class GeminiLiveService(private val apiKey: String) {
                     .setAudioFormat(AudioFormat.Builder()
                         .setSampleRate(INPUT_SAMPLE_RATE)
                         .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-                        .build())
-                    .setBufferSizeInBytes(bufSize)
-                    .build()
+                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO).build())
+                    .setBufferSizeInBytes(bufSize).build()
             } else {
                 AudioRecord(android.media.MediaRecorder.AudioSource.MIC,
                     INPUT_SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO,
@@ -198,37 +212,44 @@ class GeminiLiveService(private val apiKey: String) {
             }
 
             recorder.startRecording()
-            send("status", "recording_started")
+            Log.d(TAG, "Audio capture started — projection=${projection != null}")
 
+            val chunkSamples = INPUT_CHUNK_BYTES / 2 // short = 2 bytes
             val pcm = ShortArray(chunkSamples)
-            val bytes = ByteArray(chunkSamples * 2)
+            val bytes = ByteArray(INPUT_CHUNK_BYTES)
 
             while (running.get()) {
                 val read = recorder.read(pcm, 0, chunkSamples)
-                if (read > 0 && connected.get()) {
+                if (read > 0 && ws != null) {
                     for (i in 0 until read) {
                         bytes[i * 2] = (pcm[i].toInt() and 0xFF).toByte()
                         bytes[i * 2 + 1] = ((pcm[i].toInt() shr 8) and 0xFF).toByte()
                     }
-                    sendAudioChunk(bytes.copyOf(read * 2))
+                    val chunk = bytes.copyOf(read * 2)
+                    // مثل e2dub: ساختار audio صحیح
+                    val b64 = Base64.encodeToString(chunk, Base64.NO_WRAP)
+                    val msg = JSONObject()
+                        .put("realtimeInput", JSONObject()
+                            .put("audio", JSONObject()
+                                .put("mimeType", "audio/pcm;rate=16000")
+                                .put("data", b64)))
+                    try { ws?.send(msg.toString()) } catch (_: Exception) {}
                 }
             }
+
             try { recorder.stop(); recorder.release() } catch (_: Exception) {}
+            Log.d(TAG, "Audio capture stopped")
         }
         audioThread?.isDaemon = true
         audioThread?.start()
     }
 
-    fun sendAudio(pcm: ByteArray) = sendAudioChunk(pcm)
-
-    private fun sendAudioChunk(pcm: ByteArray) {
+    fun sendAudio(pcm: ByteArray) {
+        if (!running.get() || ws == null) return
         val b64 = Base64.encodeToString(pcm, Base64.NO_WRAP)
-        val msg = JSONObject()
-            .put("realtimeInput", JSONObject()
-                .put("mediaChunks", JSONArray().put(JSONObject()
-                    .put("mimeType", "audio/pcm;rate=16000")
-                    .put("data", b64))))
-        ws?.send(msg.toString())
+        val msg = JSONObject().put("realtimeInput", JSONObject()
+            .put("audio", JSONObject().put("mimeType", "audio/pcm;rate=16000").put("data", b64)))
+        try { ws?.send(msg.toString()) } catch (_: Exception) {}
     }
 
     fun stop() {
@@ -238,8 +259,7 @@ class GeminiLiveService(private val apiKey: String) {
         audioThread = null
         try { audioTrack?.stop(); audioTrack?.release() } catch (_: Exception) {}
         audioTrack = null
-        ws?.close(1000, "stopped")
-        ws = null
+        try { ws?.close(1000, "stopped"); ws = null } catch (_: Exception) {}
         try { projection?.stop() } catch (_: Exception) {}
         projection = null
         send("status", "stopped")
