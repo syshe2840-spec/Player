@@ -8,11 +8,13 @@ import 'store.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'ytdlp_service.dart';
 import 'gemini_live_service.dart';
+import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
 import 'vosk_models_screen.dart';
 import 'ytdlp_service.dart';
 import 'gemini_live_service.dart';
+import 'package:http/http.dart' as http;
 import 'main.dart' show showSnack;
 
 class PlayerSettings extends StatefulWidget {
@@ -632,6 +634,8 @@ class _GeminiApiKeyCard extends StatefulWidget {
 class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
   String? _key;
   bool _show = false;
+  bool _testing = false;
+  String? _testResult;
   final _ctrl = TextEditingController();
 
   @override void initState() { super.initState(); _load(); }
@@ -640,6 +644,34 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
   Future<void> _load() async {
     final k = await GeminiLiveService.getApiKey();
     if (mounted) setState(() { _key = k; _ctrl.text = k ?? ''; });
+  }
+
+  Future<void> _testKey() async {
+    final k = _key;
+    if (k == null || k.isEmpty) return;
+    setState(() { _testing = true; _testResult = null; });
+    try {
+      // تست با Gemini REST API
+      final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$k');
+      final resp = await http.get(url).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final body = resp.body;
+        final hasLive = body.contains('gemini') && body.contains('live');
+        setState(() => _testResult = hasLive
+          ? '✅ API Key valid — Gemini Live models found'
+          : '✅ API Key valid — but Gemini Live model may not be available');
+      } else if (resp.statusCode == 400) {
+        setState(() => _testResult = '❌ Invalid API key (400)');
+      } else if (resp.statusCode == 403) {
+        setState(() => _testResult = '❌ API key disabled or no access (403)');
+      } else {
+        setState(() => _testResult = '❌ Error: HTTP \${resp.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _testResult = '❌ Network error: \${e.toString().substring(0, e.toString().length.clamp(0, 60))}');
+    } finally {
+      setState(() => _testing = false);
+    }
   }
 
   @override
@@ -704,3 +736,4 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
           style: TextStyle(color: Color(0xFF7C3AED), fontSize: 11, decoration: TextDecoration.underline))),
     ])));
 }
+
