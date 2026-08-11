@@ -52,6 +52,9 @@ class GeminiLiveService(private val apiKey: String) {
     private var inputStream: InputStream? = null
     private var audioThread: Thread? = null
     private var playThread: Thread? = null
+    private var sendThread: Thread? = null
+    // INPUT_QUEUE — مثل e2dub: Queue(50), oldest dropped when full
+    private val inputQueue = java.util.concurrent.LinkedBlockingQueue<ByteArray>(50)
 
     // AudioBuffer — مثل e2dub: bytearray با lock
     private val audioBuffer = ByteArrayBuffer(MAX_OUTPUT_BYTES)
@@ -246,23 +249,43 @@ class GeminiLiveService(private val apiKey: String) {
             recorder.startRecording()
             val pcm = ShortArray(chunkSamples)
             val bytes = ByteArray(chunkBytes)
+
+            // stdin_reader مثل e2dub
             while (running.get()) {
                 val read = recorder.read(pcm, 0, chunkSamples)
-                if (read > 0 && connected.get()) {
+                if (read > 0) {
                     for (i in 0 until read) {
                         bytes[i*2] = (pcm[i].toInt() and 0xFF).toByte()
                         bytes[i*2+1] = ((pcm[i].toInt() shr 8) and 0xFF).toByte()
                     }
-                    val b64 = Base64.encodeToString(bytes.copyOf(read*2), Base64.NO_WRAP)
-                    try { wsSend(JSONObject().put("realtimeInput", JSONObject()
-                        .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
-                    } catch (_: Exception) {}
+                    val chunk = bytes.copyOf(read*2)
+                    // مثل e2dub — اگه queue پر بود، قدیمی رو drop کن
+                    if (!inputQueue.offer(chunk)) {
+                        inputQueue.poll()
+                        inputQueue.offer(chunk)
+                    }
                 }
             }
             try { recorder.stop(); recorder.release() } catch (_: Exception) {}
         }
         audioThread?.isDaemon = true
         audioThread?.start()
+
+        // send thread — مثل e2dub: get(timeout=0.25)
+        sendThread = Thread {
+            while (running.get()) {
+                try {
+                    val chunk = inputQueue.poll(250, java.util.concurrent.TimeUnit.MILLISECONDS) ?: continue
+                    if (!connected.get()) continue
+                    val b64 = Base64.encodeToString(chunk, Base64.NO_WRAP)
+                    wsSend(JSONObject().put("realtimeInput", JSONObject()
+                        .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
+                } catch (_: InterruptedException) { break }
+                  catch (_: Exception) {}
+            }
+        }
+        sendThread?.isDaemon = true
+        sendThread?.start()
     }
 
     private fun wsSend(payload: String) {
@@ -311,7 +334,9 @@ class GeminiLiveService(private val apiKey: String) {
     fun stop() {
         running.set(false); connected.set(false)
         playThread?.interrupt(); playThread = null
+        sendThread?.interrupt(); sendThread = null
         audioThread?.interrupt(); audioThread = null
+        inputQueue.clear()
         stopInternal(); send("status", "stopped")
     }
 
