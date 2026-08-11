@@ -3021,6 +3021,23 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
               ])))),
         ]),
       ],
+      // Voice — فقط Gemini + dub mode
+      if (_engine == 'gemini' && _geminiDubMode) ...[
+        const SizedBox(height: 10),
+        const Align(alignment: Alignment.centerRight,
+          child: Text('Voice', style: TextStyle(color: Colors.white60, fontSize: 12))),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: _geminiVoices.containsKey(_geminiVoice) ? _geminiVoice : 'Charon',
+          dropdownColor: const Color(0xFF1A1A2A),
+          decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          items: _geminiVoices.entries.map((e) => DropdownMenuItem(value: e.key,
+            child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
+          onChanged: (v) => setState(() => _geminiVoice = v!)),
+      ],
       const SizedBox(height: 14),
 
       // زبان مبدا
@@ -3285,7 +3302,7 @@ StatefulBuilder(builder: (_, ss2) {
             filled: true, fillColor: const Color(0xFF1A1A2A),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-          items: _transLangs.entries.map((e) => DropdownMenuItem(
+          items: (_engine=='gemini' ? _geminiLangs : _transLangs).entries.map((e) => DropdownMenuItem(
             value: e.key,
             child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
           onChanged: (v) => setState(() => _translateTo = v!),
