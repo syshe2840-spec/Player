@@ -152,6 +152,7 @@ class MainActivity : FlutterActivity() {
                     val dubMode = call.argument<Boolean>("dubMode") ?: false
                     val cfg = GeminiConfig(
                         targetLang = lang,
+                        model = call.argument<String>("model") ?: "gemini-3.5-live-translate-preview",
                         dubMode = dubMode,
                         silenceDurationMs = call.argument<Int>("silenceMs") ?: 350,
                         prefixPaddingMs = call.argument<Int>("prefixMs") ?: 20,
