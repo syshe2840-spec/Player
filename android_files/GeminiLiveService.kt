@@ -268,13 +268,16 @@ class GeminiLiveService(private val apiKey: String) {
             val frame = ByteArray(OUTPUT_FRAME_BYTES)
             var nextTick = System.currentTimeMillis()
             while (running.get()) {
-                val chunk = try { audioBuffer.poll(50, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_:Exception) { null }
-                if (chunk != null) {
-                    audioTrack?.write(chunk, 0, chunk.size)
-                } else {
-                    // silence — جلوگیری از underrun
-                    audioTrack?.write(frame, 0, frame.size)
-                }
+                val at = audioTrack ?: break
+                if (at.state != AudioTrack.STATE_INITIALIZED) break
+                try {
+                    val chunk = audioBuffer.poll(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    if (chunk != null) {
+                        at.write(chunk, 0, chunk.size)
+                    } else {
+                        at.write(frame, 0, frame.size)
+                    }
+                } catch (_: Exception) { break }
                 nextTick += 100
                 val delay = nextTick - System.currentTimeMillis()
                 if (delay > 0) Thread.sleep(delay) else nextTick = System.currentTimeMillis()
@@ -358,4 +361,3 @@ class GeminiLiveService(private val apiKey: String) {
         if (eventQueue.size > 200) eventQueue.poll()
     }
 }
-
