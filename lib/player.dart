@@ -1662,7 +1662,7 @@ class _PlayerState extends State<PlayerScreen>{
     _dgSub?.cancel();
     _geminiPollTimer?.cancel(); _geminiPollTimer = null;
     if (_useGeminiLive && _dgActive) {
-      try { await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+      try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
       // برگردوندن volume اصلی
       player.setVolume(100);
     }
