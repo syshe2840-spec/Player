@@ -2972,7 +2972,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             ])))),
         const SizedBox(width: 6),
         Expanded(child: GestureDetector(
-          onTap: () => setState(() => _engine = 'gemini'),
+          onTap: () => setState(() { _engine = 'gemini'; if (!_geminiLangs.containsKey(_translateTo)) _translateTo = 'fa'; }),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
@@ -3296,7 +3296,7 @@ StatefulBuilder(builder: (_, ss2) {
             style: const TextStyle(color: Colors.white60, fontSize: 12))),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _engine=='gemini' ? (_geminiLangs.containsKey(_translateTo) ? _translateTo : 'fa') : _translateTo,
+          value: _translateTo,  // همیشه _translateTo
           dropdownColor: const Color(0xFF1A1A2A),
           decoration: InputDecoration(
             filled: true, fillColor: const Color(0xFF1A1A2A),
