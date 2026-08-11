@@ -539,6 +539,11 @@ class _PlayerState extends State<PlayerScreen>{
       return;
     }
     final mode = _geminiDubMode ? '🎙 DUB' : '📝 subtitle';
+    // چک VPN bypass
+    try {
+      final netInfo = await const MethodChannel('com.vezoo.player/network').invokeMethod<String>('getNetworkInfo');
+      if (_mounted) setState((){_aiLog.add('[NET] $netInfo');});
+    } catch (_) {}
     setState(() {
       _dgActive = true; _dgText = ''; _dgText2 = '';
       _aiLog.add('[Gemini] 🚀 Starting — mode=$mode lang=$_voskTranslateTo');
