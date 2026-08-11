@@ -647,7 +647,10 @@ class _IptvVpnBypassCardState extends State<_IptvVpnBypassCard> {
     final p = await SharedPreferences.getInstance();
     await p.setBool('iptv_vpn_bypass', v);
     setState(() => _enabled = v);
-    try { await const MethodChannel('com.vezoo.player/network').invokeMethod('setIptvBypassVpn', {'enabled': v}); } catch (_) {}
+    try {
+      final res = await const MethodChannel('com.vezoo.player/network').invokeMethod<bool>('setIptvBypassVpn', {'enabled': v});
+      debugPrint('[VPN] bypass=$v result=$res');
+    } catch (e) { debugPrint('[VPN] error: $e'); }
   }
   @override
   Widget build(BuildContext context) => Card(
@@ -845,9 +848,26 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
               decoration: BoxDecoration(color: _chunkMs==ms ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
               child: Text('${ms}ms', style: TextStyle(color: _chunkMs==ms ? Colors.white : Colors.white38, fontSize: 11)))))]),
         const SizedBox(height: 12),
-        SizedBox(width: double.infinity, child: FilledButton(onPressed: _saveSettings,
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED).withOpacity(0.6), padding: const EdgeInsets.symmetric(vertical: 8)),
-          child: const Text('Save Settings', style: TextStyle(fontSize: 13)))),
+        Row(children: [
+          Expanded(child: FilledButton(onPressed: _saveSettings,
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED).withOpacity(0.6), padding: const EdgeInsets.symmetric(vertical: 8)),
+            child: const Text('Save Settings', style: TextStyle(fontSize: 13)))),
+          const SizedBox(width: 8),
+          OutlinedButton(onPressed: () async {
+            final p = await SharedPreferences.getInstance();
+            await p.remove('gemini_silence_ms'); await p.remove('gemini_prefix_ms');
+            await p.remove('gemini_start_sens'); await p.remove('gemini_end_sens');
+            await p.remove('gemini_chunk_ms'); await p.remove('gemini_model');
+            setState(() {
+              _silenceMs=350; _prefixMs=20;
+              _startSens='START_SENSITIVITY_HIGH'; _endSens='END_SENSITIVITY_HIGH';
+              _chunkMs=100; _model='gemini-3.5-live-translate-preview';
+            });
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('↺ Reset to defaults'), duration: Duration(seconds: 1)));
+          }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white38, side: const BorderSide(color: Colors.white12), padding: const EdgeInsets.symmetric(vertical: 8)),
+          child: const Text('Reset', style: TextStyle(fontSize: 13))),
+        ]),
       ],
     ])));
 }
