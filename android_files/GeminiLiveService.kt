@@ -115,7 +115,7 @@ class GeminiLiveService(private val apiKey: String) {
                     .put("responseModalities", modalities)
                     .put("translationConfig", JSONObject()
                         .put("targetLanguageCode", config.targetLang)
-                        .put("echoTargetLanguage", false)  // جلوگیری از echo))
+                        .put("echoTargetLanguage", false)))  // جلوگیری از echo
                 .put("realtimeInputConfig", JSONObject()
                     .put("automaticActivityDetection", JSONObject()
                         .put("disabled", false)
@@ -377,3 +377,4 @@ class GeminiLiveService(private val apiKey: String) {
         if (eventQueue.size > 200) eventQueue.poll()
     }
 }
+
