@@ -32,12 +32,12 @@ class GeminiLiveService(private val apiKey: String) {
     private val TAG = "GeminiLive"
     private val HOST = "generativelanguage.googleapis.com"
     private val PORT = 443
-    private val MODEL get() = config.model
     private val PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
     private val OUTPUT_SAMPLE_RATE = 24000
     private val OUTPUT_FRAME_BYTES = 4800  // 100ms @ 24kHz mono s16le
     private val INPUT_SAMPLE_RATE = 16000
+    private val MAX_OUTPUT_BYTES = OUTPUT_SAMPLE_RATE * 2 * 12  // 12s cap
 
     private val running = AtomicBoolean(false)
     private val connected = AtomicBoolean(false)
@@ -51,9 +51,13 @@ class GeminiLiveService(private val apiKey: String) {
     private var outputStream: OutputStream? = null
     private var inputStream: InputStream? = null
     private var audioThread: Thread? = null
+    private var playThread: Thread? = null
+
+    // AudioBuffer — مثل e2dub: bytearray با lock
+    private val audioBuffer = ByteArrayBuffer(MAX_OUTPUT_BYTES)
+
     @Volatile private var dubVolume: Float = 1.0f
     @Volatile private var lastAudioHash: Int = 0
-    @Volatile private var origVolumeFactor: Float = 1.0f
 
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
         if (running.getAndSet(true)) return
@@ -63,6 +67,43 @@ class GeminiLiveService(private val apiKey: String) {
         Thread { connectAndStream() }.start()
     }
 
+    private fun initAudioTrack() {
+        val buf = AudioTrack.getMinBufferSize(OUTPUT_SAMPLE_RATE,
+            AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            .coerceAtLeast(OUTPUT_FRAME_BYTES * 4)
+        audioTrack = AudioTrack.Builder()
+            .setAudioAttributes(AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            .setAudioFormat(AudioFormat.Builder().setSampleRate(OUTPUT_SAMPLE_RATE)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+            .setBufferSizeInBytes(buf).setTransferMode(AudioTrack.MODE_STREAM).build()
+        audioTrack?.play()
+
+        // pcm_writer — دقیقاً مثل e2dub
+        playThread = Thread {
+            var nextTick = System.currentTimeMillis()
+            while (running.get()) {
+                val at = audioTrack
+                if (at == null || at.state != AudioTrack.STATE_INITIALIZED) break
+                try {
+                    val frame = audioBuffer.take(OUTPUT_FRAME_BYTES)
+                    at.write(frame, 0, frame.size)
+                } catch (_: Exception) { break }
+                nextTick += 100
+                val delay = nextTick - System.currentTimeMillis()
+                if (delay > 0) {
+                    try { Thread.sleep(delay) } catch (_: InterruptedException) { break }
+                } else if (delay < -1000) {
+                    nextTick = System.currentTimeMillis()
+                }
+            }
+        }
+        playThread?.isDaemon = true
+        playThread?.start()
+    }
+
     private fun connectAndStream() {
         try {
             send("status", "connecting")
@@ -70,9 +111,7 @@ class GeminiLiveService(private val apiKey: String) {
             val raw = factory.createSocket(HOST, PORT) as javax.net.ssl.SSLSocket
             raw.soTimeout = 30_000
             raw.startHandshake()
-            socket = raw
-            outputStream = raw.outputStream
-            inputStream = raw.inputStream
+            socket = raw; outputStream = raw.outputStream; inputStream = raw.inputStream
 
             // WebSocket handshake — دقیقاً مثل e2dub
             val nonce = Base64.encodeToString(SecureRandom().generateSeed(16), Base64.NO_WRAP)
@@ -87,35 +126,27 @@ class GeminiLiveService(private val apiKey: String) {
             outputStream!!.flush()
 
             val respLine = readLine(inputStream!!)
-            Log.d(TAG, "HTTP: $respLine")
             if (!respLine.contains("101")) {
                 val sb = StringBuilder(respLine + "\n")
-                var line = readLine(inputStream!!)
-                var bodyLen = 0
+                var line = readLine(inputStream!!); var bodyLen = 0
                 while (line.isNotEmpty()) {
-                    if (line.lowercase().startsWith("content-length:"))
-                        bodyLen = line.substringAfter(":").trim().toIntOrNull() ?: 0
+                    if (line.lowercase().startsWith("content-length:")) bodyLen = line.substringAfter(":").trim().toIntOrNull() ?: 0
                     sb.append(line).append("\n"); line = readLine(inputStream!!)
                 }
-                if (bodyLen > 0) {
-                    val body = ByteArray(bodyLen.coerceAtMost(400))
-                    inputStream!!.read(body)
-                    sb.append("\nBODY: ").append(String(body, Charsets.UTF_8).take(300))
-                }
-                send("error", "WS failed: ${sb.toString().take(400)}")
-                return
+                if (bodyLen > 0) { val body = ByteArray(bodyLen.coerceAtMost(400)); inputStream!!.read(body); sb.append("BODY: ").append(String(body, Charsets.UTF_8).take(300)) }
+                send("error", "WS failed: ${sb.toString().take(400)}"); return
             }
             var line = readLine(inputStream!!); while (line.isNotEmpty()) { line = readLine(inputStream!!) }
 
-            // Setup — دقیقاً مثل e2dub با تنظیمات کاربر
+            // Setup
             val modalities = if (config.dubMode) JSONArray().put("AUDIO") else JSONArray().put("TEXT")
             val setup = JSONObject()
-                .put("model", "models/$MODEL")
+                .put("model", "models/${config.model}")
                 .put("generationConfig", JSONObject()
                     .put("responseModalities", modalities)
                     .put("translationConfig", JSONObject()
                         .put("targetLanguageCode", config.targetLang)
-                        .put("echoTargetLanguage", false)))  // جلوگیری از echo
+                        .put("echoTargetLanguage", false)))
                 .put("realtimeInputConfig", JSONObject()
                     .put("automaticActivityDetection", JSONObject()
                         .put("disabled", false)
@@ -131,7 +162,6 @@ class GeminiLiveService(private val apiKey: String) {
 
             raw.soTimeout = 15_000
             val setupMsg = wsReceive() ?: run { send("error", "Timeout waiting for setupComplete"); return }
-            Log.d(TAG, "setupResp: ${setupMsg.take(200)}")
             send("status", "raw:${setupMsg.take(100)}")
 
             val setupJson = JSONObject(setupMsg)
@@ -147,7 +177,6 @@ class GeminiLiveService(private val apiKey: String) {
             send("status", "recording_started")
             startAudioCapture()
 
-            // read loop
             while (running.get()) {
                 try {
                     val msg = wsReceive() ?: break
@@ -174,23 +203,18 @@ class GeminiLiveService(private val apiKey: String) {
                     val inline = part.optJSONObject("inlineData")
                     if (inline != null) {
                         val pcm = Base64.decode(inline.optString("data",""), Base64.DEFAULT)
-                        // فیلتر تکرار — hash آخرین chunk
-                        val chunkHash = pcm.take(32).hashCode()
-                        if (chunkHash != lastAudioHash) {
-                            lastAudioHash = chunkHash
-                            if (bufferBytes < MAX_BUFFER_BYTES) {
-                                audioBuffer.offer(pcm)
-                                bufferBytes += pcm.size
-                            }
+                        val hash = pcm.take(32).hashCode()
+                        if (hash != lastAudioHash) {
+                            lastAudioHash = hash
+                            audioBuffer.append(pcm)
+                            send("status", "audio:${pcm.size}")
                         }
-                        send("status", "audio:${pcm.size}")
                     }
                 } else {
                     val t = part.optString("text","")
                     if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
                 }
             }
-            // نشون دادن متن ترجمه شده (حتی در حالت دوبله برای subtitle)
             val inputT = sc.optJSONObject("outputTranscription")
             if (inputT != null) {
                 val t = inputT.optString("text","")
@@ -203,8 +227,7 @@ class GeminiLiveService(private val apiKey: String) {
         val chunkBytes = INPUT_SAMPLE_RATE * config.chunkMs / 1000 * 2
         val chunkSamples = chunkBytes / 2
         val bufSize = AudioRecord.getMinBufferSize(INPUT_SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-            .coerceAtLeast(chunkBytes * 4)
+            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(chunkBytes * 4)
 
         audioThread = Thread {
             val recorder = if (projection != null && android.os.Build.VERSION.SDK_INT >= 29) {
@@ -223,8 +246,6 @@ class GeminiLiveService(private val apiKey: String) {
             recorder.startRecording()
             val pcm = ShortArray(chunkSamples)
             val bytes = ByteArray(chunkBytes)
-            var lastSentHash = 0  // fix تکرار: hash آخرین chunk
-
             while (running.get()) {
                 val read = recorder.read(pcm, 0, chunkSamples)
                 if (read > 0 && connected.get()) {
@@ -232,16 +253,9 @@ class GeminiLiveService(private val apiKey: String) {
                         bytes[i*2] = (pcm[i].toInt() and 0xFF).toByte()
                         bytes[i*2+1] = ((pcm[i].toInt() shr 8) and 0xFF).toByte()
                     }
-                    val chunk = bytes.copyOf(read*2)
-                    val hash = chunk.take(16).hashCode()
-                    if (hash == lastSentHash) continue  // جلوگیری از تکرار
-                    lastSentHash = hash
-                    val b64 = Base64.encodeToString(chunk, Base64.NO_WRAP)
-                    try {
-                        wsSend(JSONObject().put("realtimeInput", JSONObject()
-                            .put("audio", JSONObject()
-                                .put("mimeType", "audio/pcm;rate=$INPUT_SAMPLE_RATE")
-                                .put("data", b64))).toString())
+                    val b64 = Base64.encodeToString(bytes.copyOf(read*2), Base64.NO_WRAP)
+                    try { wsSend(JSONObject().put("realtimeInput", JSONObject()
+                        .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
                     } catch (_: Exception) {}
                 }
             }
@@ -251,67 +265,17 @@ class GeminiLiveService(private val apiKey: String) {
         audioThread?.start()
     }
 
-    // jitter buffer مثل e2dub — 12 ثانیه max
-    private val audioBuffer = java.util.concurrent.LinkedBlockingDeque<ByteArray>()
-    private val MAX_BUFFER_BYTES = OUTPUT_SAMPLE_RATE * 2 * 12
-    private var bufferBytes = 0
-    private var playThread: Thread? = null
-
-    private fun initAudioTrack() {
-        val buf = AudioTrack.getMinBufferSize(OUTPUT_SAMPLE_RATE,
-            AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-            .coerceAtLeast(OUTPUT_FRAME_BYTES * 4)
-        audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-            .setAudioFormat(AudioFormat.Builder().setSampleRate(OUTPUT_SAMPLE_RATE)
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-            .setBufferSizeInBytes(buf).setTransferMode(AudioTrack.MODE_STREAM).build()
-        audioTrack?.play()
-        // thread جداگانه برای play — مثل pcm_writer در e2dub
-        playThread = Thread {
-            val frame = ByteArray(OUTPUT_FRAME_BYTES)
-            var nextTick = System.currentTimeMillis()
-            while (running.get()) {
-                val at = audioTrack ?: break
-                if (at.state != AudioTrack.STATE_INITIALIZED) break
-                try {
-                    val chunk = audioBuffer.poll(50, java.util.concurrent.TimeUnit.MILLISECONDS)
-                    if (chunk != null) {
-                        at.write(chunk, 0, chunk.size)
-                    } else {
-                        at.write(frame, 0, frame.size)
-                    }
-                } catch (_: Exception) { break }
-                nextTick += 100
-                val delay = nextTick - System.currentTimeMillis()
-                if (delay > 0) Thread.sleep(delay) else nextTick = System.currentTimeMillis()
-            }
-        }
-        playThread?.isDaemon = true
-        playThread?.start()
-    }
-
     private fun wsSend(payload: String) {
         val data = payload.toByteArray(Charsets.UTF_8)
         val len = data.size
         val mask = SecureRandom().generateSeed(4)
         val header = when {
-            len <= 125  -> byteArrayOf(0x81.toByte(), (0x80 or len).toByte())
+            len <= 125 -> byteArrayOf(0x81.toByte(), (0x80 or len).toByte())
             len <= 65535 -> byteArrayOf(0x81.toByte(), (0x80 or 126).toByte(), (len shr 8).toByte(), len.toByte())
-            else -> {
-                val lb = ByteArray(8)
-                for (i in 7 downTo 0) lb[i] = (len shr (8*(7-i))).toByte()
-                byteArrayOf(0x81.toByte(), (0x80 or 127).toByte()) + lb
-            }
+            else -> byteArrayOf(0x81.toByte(), (0x80 or 127).toByte(), 0,0,0,0, (len shr 24).toByte(),(len shr 16).toByte(),(len shr 8).toByte(),len.toByte())
         }
         val masked = ByteArray(len) { i -> (data[i].toInt() xor mask[i%4].toInt()).toByte() }
-        synchronized(this) {
-            outputStream?.write(header + mask + masked)
-            outputStream?.flush()
-        }
+        synchronized(this) { outputStream?.write(header + mask + masked); outputStream?.flush() }
     }
 
     private fun wsReceive(): String? {
@@ -323,58 +287,68 @@ class GeminiLiveService(private val apiKey: String) {
         if (len == 126L) len = ((inp.read() shl 8) or inp.read()).toLong()
         else if (len == 127L) { var l=0L; repeat(8){l=(l shl 8) or inp.read().toLong()}; len=l }
         val buf = ByteArray(len.toInt())
-        var off = 0
-        while (off < buf.size) { val r=inp.read(buf,off,buf.size-off); if(r<0) return null; off+=r }
+        var off = 0; while (off < buf.size) { val r=inp.read(buf,off,buf.size-off); if(r<0) return null; off+=r }
         return String(buf, Charsets.UTF_8)
     }
 
     private fun readLine(inp: InputStream): String {
-        val sb = StringBuilder()
-        var b = inp.read()
+        val sb = StringBuilder(); var b = inp.read()
         while (b >= 0 && b.toChar() != '\n') { if (b.toChar() != '\r') sb.append(b.toChar()); b = inp.read() }
         return sb.toString()
     }
 
-    fun setDubVolume(vol: Float) {
-        dubVolume = vol.coerceIn(0f, 1f)
-        audioTrack?.setVolume(dubVolume)
-    }
-
-    fun setOrigVolume(vol: Float) {
-        origVolumeFactor = vol.coerceIn(0f, 1f)
-    }
+    fun setDubVolume(vol: Float) { dubVolume = vol.coerceIn(0f, 1f); audioTrack?.setVolume(dubVolume) }
+    fun setOrigVolume(vol: Float) {} // کنترل از player side
 
     fun sendAudio(pcm: ByteArray) {
         if (!connected.get()) return
         val b64 = Base64.encodeToString(pcm, Base64.NO_WRAP)
-        try {
-            wsSend(JSONObject().put("realtimeInput", JSONObject()
-                .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
+        try { wsSend(JSONObject().put("realtimeInput", JSONObject()
+            .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
         } catch (_: Exception) {}
     }
 
     fun stop() {
         running.set(false); connected.set(false)
+        playThread?.interrupt(); playThread = null
         audioThread?.interrupt(); audioThread = null
-        stopInternal()
-        send("status", "stopped")
+        stopInternal(); send("status", "stopped")
     }
 
     private fun stopInternal() {
-        playThread?.interrupt(); playThread = null
-        audioBuffer.clear(); bufferBytes = 0
-        try { audioTrack?.stop(); audioTrack?.release() } catch (_:Exception) {}
-        audioTrack = null
+        audioBuffer.clear()
+        try { audioTrack?.stop(); audioTrack?.release() } catch (_:Exception) {}; audioTrack = null
         try { socket?.close(); socket = null } catch (_:Exception) {}
-        try { projection?.stop() } catch (_:Exception) {}
-        projection = null
+        try { projection?.stop() } catch (_:Exception) {}; projection = null
     }
 
     fun getNextEvent(): Map<String,Any>? = eventQueue.poll()
-
     private fun send(type: String, data: Any) {
         eventQueue.offer(mapOf("type" to type, "data" to data))
         if (eventQueue.size > 200) eventQueue.poll()
     }
 }
 
+// AudioBuffer — دقیقاً مثل e2dub
+class ByteArrayBuffer(private val maxBytes: Int) {
+    private val data = java.util.ArrayDeque<Byte>()
+    private val lock = Any()
+
+    fun append(bytes: ByteArray) {
+        synchronized(lock) {
+            bytes.forEach { data.addLast(it) }
+            while (data.size > maxBytes) data.removeFirst()
+        }
+    }
+
+    fun take(size: Int): ByteArray {
+        synchronized(lock) {
+            val count = minOf(size, data.size)
+            val result = ByteArray(size)
+            for (i in 0 until count) result[i] = data.removeFirst()
+            return result  // بقیه silence (zero) میمونه
+        }
+    }
+
+    fun clear() { synchronized(lock) { data.clear() } }
+}
