@@ -158,7 +158,8 @@ class MainActivity : FlutterActivity() {
                         prefixPaddingMs = call.argument<Int>("prefixMs") ?: 20,
                         startSensitivity = call.argument<String>("startSens") ?: "START_SENSITIVITY_HIGH",
                         endSensitivity = call.argument<String>("endSens") ?: "END_SENSITIVITY_HIGH",
-                        chunkMs = call.argument<Int>("chunkMs") ?: 100
+                        chunkMs = call.argument<Int>("chunkMs") ?: 100,
+                        voice = call.argument<String>("voice") ?: "Charon"
                     )
                     pendingGeminiLang = lang
                     pendingGeminiDub = dubMode
