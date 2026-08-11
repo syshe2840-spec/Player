@@ -498,6 +498,26 @@ class ToolsTabBodyState extends State<ToolsTabBody> {
       _GeminiApiKeyCard(),
       // ── VPN Bypass for IPTV ──
       _IptvVpnBypassCard(),
+      // ── Support / Donate ──
+      Card(color: const Color(0xFF12122A), child: InkWell(
+        onTap: () async {
+          final url = Uri.parse('https://github.com/RezaArbabBot/Donate');
+          try { await launchUrl(url, mode: LaunchMode.externalApplication); } catch(_) {}
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
+          Container(padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.pink.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+            child: const Text('💜', style: TextStyle(fontSize: 20))),
+          const SizedBox(width: 12),
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Support Vezoo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            SizedBox(height: 2),
+            Text('If Vezoo has been useful, consider supporting us', style: TextStyle(color: Colors.white54, fontSize: 11)),
+          ])),
+          const Icon(Icons.favorite_rounded, color: Colors.pink, size: 20),
+        ])))),
+      const SizedBox(height: 4),
       // ── yt-dlp ──
       _YtDlpCard(),
       const SizedBox(height: 12),
@@ -691,8 +711,9 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
   String _endSens = 'END_SENSITIVITY_HIGH';
   int _chunkMs = 100;
   String _model = 'gemini-3.5-live-translate-preview';
-  double _dubVolume = 1.0;    // صدای دوبله
-  double _origVolume = 1.0;   // صدای اصلی
+  double _dubVolume = 1.0;
+  double _origVolume = 1.0;
+  String _accuracy = 'balanced';  // fast / balanced / accurate
 
   static const _models = {
     'gemini-3.5-live-translate-preview': 'Gemini 3.5 Live Translate (پیشنهادی)',
@@ -721,6 +742,7 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
       _model = p.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview';
       _dubVolume = p.getDouble('gemini_dub_volume') ?? 1.0;
       _origVolume = p.getDouble('gemini_orig_volume') ?? 1.0;
+      _accuracy = p.getString('gemini_accuracy') ?? 'balanced';
     });
   }
 
@@ -734,6 +756,7 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
     await p.setString('gemini_model', _model);
     await p.setDouble('gemini_dub_volume', _dubVolume);
     await p.setDouble('gemini_orig_volume', _origVolume);
+    await p.setString('gemini_accuracy', _accuracy);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved'), backgroundColor: Colors.green, duration: Duration(seconds: 1)));
   }
@@ -847,6 +870,25 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
           items: _models.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
           onChanged: (v) => setState(() => _model = v!)),
         const SizedBox(height: 12),
+        const Text('Accuracy', style: TextStyle(color: Colors.white, fontSize: 12)),
+        const SizedBox(height: 6),
+        Row(children: [
+          ...({'fast': ('Fast', 'Low latency, may repeat'), 'balanced': ('Balanced', 'Recommended'), 'accurate': ('Accurate', 'High quality, slower')}).entries.map((e) =>
+            Expanded(child: GestureDetector(
+              onTap: () => setState(() => _accuracy = e.key),
+              child: Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _accuracy == e.key ? const Color(0xFF7C3AED).withOpacity(0.2) : const Color(0xFF1A1A2A),
+                  border: Border.all(color: _accuracy == e.key ? const Color(0xFF7C3AED) : Colors.white12),
+                  borderRadius: BorderRadius.circular(8)),
+                child: Column(children: [
+                  Text(e.value.$1, style: TextStyle(color: _accuracy == e.key ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+                  Text(e.value.$2, style: TextStyle(color: _accuracy == e.key ? Colors.white54 : Colors.white24, fontSize: 9), textAlign: TextAlign.center),
+                ])))),
+        ]),
+        const SizedBox(height: 12),
         const Divider(color: Colors.white12, height: 1),
         const SizedBox(height: 10),
         const Text('Volume Control', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -905,7 +947,7 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
             setState(() {
               _silenceMs=350; _prefixMs=20;
               _startSens='START_SENSITIVITY_HIGH'; _endSens='END_SENSITIVITY_HIGH';
-              _chunkMs=100; _model='gemini-3.5-live-translate-preview'; _dubVolume=1.0; _origVolume=1.0;
+              _chunkMs=100; _model='gemini-3.5-live-translate-preview'; _dubVolume=1.0; _origVolume=1.0; _accuracy='balanced';
             });
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('↺ Reset to defaults'), duration: Duration(seconds: 1)));
