@@ -169,7 +169,13 @@ class MainActivity : FlutterActivity() {
                     android.os.SystemClock.sleep(500)
                     val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
                     if (mgr != null) startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_GEMINI)
-                    else geminiService?.start(lang, null, dubMode)
+                    else geminiService?.start(GeminiConfig(
+                            targetLang=lang, dubMode=dubMode,
+                            silenceDurationMs=call.argument<Int>("silenceMs") ?: 350,
+                            prefixPaddingMs=call.argument<Int>("prefixMs") ?: 20,
+                            startSensitivity=call.argument<String>("startSens") ?: "START_SENSITIVITY_HIGH",
+                            endSensitivity=call.argument<String>("endSens") ?: "END_SENSITIVITY_HIGH",
+                            chunkMs=call.argument<Int>("chunkMs") ?: 100), null)
                     result.success(null)
                 }
                 "sendAudio" -> {
