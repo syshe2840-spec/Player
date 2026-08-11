@@ -873,20 +873,11 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
         const Text('Accuracy', style: TextStyle(color: Colors.white, fontSize: 12)),
         const SizedBox(height: 6),
         Row(children: [
-          ...({'fast': ('Fast', 'Low latency, may repeat'), 'balanced': ('Balanced', 'Recommended'), 'accurate': ('Accurate', 'High quality, slower')}).entries.map((e) =>
-            Expanded(child: GestureDetector(
-              onTap: () => setState(() => _accuracy = e.key),
-              child: Container(
-                margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _accuracy == e.key ? const Color(0xFF7C3AED).withOpacity(0.2) : const Color(0xFF1A1A2A),
-                  border: Border.all(color: _accuracy == e.key ? const Color(0xFF7C3AED) : Colors.white12),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Column(children: [
-                  Text(e.value.$1, style: TextStyle(color: _accuracy == e.key ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
-                  Text(e.value.$2, style: TextStyle(color: _accuracy == e.key ? Colors.white54 : Colors.white24, fontSize: 9), textAlign: TextAlign.center),
-                ])))),
+          _AccuracyBtn(key: 'fast', label: 'Fast', sub: 'Low latency', selected: _accuracy, onTap: (v) => setState(() => _accuracy = v)),
+          const SizedBox(width: 4),
+          _AccuracyBtn(key: 'balanced', label: 'Balanced', sub: 'Recommended', selected: _accuracy, onTap: (v) => setState(() => _accuracy = v)),
+          const SizedBox(width: 4),
+          _AccuracyBtn(key: 'accurate', label: 'Accurate', sub: 'High quality', selected: _accuracy, onTap: (v) => setState(() => _accuracy = v)),
         ]),
         const SizedBox(height: 12),
         const Divider(color: Colors.white12, height: 1),
@@ -956,4 +947,26 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
         ]),
       ],
     ])));
+}
+
+class _AccuracyBtn extends StatelessWidget {
+  final String key2;
+  final String label;
+  final String sub;
+  final String selected;
+  final void Function(String) onTap;
+  const _AccuracyBtn({required String key, required this.label, required this.sub, required this.selected, required this.onTap}) : key2 = key;
+  @override
+  Widget build(BuildContext context) => Expanded(child: GestureDetector(
+    onTap: () => onTap(key2),
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: selected == key2 ? const Color(0xFF7C3AED).withOpacity(0.2) : const Color(0xFF1A1A2A),
+        border: Border.all(color: selected == key2 ? const Color(0xFF7C3AED) : Colors.white12),
+        borderRadius: BorderRadius.circular(8)),
+      child: Column(children: [
+        Text(label, style: TextStyle(color: selected==key2 ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+        Text(sub, style: TextStyle(color: selected==key2 ? Colors.white54 : Colors.white24, fontSize: 9), textAlign: TextAlign.center),
+      ]))));
 }
