@@ -76,7 +76,9 @@ class GeminiLiveService(private val apiKey: String) {
             .coerceAtLeast(OUTPUT_FRAME_BYTES * 4)
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
+                // USAGE_ASSISTANT — AudioPlaybackCapture این رو نمیگیره
+                // جلوگیری از feedback loop
+                .setUsage(AudioAttributes.USAGE_ASSISTANT)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
             .setAudioFormat(AudioFormat.Builder().setSampleRate(OUTPUT_SAMPLE_RATE)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -236,7 +238,9 @@ class GeminiLiveService(private val apiKey: String) {
             val recorder = if (projection != null && android.os.Build.VERSION.SDK_INT >= 29) {
                 val cfg2 = android.media.AudioPlaybackCaptureConfiguration.Builder(projection!!)
                     .addMatchingUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                    .addMatchingUsage(android.media.AudioAttributes.USAGE_UNKNOWN).build()
+                    .addMatchingUsage(android.media.AudioAttributes.USAGE_GAME)
+                    // USAGE_ASSISTANT حذف شد — جلوگیری از capture صدای دوبله
+                    .build()
                 AudioRecord.Builder().setAudioPlaybackCaptureConfig(cfg2)
                     .setAudioFormat(AudioFormat.Builder().setSampleRate(INPUT_SAMPLE_RATE)
                         .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
