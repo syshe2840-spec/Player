@@ -152,7 +152,15 @@ class GeminiLiveService(private val apiKey: String) {
                     .put("responseModalities", modalities)
                     .put("translationConfig", JSONObject()
                         .put("targetLanguageCode", config.targetLang)
-                        .put("echoTargetLanguage", false)))
+                        .put("echoTargetLanguage", false))
+                    .apply {
+                        if (config.dubMode && config.voice.isNotEmpty()) {
+                            put("speechConfig", JSONObject()
+                                .put("voiceConfig", JSONObject()
+                                    .put("prebuiltVoiceConfig", JSONObject()
+                                        .put("voiceName", config.voice))))
+                        }
+                    })
                 .put("realtimeInputConfig", JSONObject()
                     .put("automaticActivityDetection", JSONObject()
                         .put("disabled", false)
