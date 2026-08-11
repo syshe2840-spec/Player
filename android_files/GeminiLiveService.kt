@@ -294,6 +294,15 @@ class GeminiLiveService(private val apiKey: String) {
         return sb.toString()
     }
 
+    fun sendAudio(pcm: ByteArray) {
+        if (!connected.get()) return
+        val b64 = Base64.encodeToString(pcm, Base64.NO_WRAP)
+        try {
+            wsSend(JSONObject().put("realtimeInput", JSONObject()
+                .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
+        } catch (_: Exception) {}
+    }
+
     fun stop() {
         running.set(false); connected.set(false)
         audioThread?.interrupt(); audioThread = null
