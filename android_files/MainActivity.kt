@@ -150,6 +150,15 @@ class MainActivity : FlutterActivity() {
                     val apiKey = call.argument<String>("apiKey") ?: run { result.error("NO_KEY","",null); return@setMethodCallHandler }
                     val lang = call.argument<String>("lang") ?: "fa"
                     val dubMode = call.argument<Boolean>("dubMode") ?: false
+                    val cfg = GeminiConfig(
+                        targetLang = lang,
+                        dubMode = dubMode,
+                        silenceDurationMs = call.argument<Int>("silenceMs") ?: 350,
+                        prefixPaddingMs = call.argument<Int>("prefixMs") ?: 20,
+                        startSensitivity = call.argument<String>("startSens") ?: "START_SENSITIVITY_HIGH",
+                        endSensitivity = call.argument<String>("endSens") ?: "END_SENSITIVITY_HIGH",
+                        chunkMs = call.argument<Int>("chunkMs") ?: 100
+                    )
                     pendingGeminiLang = lang
                     pendingGeminiDub = dubMode
                     geminiService = GeminiLiveService(apiKey)
@@ -656,8 +665,9 @@ class MainActivity : FlutterActivity() {
             val projection = mgr?.getMediaProjection(result, data)
             pendingGeminiLang?.let { lang ->
                 pendingGeminiLang = null
+                val pendingCfg = GeminiConfig(targetLang=lang, dubMode=pendingGeminiDub)
                 Thread {
-                    try { geminiService?.start(lang, projection, pendingGeminiDub) }
+                    try { geminiService?.start(pendingCfg, projection) }
                     catch (e: Throwable) { android.util.Log.e("Gemini", "start failed: ${e.message}") }
                 }.start()
             }
