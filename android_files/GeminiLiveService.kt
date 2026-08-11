@@ -194,7 +194,8 @@ class GeminiLiveService(private val apiKey: String) {
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 connected.set(false)
-                send("status", "disconnected:$code")
+                Log.w(TAG, "WS closed [$code]: $reason")
+                send("status", "closed:$code reason:$reason")
             }
         })
     }
