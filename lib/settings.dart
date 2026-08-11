@@ -691,6 +691,8 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
   String _endSens = 'END_SENSITIVITY_HIGH';
   int _chunkMs = 100;
   String _model = 'gemini-3.5-live-translate-preview';
+  double _dubVolume = 1.0;    // صدای دوبله
+  double _origVolume = 1.0;   // صدای اصلی
 
   static const _models = {
     'gemini-3.5-live-translate-preview': 'Gemini 3.5 Live Translate (پیشنهادی)',
@@ -717,6 +719,8 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
       _endSens = p.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH';
       _chunkMs = p.getInt('gemini_chunk_ms') ?? 100;
       _model = p.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview';
+      _dubVolume = p.getDouble('gemini_dub_volume') ?? 1.0;
+      _origVolume = p.getDouble('gemini_orig_volume') ?? 1.0;
     });
   }
 
@@ -728,6 +732,8 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
     await p.setString('gemini_end_sens', _endSens);
     await p.setInt('gemini_chunk_ms', _chunkMs);
     await p.setString('gemini_model', _model);
+    await p.setDouble('gemini_dub_volume', _dubVolume);
+    await p.setDouble('gemini_orig_volume', _origVolume);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved'), backgroundColor: Colors.green, duration: Duration(seconds: 1)));
   }
@@ -840,6 +846,44 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
           style: const TextStyle(color: Colors.white, fontSize: 11),
           items: _models.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
           onChanged: (v) => setState(() => _model = v!)),
+        const SizedBox(height: 12),
+        const Divider(color: Colors.white12, height: 1),
+        const SizedBox(height: 10),
+        const Text('Volume Control', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Row(children: [
+          const Icon(Icons.volume_up_rounded, color: Colors.white38, size: 16),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Dub Volume', style: TextStyle(color: Colors.white, fontSize: 12))),
+          Text('${(_dubVolume*100).round()}%', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 12)),
+        ]),
+        Slider(value: _dubVolume, min: 0, max: 1, divisions: 20,
+          activeColor: const Color(0xFF7C3AED),
+          onChanged: (v) {
+            setState(() => _dubVolume = v);
+            const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('setDubVolume', {'volume': v});
+          }),
+        Row(children: [
+          const Icon(Icons.tv_rounded, color: Colors.white38, size: 16),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Original Volume', style: TextStyle(color: Colors.white, fontSize: 12))),
+          Text('${(_origVolume*100).round()}%', style: const TextStyle(color: Color(0xFF0EA5E9), fontSize: 12)),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              setState(() => _origVolume = _origVolume > 0 ? 0 : 1.0);
+              const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('setOrigVolume', {'volume': _origVolume > 0 ? 0.0 : 1.0});
+            },
+            child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: _origVolume == 0 ? Colors.red.withOpacity(0.2) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
+              child: Text(_origVolume == 0 ? '🔇 Muted' : '🔊', style: TextStyle(color: _origVolume == 0 ? Colors.red : Colors.white38, fontSize: 11)))),
+        ]),
+        Slider(value: _origVolume, min: 0, max: 1, divisions: 20,
+          activeColor: const Color(0xFF0EA5E9),
+          onChanged: (v) {
+            setState(() => _origVolume = v);
+            const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('setOrigVolume', {'volume': v});
+          }),
         const SizedBox(height: 8),
         Row(children: [const Expanded(child: Text('Chunk Size', style: TextStyle(color: Colors.white, fontSize: 12))),
           ...[50,100,200].map((ms) => GestureDetector(
@@ -861,7 +905,7 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
             setState(() {
               _silenceMs=350; _prefixMs=20;
               _startSens='START_SENSITIVITY_HIGH'; _endSens='END_SENSITIVITY_HIGH';
-              _chunkMs=100; _model='gemini-3.5-live-translate-preview';
+              _chunkMs=100; _model='gemini-3.5-live-translate-preview'; _dubVolume=1.0; _origVolume=1.0;
             });
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('↺ Reset to defaults'), duration: Duration(seconds: 1)));
