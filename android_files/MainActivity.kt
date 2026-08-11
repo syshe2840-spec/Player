@@ -187,6 +187,14 @@ class MainActivity : FlutterActivity() {
                 }
                 "stop" -> { geminiService?.stop(); geminiService = null; result.success(null) }
                 "getNextEvent" -> result.success(geminiService?.getNextEvent())
+                "setDubVolume" -> {
+                    val vol = (call.argument<Double>("volume") ?: 1.0).toFloat()
+                    geminiService?.setDubVolume(vol); result.success(null)
+                }
+                "setOrigVolume" -> {
+                    val vol = (call.argument<Double>("volume") ?: 1.0).toFloat()
+                    geminiService?.setOrigVolume(vol); result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
