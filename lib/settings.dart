@@ -687,6 +687,13 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
   String _startSens = 'START_SENSITIVITY_HIGH';
   String _endSens = 'END_SENSITIVITY_HIGH';
   int _chunkMs = 100;
+  String _model = 'gemini-3.5-live-translate-preview';
+
+  static const _models = {
+    'gemini-3.5-live-translate-preview': 'Gemini 3.5 Live Translate (پیشنهادی)',
+    'gemini-live-2.5-flash-preview': 'Gemini 2.5 Flash Live',
+    'gemini-2.0-flash-live-001': 'Gemini 2.0 Flash Live',
+  };
 
   static const _sensMap = {
     'START_SENSITIVITY_LOW':'Low','START_SENSITIVITY_MEDIUM':'Medium','START_SENSITIVITY_HIGH':'High'};
@@ -706,6 +713,7 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
       _startSens = p.getString('gemini_start_sens') ?? 'START_SENSITIVITY_HIGH';
       _endSens = p.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH';
       _chunkMs = p.getInt('gemini_chunk_ms') ?? 100;
+      _model = p.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview';
     });
   }
 
@@ -716,6 +724,7 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
     await p.setString('gemini_start_sens', _startSens);
     await p.setString('gemini_end_sens', _endSens);
     await p.setInt('gemini_chunk_ms', _chunkMs);
+    await p.setString('gemini_model', _model);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved'), backgroundColor: Colors.green, duration: Duration(seconds: 1)));
   }
@@ -816,6 +825,18 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
             style: const TextStyle(color: Colors.white, fontSize: 12), underline: const SizedBox(),
             items: _endMap.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
             onChanged: (v) => setState(() => _endSens = v!))]),
+        const SizedBox(height: 8),
+        const Text('Model', style: TextStyle(color: Colors.white, fontSize: 12)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: _model,
+          dropdownColor: const Color(0xFF1A1A2A),
+          decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+          style: const TextStyle(color: Colors.white, fontSize: 11),
+          items: _models.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+          onChanged: (v) => setState(() => _model = v!)),
         const SizedBox(height: 8),
         Row(children: [const Expanded(child: Text('Chunk Size', style: TextStyle(color: Colors.white, fontSize: 12))),
           ...[50,100,200].map((ms) => GestureDetector(
