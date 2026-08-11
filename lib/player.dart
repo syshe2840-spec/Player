@@ -545,6 +545,7 @@ class _PlayerState extends State<PlayerScreen>{
       _aiLog.add('[Gemini] key=${key.substring(0, key.length.clamp(0, 8))}...');
     });
     try {
+      final prefs = await SharedPreferences.getInstance();
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
       'model': prefs.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview',
