@@ -18,6 +18,7 @@ import javax.net.ssl.SSLSocketFactory
 
 data class GeminiConfig(
     val targetLang: String = "fa",
+    val model: String = "gemini-3.5-live-translate-preview",
     val silenceDurationMs: Int = 350,
     val prefixPaddingMs: Int = 20,
     val startSensitivity: String = "START_SENSITIVITY_HIGH",
@@ -31,7 +32,7 @@ class GeminiLiveService(private val apiKey: String) {
     private val TAG = "GeminiLive"
     private val HOST = "generativelanguage.googleapis.com"
     private val PORT = 443
-    private val MODEL = "gemini-3.5-live-translate-preview"
+    private val MODEL get() = config.model
     private val PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
     private val OUTPUT_SAMPLE_RATE = 24000
@@ -169,7 +170,11 @@ class GeminiLiveService(private val apiKey: String) {
                     val inline = part.optJSONObject("inlineData")
                     if (inline != null) {
                         val pcm = Base64.decode(inline.optString("data",""), Base64.DEFAULT)
-                        audioTrack?.write(pcm, 0, pcm.size)
+                        // اضافه به jitter buffer
+                        if (bufferBytes < MAX_BUFFER_BYTES) {
+                            audioBuffer.offer(pcm)
+                            bufferBytes += pcm.size
+                        }
                         send("status", "audio:${pcm.size}")
                     }
                 } else {
@@ -238,10 +243,16 @@ class GeminiLiveService(private val apiKey: String) {
         audioThread?.start()
     }
 
+    // jitter buffer مثل e2dub — 12 ثانیه max
+    private val audioBuffer = java.util.concurrent.LinkedBlockingDeque<ByteArray>()
+    private val MAX_BUFFER_BYTES = OUTPUT_SAMPLE_RATE * 2 * 12
+    private var bufferBytes = 0
+    private var playThread: Thread? = null
+
     private fun initAudioTrack() {
         val buf = AudioTrack.getMinBufferSize(OUTPUT_SAMPLE_RATE,
             AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-            .coerceAtLeast(OUTPUT_SAMPLE_RATE * 2)
+            .coerceAtLeast(OUTPUT_FRAME_BYTES * 4)
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -251,6 +262,25 @@ class GeminiLiveService(private val apiKey: String) {
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
             .setBufferSizeInBytes(buf).setTransferMode(AudioTrack.MODE_STREAM).build()
         audioTrack?.play()
+        // thread جداگانه برای play — مثل pcm_writer در e2dub
+        playThread = Thread {
+            val frame = ByteArray(OUTPUT_FRAME_BYTES)
+            var nextTick = System.currentTimeMillis()
+            while (running.get()) {
+                val chunk = try { audioBuffer.poll(50, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_:Exception) { null }
+                if (chunk != null) {
+                    audioTrack?.write(chunk, 0, chunk.size)
+                } else {
+                    // silence — جلوگیری از underrun
+                    audioTrack?.write(frame, 0, frame.size)
+                }
+                nextTick += 100
+                val delay = nextTick - System.currentTimeMillis()
+                if (delay > 0) Thread.sleep(delay) else nextTick = System.currentTimeMillis()
+            }
+        }
+        playThread?.isDaemon = true
+        playThread?.start()
     }
 
     private fun wsSend(payload: String) {
@@ -311,6 +341,8 @@ class GeminiLiveService(private val apiKey: String) {
     }
 
     private fun stopInternal() {
+        playThread?.interrupt(); playThread = null
+        audioBuffer.clear(); bufferBytes = 0
         try { audioTrack?.stop(); audioTrack?.release() } catch (_:Exception) {}
         audioTrack = null
         try { socket?.close(); socket = null } catch (_:Exception) {}
