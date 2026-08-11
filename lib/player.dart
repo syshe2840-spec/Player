@@ -547,7 +547,13 @@ class _PlayerState extends State<PlayerScreen>{
     try {
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
-      });
+      'model': prefs.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview',
+      'silenceMs': prefs.getInt('gemini_silence_ms') ?? 350,
+      'prefixMs': prefs.getInt('gemini_prefix_ms') ?? 20,
+      'startSens': prefs.getString('gemini_start_sens') ?? 'START_SENSITIVITY_HIGH',
+      'endSens': prefs.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH',
+      'chunkMs': prefs.getInt('gemini_chunk_ms') ?? 100,
+    });
       if (_mounted) setState((){_aiLog.add('[Gemini] ✅ start() called — waiting for MediaProjection...');});
     } catch (e) {
       if (_mounted) setState((){_aiLog.add('[Gemini] ❌ start error: $e'); _dgActive = false;});
