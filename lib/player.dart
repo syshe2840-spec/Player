@@ -28,6 +28,7 @@ import 'lyrics_sheet.dart';
 import 'live_translation_sync.dart';
 import 'mlkit_translation_service.dart';
 import 'gemini_live_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'subtitle_storage.dart';
 import 'whisper_service.dart';
 import 'settings.dart';
@@ -572,10 +573,15 @@ class _PlayerState extends State<PlayerScreen>{
         final fin = (data as Map?)?['final'] as bool? ?? true;
         if (t.isNotEmpty) {
           setState(() {
+            // دوبله: sub1=متن ترجمه، sub2 خالی
+            // زیرنویس: sub1=متن
             _dgText = t;
             _aiLog.add('[Gemini] 💬 $t');
           });
-          if (fin) _handleVoskFinal(t);
+          if (fin) {
+            // زیرنویس همیشه نشون بده (حتی در حالت دوبله)
+            _handleVoskFinal(t);
+          }
         }
       } else if (type == 'status') {
         final s = data.toString();
