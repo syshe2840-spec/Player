@@ -416,6 +416,12 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   Future<void> _switchVideo(int idx)async{
+    // ۲. وقتی ویدیو عوض میشه Gemini رو خاموش کن
+    if (_useGeminiLive && _dgActive) {
+      _geminiPollTimer?.cancel(); _dgActive = false; _dgText = ''; _dgText2 = '';
+      try { await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+      player.setVolume(100);
+    }
     await Store.savePos(_curPath,_position);
     _idx=idx; _position=Duration.zero; _duration=Duration.zero;
     _sub1=[]; _sub2=[]; _repeatA=null; _repeatB=null; _abActive=false;
@@ -542,8 +548,11 @@ class _PlayerState extends State<PlayerScreen>{
     // چک VPN bypass
     try {
       final netInfo = await const MethodChannel('com.vezoo.player/network').invokeMethod<String>('getNetworkInfo');
-      if (_mounted) setState((){_aiLog.add('[NET] $netInfo');});
-    } catch (_) {}
+      if (_mounted) setState((){_aiLog.add('[VPN/NET] $netInfo');});
+      // چک VPN bypass
+      final bypassEnabled = (await SharedPreferences.getInstance()).getBool('iptv_vpn_bypass') ?? false;
+      if (_mounted) setState((){_aiLog.add('[VPN] bypass=${bypassEnabled ? "ON (IPTV direct)" : "OFF (all VPN)"}');});
+    } catch (e) { if (_mounted) setState((){_aiLog.add('[VPN] error: $e');}); }
     setState(() {
       _dgActive = true; _dgText = ''; _dgText2 = '';
       _aiLog.add('[Gemini] 🚀 Starting — mode=$mode lang=$_voskTranslateTo');
@@ -618,10 +627,10 @@ class _PlayerState extends State<PlayerScreen>{
     });
     // original volume when dub mode starts
     if (_geminiDubMode) {
-      SharedPreferences.getInstance().then((p) {
-        final vol = (p.getDouble('gemini_orig_volume') ?? 1.0) * 100;
-        if (_mounted) player.setVolume(vol.clamp(0, 100));
-      });
+      final p2 = await SharedPreferences.getInstance();
+      final origVol = (p2.getDouble('gemini_orig_volume') ?? 0.3) * 100;
+      if (_mounted) player.setVolume(origVol.clamp(0, 100));
+      if (_mounted) setState((){_aiLog.add('[DUB] original audio → ${origVol.round()}%');});
     }
   }
 
@@ -1652,6 +1661,11 @@ class _PlayerState extends State<PlayerScreen>{
     _translateDebounceTimer?.cancel(); _translateDebounceTimer = null;
     _dgSub?.cancel();
     _geminiPollTimer?.cancel(); _geminiPollTimer = null;
+    if (_useGeminiLive && _dgActive) {
+      try { await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+      // برگردوندن volume اصلی
+      player.setVolume(100);
+    }
     if(_dgActive){
       _dgActive = false;
       if (_useGeminiLive) { try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_){} }
