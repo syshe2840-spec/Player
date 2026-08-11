@@ -79,6 +79,7 @@ class _PlayerState extends State<PlayerScreen>{
   bool _useAndroidStt = false;
   bool _useGeminiLive = false;
   bool _geminiDubMode = false;
+  String _geminiVoice = 'Charon'; // default: male
   Timer? _geminiPollTimer;
   late int _curChannelIdx;
   String? _title; // عنوان ویدیوی جاری
@@ -770,6 +771,7 @@ class _PlayerState extends State<PlayerScreen>{
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
       _geminiDubMode = result['geminiDubMode'] as bool? ?? false;
+      final geminiVoice = result['geminiVoice'] as String? ?? 'Charon';
       // درخواست permission میکروفون
       final micStatus = await permission_handler.Permission.microphone.request();
       if (!micStatus.isGranted) {
@@ -2766,7 +2768,45 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   double _mlkitProgress = 0;
   bool _mlkitReady = false;
   bool _geminiDubMode = false;
+  String _geminiVoice = 'Charon'; // default: male
 
+
+  static const _geminiVoices = {
+    'Aoede': '♀ Aoede (Female)',
+    'Charon': '♂ Charon (Male)',
+    'Fenrir': '♂ Fenrir (Male)',
+    'Kore': '♀ Kore (Female)',
+    'Puck': '♂ Puck (Male, light)',
+    'Zephyr': '♀ Zephyr (Female, soft)',
+    'Orbit': '♂ Orbit (Male, deep)',
+    'Nova': '♀ Nova (Female, bright)',
+  };
+
+  // زبان‌های Gemini Live
+  static const _geminiLangs = {
+    'fa': '🇮🇷 Persian (fa)',
+    'en': '🇺🇸 English (en)',
+    'ar': '🇸🇦 Arabic (ar)',
+    'zh': '🇨🇳 Chinese (zh)',
+    'ru': '🇷🇺 Russian (ru)',
+    'es': '🇪🇸 Spanish (es)',
+    'fr': '🇫🇷 French (fr)',
+    'de': '🇩🇪 German (de)',
+    'tr': '🇹🇷 Turkish (tr)',
+    'hi': '🇮🇳 Hindi (hi)',
+    'ja': '🇯🇵 Japanese (ja)',
+    'ko': '🇰🇷 Korean (ko)',
+    'pt': '🇧🇷 Portuguese (pt)',
+    'it': '🇮🇹 Italian (it)',
+    'nl': '🇳🇱 Dutch (nl)',
+    'pl': '🇵🇱 Polish (pl)',
+    'uk': '🇺🇦 Ukrainian (uk)',
+    'sv': '🇸🇪 Swedish (sv)',
+    'he': '🇮🇱 Hebrew (he)',
+    'id': '🇮🇩 Indonesian (id)',
+    'vi': '🇻🇳 Vietnamese (vi)',
+    'th': '🇹🇭 Thai (th)',
+  };
   static const _langs = {
     'auto': '🌐 تشخیص خودکار',
     'fa': '🇮🇷 فارسی',
@@ -3234,11 +3274,12 @@ StatefulBuilder(builder: (_, ss2) {
           ])),
         ],
         const SizedBox(height: 8),
-        const Align(alignment: Alignment.centerRight,
-          child: Text('ترجمه به', style: TextStyle(color: Colors.white60, fontSize: 12))),
+        Align(alignment: Alignment.centerRight,
+          child: Text(_engine=='gemini' ? 'Target Language' : 'ترجمه به',
+            style: const TextStyle(color: Colors.white60, fontSize: 12))),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _translateTo,
+          value: _engine=='gemini' ? (_geminiLangs.containsKey(_translateTo) ? _translateTo : 'fa') : _translateTo,
           dropdownColor: const Color(0xFF1A1A2A),
           decoration: InputDecoration(
             filled: true, fillColor: const Color(0xFF1A1A2A),
@@ -3266,6 +3307,7 @@ StatefulBuilder(builder: (_, ss2) {
           'showOriginal': _showOriginal,
           'useOffline': _useOffline,
           'geminiDubMode': _geminiDubMode,
+          'geminiVoice': _geminiVoice,
         }),
         child: const Text('شروع')),
     ],
