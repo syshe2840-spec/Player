@@ -80,7 +80,8 @@ class GeminiLiveService(private val apiKey: String) {
                 "Connection: Upgrade\r\n" +
                 "Sec-WebSocket-Key: $nonce\r\n" +
                 "Sec-WebSocket-Version: 13\r\n" +
-                "User-Agent: Vezoo/1.0\r\n\r\n"
+    "User-Agent: e2dub/0.1.9\r\n" +
+"\r\n"
             outputStream!!.write(req.toByteArray(Charsets.US_ASCII))
             outputStream!!.flush()
 
@@ -88,11 +89,22 @@ class GeminiLiveService(private val apiKey: String) {
             val respLine = readLine(inputStream!!)
             Log.d(TAG, "HTTP: $respLine")
             if (!respLine.contains("101")) {
-                // خطای HTTP — بخون ادامه response
                 val sb = StringBuilder(respLine + "\n")
                 var line = readLine(inputStream!!)
-                while (line.isNotEmpty()) { sb.append(line).append("\n"); line = readLine(inputStream!!) }
-                send("error", "WS upgrade failed: ${sb.take(200)}")
+                var bodyLen = 0
+                while (line.isNotEmpty()) {
+                    if (line.lowercase().startsWith("content-length:"))
+                        bodyLen = line.substringAfter(":").trim().toIntOrNull() ?: 0
+                    sb.append(line).append("\n")
+                    line = readLine(inputStream!!)
+                }
+                // خواندن body
+                if (bodyLen > 0) {
+                    val body = ByteArray(bodyLen.coerceAtMost(500))
+                    inputStream!!.read(body)
+                    sb.append("\nBODY: ").append(String(body, Charsets.UTF_8).take(300))
+                }
+                send("error", "WS upgrade failed: ${sb.toString().take(400)}")
                 return
             }
             // مابقی headers
