@@ -554,10 +554,14 @@ class _PlayerState extends State<PlayerScreen>{
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
       'model': prefs.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview',
-      'silenceMs': prefs.getInt('gemini_silence_ms') ?? 350,
-      'prefixMs': prefs.getInt('gemini_prefix_ms') ?? 20,
-      'startSens': prefs.getString('gemini_start_sens') ?? 'START_SENSITIVITY_HIGH',
-      'endSens': prefs.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH',
+      // Accuracy preset — overrides manual settings
+      ...() {
+        final acc = prefs.getString('gemini_accuracy') ?? 'balanced';
+        if (acc == 'fast') return {'silenceMs': 200, 'prefixMs': 10, 'startSens': 'START_SENSITIVITY_HIGH', 'endSens': 'END_SENSITIVITY_HIGH'};
+        if (acc == 'accurate') return {'silenceMs': 600, 'prefixMs': 50, 'startSens': 'START_SENSITIVITY_MEDIUM', 'endSens': 'END_SENSITIVITY_MEDIUM'};
+        return {'silenceMs': prefs.getInt('gemini_silence_ms') ?? 350, 'prefixMs': prefs.getInt('gemini_prefix_ms') ?? 20, 'startSens': prefs.getString('gemini_start_sens') ?? 'START_SENSITIVITY_HIGH', 'endSens': prefs.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH'};
+      }(),
+
       'chunkMs': prefs.getInt('gemini_chunk_ms') ?? 100,
     });
       if (_mounted) setState((){_aiLog.add('[Gemini] ✅ start() called — waiting for MediaProjection...');});
@@ -612,6 +616,13 @@ class _PlayerState extends State<PlayerScreen>{
         if (mounted) showSnack(context, '❌ Gemini: $err', color: Colors.red, seconds: 5);
       }
     });
+    // original volume when dub mode starts
+    if (_geminiDubMode) {
+      SharedPreferences.getInstance().then((p) {
+        final vol = (p.getDouble('gemini_orig_volume') ?? 1.0) * 100;
+        if (_mounted) player.setVolume(vol.clamp(0, 100));
+      });
+    }
   }
 
   Future<String> _translateVosk(String text) async {
