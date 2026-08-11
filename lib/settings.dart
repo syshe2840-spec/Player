@@ -730,10 +730,33 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
         ],
       ]),
       const SizedBox(height: 8),
+      if (_key != null && _key!.isNotEmpty) ...[
+        SizedBox(width: double.infinity, child: OutlinedButton.icon(
+          onPressed: _testing ? null : _testKey,
+          icon: _testing
+            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.wifi_tethering_rounded, size: 16),
+          label: Text(_testing ? 'Testing...' : 'Test API Key'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF10B981),
+            side: const BorderSide(color: Color(0xFF10B981)),
+            padding: const EdgeInsets.symmetric(vertical: 8)))),
+        if (_testResult != null) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _testResult!.startsWith('✅') ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6)),
+            child: Text(_testResult!, style: TextStyle(
+              color: _testResult!.startsWith('✅') ? Colors.green : Colors.red,
+              fontSize: 11))),
+        ],
+        const SizedBox(height: 8),
+      ],
       InkWell(
         onTap: () {}, // لینک به AI Studio
         child: const Text('Get free API key → aistudio.google.com',
           style: TextStyle(color: Color(0xFF7C3AED), fontSize: 11, decoration: TextDecoration.underline))),
     ])));
 }
-
