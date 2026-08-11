@@ -51,6 +51,8 @@ class GeminiLiveService(private val apiKey: String) {
     private var outputStream: OutputStream? = null
     private var inputStream: InputStream? = null
     private var audioThread: Thread? = null
+    @Volatile private var dubVolume: Float = 1.0f
+    @Volatile private var origVolumeFactor: Float = 1.0f
 
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
         if (running.getAndSet(true)) return
@@ -326,6 +328,15 @@ class GeminiLiveService(private val apiKey: String) {
         var b = inp.read()
         while (b >= 0 && b.toChar() != '\n') { if (b.toChar() != '\r') sb.append(b.toChar()); b = inp.read() }
         return sb.toString()
+    }
+
+    fun setDubVolume(vol: Float) {
+        dubVolume = vol.coerceIn(0f, 1f)
+        audioTrack?.setVolume(dubVolume)
+    }
+
+    fun setOrigVolume(vol: Float) {
+        origVolumeFactor = vol.coerceIn(0f, 1f)
     }
 
     fun sendAudio(pcm: ByteArray) {
