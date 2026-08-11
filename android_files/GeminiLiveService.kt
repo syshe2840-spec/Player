@@ -52,6 +52,7 @@ class GeminiLiveService(private val apiKey: String) {
     private var inputStream: InputStream? = null
     private var audioThread: Thread? = null
     @Volatile private var dubVolume: Float = 1.0f
+    @Volatile private var lastAudioHash: Int = 0
     @Volatile private var origVolumeFactor: Float = 1.0f
 
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
@@ -114,7 +115,7 @@ class GeminiLiveService(private val apiKey: String) {
                     .put("responseModalities", modalities)
                     .put("translationConfig", JSONObject()
                         .put("targetLanguageCode", config.targetLang)
-                        .put("echoTargetLanguage", false)))
+                        .put("echoTargetLanguage", false)  // جلوگیری از echo))
                 .put("realtimeInputConfig", JSONObject()
                     .put("automaticActivityDetection", JSONObject()
                         .put("disabled", false)
@@ -173,10 +174,14 @@ class GeminiLiveService(private val apiKey: String) {
                     val inline = part.optJSONObject("inlineData")
                     if (inline != null) {
                         val pcm = Base64.decode(inline.optString("data",""), Base64.DEFAULT)
-                        // اضافه به jitter buffer
-                        if (bufferBytes < MAX_BUFFER_BYTES) {
-                            audioBuffer.offer(pcm)
-                            bufferBytes += pcm.size
+                        // فیلتر تکرار — hash آخرین chunk
+                        val chunkHash = pcm.take(32).hashCode()
+                        if (chunkHash != lastAudioHash) {
+                            lastAudioHash = chunkHash
+                            if (bufferBytes < MAX_BUFFER_BYTES) {
+                                audioBuffer.offer(pcm)
+                                bufferBytes += pcm.size
+                            }
                         }
                         send("status", "audio:${pcm.size}")
                     }
