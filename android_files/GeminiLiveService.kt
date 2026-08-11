@@ -24,7 +24,8 @@ data class GeminiConfig(
     val startSensitivity: String = "START_SENSITIVITY_HIGH",
     val endSensitivity: String = "END_SENSITIVITY_HIGH",
     val chunkMs: Int = 100,
-    val dubMode: Boolean = false
+    val dubMode: Boolean = false,
+    val voice: String = "Charon"
 )
 
 class GeminiLiveService(private val apiKey: String) {
