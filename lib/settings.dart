@@ -8,12 +8,14 @@ import 'store.dart';
 import 'whisper_service.dart' show WhisperService;
 import 'ytdlp_service.dart';
 import 'gemini_live_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'l10n.dart';
 import 'vosk_models_screen.dart';
 import 'ytdlp_service.dart';
 import 'gemini_live_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'main.dart' show showSnack;
 
@@ -629,139 +631,46 @@ class _YtDlpCardState extends State<_YtDlpCard> {
   );
 }
 
-// ── کارت Gemini API Key ──
-class _GeminiApiKeyCard extends StatefulWidget {
-  @override State<_GeminiApiKeyCard> createState() => _GeminiApiKeyCardState();
+
+// ── VPN Bypass برای IPTV ──
+class _IptvVpnBypassCard extends StatefulWidget {
+  @override State<_IptvVpnBypassCard> createState() => _IptvVpnBypassCardState();
 }
-class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
-  String? _key;
-  bool _show = false;
-  bool _testing = false;
-  String? _testResult;
-  final _ctrl = TextEditingController();
-
+class _IptvVpnBypassCardState extends State<_IptvVpnBypassCard> {
+  bool _enabled = false;
   @override void initState() { super.initState(); _load(); }
-  @override void dispose() { _ctrl.dispose(); super.dispose(); }
-
   Future<void> _load() async {
-    final k = await GeminiLiveService.getApiKey();
-    if (mounted) setState(() { _key = k; _ctrl.text = k ?? ''; });
+    final p = await SharedPreferences.getInstance();
+    if (mounted) setState(() => _enabled = p.getBool('iptv_vpn_bypass') ?? false);
   }
-
-  Future<void> _testKey() async {
-    final k = _key;
-    if (k == null || k.isEmpty) return;
-    setState(() { _testing = true; _testResult = null; });
-    try {
-      // تست با Gemini REST API
-      final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$k');
-      final resp = await http.get(url).timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final body = resp.body;
-        final hasLive = body.contains('gemini') && body.contains('live');
-        setState(() => _testResult = hasLive
-          ? '✅ API Key valid — Gemini Live models found'
-          : '✅ API Key valid — but Gemini Live model may not be available');
-      } else if (resp.statusCode == 400) {
-        setState(() => _testResult = '❌ Invalid API key (400)');
-      } else if (resp.statusCode == 403) {
-        setState(() => _testResult = '❌ API key disabled or no access (403)');
-      } else {
-        setState(() => _testResult = '❌ Error: HTTP \${resp.statusCode}');
-      }
-    } catch (e) {
-      setState(() => _testResult = '❌ Network error: \${e.toString().substring(0, e.toString().length.clamp(0, 60))}');
-    } finally {
-      setState(() => _testing = false);
-    }
+  Future<void> _toggle(bool v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool('iptv_vpn_bypass', v);
+    setState(() => _enabled = v);
+    try { await const MethodChannel('com.vezoo.player/network').invokeMethod('setIptvBypassVpn', {'enabled': v}); } catch (_) {}
   }
-
   @override
   Widget build(BuildContext context) => Card(
     color: const Color(0xFF12122A),
     child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        const Icon(Icons.translate_rounded, color: Color(0xFF7C3AED), size: 18),
+        const Icon(Icons.vpn_lock_rounded, color: Color(0xFF0EA5E9), size: 18),
         const SizedBox(width: 8),
-        const Text('Gemini Live Translation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-        const Spacer(),
-        if (_key != null && _key!.isNotEmpty)
-          const Icon(Icons.check_circle_rounded, color: Colors.green, size: 16),
+        const Expanded(child: Text('IPTV VPN Bypass', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))),
+        Switch(value: _enabled, onChanged: _toggle, activeColor: const Color(0xFF0EA5E9)),
       ]),
-      const SizedBox(height: 4),
-      const Text('Real-time AI translation · Requires API key from Google AI Studio',
+      const Text('IPTV: Direct connection | Gemini: Through VPN',
         style: TextStyle(color: Colors.white54, fontSize: 11)),
-      const SizedBox(height: 12),
-      TextField(
-        controller: _ctrl,
-        obscureText: !_show,
-        style: const TextStyle(color: Colors.white, fontSize: 12),
-        decoration: InputDecoration(
-          hintText: 'AIza...',
-          hintStyle: const TextStyle(color: Colors.white24),
-          filled: true, fillColor: const Color(0xFF0D0D1E),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          suffixIcon: IconButton(
-            icon: Icon(_show ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18, color: Colors.white38),
-            onPressed: () => setState(() => _show = !_show))),
-      ),
-      const SizedBox(height: 8),
-      Row(children: [
-        Expanded(child: FilledButton(
-          onPressed: () async {
-            final k = _ctrl.text.trim();
-            if (k.isEmpty) return;
-            await GeminiLiveService.saveApiKey(k);
-            setState(() => _key = k);
-            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('✅ Gemini API key saved'), backgroundColor: Colors.green, duration: Duration(seconds: 2)));
-          },
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 8)),
-          child: const Text('Save Key', style: TextStyle(fontSize: 13)))),
-        if (_key != null && _key!.isNotEmpty) ...[
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: () async {
-              await GeminiLiveService.clearApiKey();
-              _ctrl.clear();
-              setState(() => _key = null);
-            },
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 8)),
-            child: const Text('Remove', style: TextStyle(fontSize: 13))),
-        ],
-      ]),
-      const SizedBox(height: 8),
-      if (_key != null && _key!.isNotEmpty) ...[
-        SizedBox(width: double.infinity, child: OutlinedButton.icon(
-          onPressed: _testing ? null : _testKey,
-          icon: _testing
-            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Icon(Icons.wifi_tethering_rounded, size: 16),
-          label: Text(_testing ? 'Testing...' : 'Test API Key'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF10B981),
-            side: const BorderSide(color: Color(0xFF10B981)),
-            padding: const EdgeInsets.symmetric(vertical: 8)))),
-        if (_testResult != null) ...[
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _testResult!.startsWith('✅') ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6)),
-            child: Text(_testResult!, style: TextStyle(
-              color: _testResult!.startsWith('✅') ? Colors.green : Colors.red,
-              fontSize: 11))),
-        ],
+      if (_enabled) ...[
         const SizedBox(height: 8),
+        Container(padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: const Color(0xFF0EA5E9).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+          child: const Text('✅ IPTV → Direct  |  Gemini → VPN',
+            style: TextStyle(color: Color(0xFF0EA5E9), fontSize: 11))),
       ],
-      InkWell(
-        onTap: () {}, // لینک به AI Studio
-        child: const Text('Get free API key → aistudio.google.com',
-          style: TextStyle(color: Color(0xFF7C3AED), fontSize: 11, decoration: TextDecoration.underline))),
     ])));
 }
+
 // ── کارت Gemini API Key + Settings ──
 class _GeminiApiKeyCard extends StatefulWidget {
   @override State<_GeminiApiKeyCard> createState() => _GeminiApiKeyCardState();
@@ -773,66 +682,55 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
   String? _testResult;
   bool _expanded = false;
   final _ctrl = TextEditingController();
-
-  // settings
   int _silenceMs = 350;
   int _prefixMs = 20;
   String _startSens = 'START_SENSITIVITY_HIGH';
   String _endSens = 'END_SENSITIVITY_HIGH';
   int _chunkMs = 100;
 
-  static const _sensOptions = {
-    'START_SENSITIVITY_LOW': 'Low',
-    'START_SENSITIVITY_MEDIUM': 'Medium',
-    'START_SENSITIVITY_HIGH': 'High',
-  };
-  static const _endSensOptions = {
-    'END_SENSITIVITY_LOW': 'Low',
-    'END_SENSITIVITY_MEDIUM': 'Medium',
-    'END_SENSITIVITY_HIGH': 'High',
-  };
+  static const _sensMap = {
+    'START_SENSITIVITY_LOW':'Low','START_SENSITIVITY_MEDIUM':'Medium','START_SENSITIVITY_HIGH':'High'};
+  static const _endMap = {
+    'END_SENSITIVITY_LOW':'Low','END_SENSITIVITY_MEDIUM':'Medium','END_SENSITIVITY_HIGH':'High'};
 
   @override void initState() { super.initState(); _load(); }
   @override void dispose() { _ctrl.dispose(); super.dispose(); }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final p = await SharedPreferences.getInstance();
     final k = await GeminiLiveService.getApiKey();
     if (mounted) setState(() {
       _key = k; _ctrl.text = k ?? '';
-      _silenceMs = prefs.getInt('gemini_silence_ms') ?? 350;
-      _prefixMs = prefs.getInt('gemini_prefix_ms') ?? 20;
-      _startSens = prefs.getString('gemini_start_sens') ?? 'START_SENSITIVITY_HIGH';
-      _endSens = prefs.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH';
-      _chunkMs = prefs.getInt('gemini_chunk_ms') ?? 100;
+      _silenceMs = p.getInt('gemini_silence_ms') ?? 350;
+      _prefixMs = p.getInt('gemini_prefix_ms') ?? 20;
+      _startSens = p.getString('gemini_start_sens') ?? 'START_SENSITIVITY_HIGH';
+      _endSens = p.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH';
+      _chunkMs = p.getInt('gemini_chunk_ms') ?? 100;
     });
   }
 
   Future<void> _saveSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('gemini_silence_ms', _silenceMs);
-    await prefs.setInt('gemini_prefix_ms', _prefixMs);
-    await prefs.setString('gemini_start_sens', _startSens);
-    await prefs.setString('gemini_end_sens', _endSens);
-    await prefs.setInt('gemini_chunk_ms', _chunkMs);
+    final p = await SharedPreferences.getInstance();
+    await p.setInt('gemini_silence_ms', _silenceMs);
+    await p.setInt('gemini_prefix_ms', _prefixMs);
+    await p.setString('gemini_start_sens', _startSens);
+    await p.setString('gemini_end_sens', _endSens);
+    await p.setInt('gemini_chunk_ms', _chunkMs);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Settings saved'), backgroundColor: Colors.green, duration: Duration(seconds: 1)));
+      const SnackBar(content: Text('Settings saved'), backgroundColor: Colors.green, duration: Duration(seconds: 1)));
   }
 
   Future<void> _testKey() async {
     final k = _key; if (k == null || k.isEmpty) return;
     setState(() { _testing = true; _testResult = null; });
     try {
-      final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$k');
-      final resp = await http.get(url).timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final hasLive = resp.body.contains('gemini') && resp.body.contains('live');
-        setState(() => _testResult = hasLive ? '✅ API Key valid — Gemini Live found' : '✅ API Key valid — Live model may need access');
-      } else {
-        setState(() => _testResult = '❌ Error: HTTP ${resp.statusCode}');
-      }
+      final resp = await http.get(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$k'))
+        .timeout(const Duration(seconds: 10));
+      setState(() => _testResult = resp.statusCode == 200
+        ? (resp.body.contains('live') ? '✅ API Key valid — Live models found' : '✅ API Key valid')
+        : '❌ HTTP ${resp.statusCode}');
     } catch (e) {
-      setState(() => _testResult = '❌ Network: ${e.toString().substring(0,60)}');
+      setState(() => _testResult = '❌ ${e.toString().substring(0,60)}');
     } finally { setState(() => _testing = false); }
   }
 
@@ -848,9 +746,8 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
         IconButton(icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more, color: Colors.white38, size: 20),
           onPressed: () => setState(() => _expanded = !_expanded), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
       ]),
-      const Text('Real-time AI dubbing & subtitles · Requires API key', style: TextStyle(color: Colors.white54, fontSize: 11)),
-      const SizedBox(height: 12),
-      // API Key field
+      const Text('Real-time AI dubbing & subtitles', style: TextStyle(color: Colors.white54, fontSize: 11)),
+      const SizedBox(height: 10),
       TextField(controller: _ctrl, obscureText: !_show,
         style: const TextStyle(color: Colors.white, fontSize: 12),
         decoration: InputDecoration(hintText: 'AIza...', hintStyle: const TextStyle(color: Colors.white24),
@@ -861,16 +758,14 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
             onPressed: () => setState(() => _show = !_show)))),
       const SizedBox(height: 8),
       Row(children: [
-        Expanded(child: FilledButton(
-          onPressed: () async {
-            final k = _ctrl.text.trim(); if (k.isEmpty) return;
-            await GeminiLiveService.saveApiKey(k);
-            setState(() { _key = k; _testResult = null; });
-            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('✅ API key saved'), backgroundColor: Colors.green, duration: Duration(seconds: 2)));
-          },
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 8)),
-          child: const Text('Save Key', style: TextStyle(fontSize: 13)))),
+        Expanded(child: FilledButton(onPressed: () async {
+          final k = _ctrl.text.trim(); if (k.isEmpty) return;
+          await GeminiLiveService.saveApiKey(k);
+          setState(() { _key = k; _testResult = null; });
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('API key saved'), backgroundColor: Colors.green, duration: Duration(seconds: 2)));
+        }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), padding: const EdgeInsets.symmetric(vertical: 8)),
+        child: const Text('Save Key', style: TextStyle(fontSize: 13)))),
         if (_key != null && _key!.isNotEmpty) ...[
           const SizedBox(width: 8),
           OutlinedButton(onPressed: () async {
@@ -887,137 +782,51 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
           icon: _testing ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.wifi_tethering_rounded, size:16),
           label: Text(_testing ? 'Testing...' : 'Test API Key'),
           style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF10B981), side: const BorderSide(color: Color(0xFF10B981)), padding: const EdgeInsets.symmetric(vertical: 8)))),
-        if (_testResult != null) ...[
-          const SizedBox(height: 6),
-          Container(padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: _testResult!.startsWith('✅') ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-            child: Text(_testResult!, style: TextStyle(color: _testResult!.startsWith('✅') ? Colors.green : Colors.red, fontSize: 11))),
-        ],
+        if (_testResult != null) Container(margin: const EdgeInsets.only(top:6), padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: _testResult!.startsWith('✅') ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+          child: Text(_testResult!, style: TextStyle(color: _testResult!.startsWith('✅') ? Colors.green : Colors.red, fontSize: 11))),
       ],
       const SizedBox(height: 8),
       InkWell(onTap: () {}, child: const Text('Get free API key → aistudio.google.com',
         style: TextStyle(color: Color(0xFF7C3AED), fontSize: 11, decoration: TextDecoration.underline))),
-
-      // ── Advanced Settings ──
       if (_expanded) ...[
         const Divider(color: Colors.white12, height: 20),
         const Text('Advanced Settings', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        // Silence Duration
-        Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Silence Duration', style: TextStyle(color: Colors.white, fontSize: 12)),
-            Text('Delay after speech ends before sending', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ])),
-          Text('${_silenceMs}ms', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 12)),
-        ]),
+        const SizedBox(height: 10),
+        Row(children: [const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Silence Duration', style: TextStyle(color: Colors.white, fontSize: 12)),
+          Text('Delay after speech ends', style: TextStyle(color: Colors.white38, fontSize: 10)),
+        ])), Text('${_silenceMs}ms', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 12))]),
         Slider(value: _silenceMs.toDouble(), min: 100, max: 2000, divisions: 19,
-          activeColor: const Color(0xFF7C3AED),
-          onChanged: (v) => setState(() => _silenceMs = v.round())),
-        const SizedBox(height: 8),
-        // Prefix Padding
-        Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Prefix Padding', style: TextStyle(color: Colors.white, fontSize: 12)),
-            Text('Audio before speech detection', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ])),
-          Text('${_prefixMs}ms', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 12)),
-        ]),
+          activeColor: const Color(0xFF7C3AED), onChanged: (v) => setState(() => _silenceMs = v.round())),
+        Row(children: [const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Prefix Padding', style: TextStyle(color: Colors.white, fontSize: 12)),
+          Text('Audio before speech detection', style: TextStyle(color: Colors.white38, fontSize: 10)),
+        ])), Text('${_prefixMs}ms', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 12))]),
         Slider(value: _prefixMs.toDouble(), min: 0, max: 200, divisions: 20,
-          activeColor: const Color(0xFF7C3AED),
-          onChanged: (v) => setState(() => _prefixMs = v.round())),
-        const SizedBox(height: 8),
-        // Start Sensitivity
-        Row(children: [
-          const Expanded(child: Text('Start Sensitivity', style: TextStyle(color: Colors.white, fontSize: 12))),
+          activeColor: const Color(0xFF7C3AED), onChanged: (v) => setState(() => _prefixMs = v.round())),
+        Row(children: [const Expanded(child: Text('Start Sensitivity', style: TextStyle(color: Colors.white, fontSize: 12))),
           DropdownButton<String>(value: _startSens, dropdownColor: const Color(0xFF1A1A2A),
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-            underline: const SizedBox(),
-            items: _sensOptions.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-            onChanged: (v) => setState(() => _startSens = v!)),
-        ]),
+            style: const TextStyle(color: Colors.white, fontSize: 12), underline: const SizedBox(),
+            items: _sensMap.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+            onChanged: (v) => setState(() => _startSens = v!))]),
         const SizedBox(height: 8),
-        // End Sensitivity
-        Row(children: [
-          const Expanded(child: Text('End Sensitivity', style: TextStyle(color: Colors.white, fontSize: 12))),
+        Row(children: [const Expanded(child: Text('End Sensitivity', style: TextStyle(color: Colors.white, fontSize: 12))),
           DropdownButton<String>(value: _endSens, dropdownColor: const Color(0xFF1A1A2A),
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-            underline: const SizedBox(),
-            items: _endSensOptions.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-            onChanged: (v) => setState(() => _endSens = v!)),
-        ]),
+            style: const TextStyle(color: Colors.white, fontSize: 12), underline: const SizedBox(),
+            items: _endMap.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+            onChanged: (v) => setState(() => _endSens = v!))]),
         const SizedBox(height: 8),
-        // Chunk Size
-        Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Audio Chunk', style: TextStyle(color: Colors.white, fontSize: 12)),
-            Text('Smaller = lower latency, more network', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ])),
-          ...([50,100,200]).map((ms) => Padding(
-            padding: const EdgeInsets.only(left: 6),
-            child: GestureDetector(
-              onTap: () => setState(() => _chunkMs = ms),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _chunkMs == ms ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
-                  borderRadius: BorderRadius.circular(6)),
-                child: Text('${ms}ms', style: TextStyle(color: _chunkMs == ms ? Colors.white : Colors.white38, fontSize: 11)))))).toList(),
-        ]),
+        Row(children: [const Expanded(child: Text('Chunk Size', style: TextStyle(color: Colors.white, fontSize: 12))),
+          ...[50,100,200].map((ms) => GestureDetector(
+            onTap: () => setState(() => _chunkMs = ms),
+            child: Container(margin: const EdgeInsets.only(left:6), padding: const EdgeInsets.symmetric(horizontal:10,vertical:4),
+              decoration: BoxDecoration(color: _chunkMs==ms ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
+              child: Text('${ms}ms', style: TextStyle(color: _chunkMs==ms ? Colors.white : Colors.white38, fontSize: 11)))))]),
         const SizedBox(height: 12),
-        SizedBox(width: double.infinity, child: FilledButton(
-          onPressed: _saveSettings,
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: _saveSettings,
           style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED).withOpacity(0.6), padding: const EdgeInsets.symmetric(vertical: 8)),
           child: const Text('Save Settings', style: TextStyle(fontSize: 13)))),
-      ],
-    ])));
-}
-
-
-
-// ── VPN Bypass برای IPTV ──
-class _IptvVpnBypassCard extends StatefulWidget {
-  @override State<_IptvVpnBypassCard> createState() => _IptvVpnBypassCardState();
-}
-class _IptvVpnBypassCardState extends State<_IptvVpnBypassCard> {
-  bool _enabled = false;
-
-  @override void initState() { super.initState(); _load(); }
-
-  Future<void> _load() async {
-    final p = await SharedPreferences.getInstance();
-    if (mounted) setState(() => _enabled = p.getBool('iptv_vpn_bypass') ?? false);
-  }
-
-  Future<void> _toggle(bool v) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool('iptv_vpn_bypass', v);
-    setState(() => _enabled = v);
-    // اطلاع به سرویس Android
-    try {
-      await const MethodChannel('com.vezoo.player/network').invokeMethod('setIptvBypassVpn', {'enabled': v});
-    } catch (_) {}
-  }
-
-  @override
-  Widget build(BuildContext context) => Card(
-    color: const Color(0xFF12122A),
-    child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        const Icon(Icons.vpn_lock_rounded, color: Color(0xFF0EA5E9), size: 18),
-        const SizedBox(width: 8),
-        const Expanded(child: Text('IPTV VPN Bypass', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))),
-        Switch(value: _enabled, onChanged: _toggle, activeColor: const Color(0xFF0EA5E9)),
-      ]),
-      const Text('IPTV uses direct connection (no VPN)
-Gemini continues through VPN',
-        style: TextStyle(color: Colors.white54, fontSize: 11)),
-      if (_enabled) ...[
-        const SizedBox(height: 8),
-        Container(padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: const Color(0xFF0EA5E9).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-          child: const Text('✅ IPTV → Direct · Gemini → VPN',
-            style: TextStyle(color: Color(0xFF0EA5E9), fontSize: 11))),
       ],
     ])));
 }
