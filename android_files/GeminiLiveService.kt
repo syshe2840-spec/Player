@@ -36,6 +36,7 @@ class GeminiLiveService(private val apiKey: String) {
     private val PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
     private val OUTPUT_SAMPLE_RATE = 24000
+    private val OUTPUT_FRAME_BYTES = 4800  // 100ms @ 24kHz mono s16le
     private val INPUT_SAMPLE_RATE = 16000
 
     private val running = AtomicBoolean(false)
@@ -357,3 +358,4 @@ class GeminiLiveService(private val apiKey: String) {
         if (eventQueue.size > 200) eventQueue.poll()
     }
 }
+
