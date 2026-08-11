@@ -118,6 +118,40 @@ class MainActivity : FlutterActivity() {
         createNotifChannel()
         requestNotifPermission()
 
+        // ── Network VPN Bypass ──
+        val connectivityMgr = getSystemService(android.net.ConnectivityManager::class.java)
+        io.flutter.plugin.common.MethodChannel(fe.dartExecutor.binaryMessenger, "com.vezoo.player/network")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setIptvBypassVpn" -> {
+                        val enabled = call.argument<Boolean>("enabled") ?: false
+                        if (android.os.Build.VERSION.SDK_INT >= 23) {
+                            val nets = connectivityMgr?.allNetworks ?: emptyArray()
+                            val targetNet = if (enabled) {
+                                nets.firstOrNull { net ->
+                                    val caps = connectivityMgr?.getNetworkCapabilities(net)
+                                    caps != null &&
+                                    caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                                    !caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)
+                                }
+                            } else null
+                            connectivityMgr?.bindProcessToNetwork(targetNet)
+                            android.util.Log.d("Network", "VPN bypass=$enabled net=$targetNet")
+                            result.success(targetNet != null || !enabled)
+                        } else result.success(false)
+                    }
+                    "getNetworkInfo" -> {
+                        val nets = connectivityMgr?.allNetworks?.map { net ->
+                            val caps = connectivityMgr.getNetworkCapabilities(net)
+                            val isVpn = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) ?: false
+                            "$net:${if(isVpn) "VPN" else "direct"}"
+                        }
+                        result.success(nets?.joinToString(", ") ?: "none")
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         // ── yt-dlp ──
         YtDlpService.init(this)
         YtDlpService.update(this) { status -> android.util.Log.d("YtDlp", "Update: $status") }
