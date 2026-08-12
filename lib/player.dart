@@ -399,7 +399,7 @@ class _PlayerState extends State<PlayerScreen>{
         final p = await SharedPreferences.getInstance();
         final iface = p.getString('iptv_network_iface') ?? '';
         if (iface.isNotEmpty) {
-          player.setProperty('network-device', iface);
+          (player.platform as NativePlayer).setProperty('network-device', iface);
           debugPrint('[MPV] network-device=$iface');
         }
       } catch (_) {}
@@ -457,7 +457,7 @@ class _PlayerState extends State<PlayerScreen>{
         final p = await SharedPreferences.getInstance();
         final iface = p.getString('iptv_network_iface') ?? '';
         if (iface.isNotEmpty) {
-          player.setProperty('network-device', iface);
+          (player.platform as NativePlayer).setProperty('network-device', iface);
           debugPrint('[MPV] network-device=$iface');
         }
       } catch (_) {}
