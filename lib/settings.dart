@@ -715,6 +715,9 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
   String _endSens = 'END_SENSITIVITY_HIGH';
   int _chunkMs = 100;
   String _model = 'gemini-3.5-live-translate-preview';
+  double _syncOffsetSec = 2.0;   // option 2: video seek back
+  bool _bufferPause = false;     // option 3: initial pause
+  int _bufferPauseSec = 3;       // seconds to pause
   double _dubVolume = 1.0;
   double _origVolume = 1.0;
   String _accuracy = 'balanced';  // fast / balanced / accurate
@@ -744,6 +747,9 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
       _endSens = p.getString('gemini_end_sens') ?? 'END_SENSITIVITY_HIGH';
       _chunkMs = p.getInt('gemini_chunk_ms') ?? 100;
       _model = p.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview';
+      _syncOffsetSec = p.getDouble('gemini_sync_offset') ?? 2.0;
+      _bufferPause = p.getBool('gemini_buffer_pause') ?? false;
+      _bufferPauseSec = p.getInt('gemini_buffer_pause_sec') ?? 3;
       _dubVolume = p.getDouble('gemini_dub_volume') ?? 1.0;
       _origVolume = p.getDouble('gemini_orig_volume') ?? 1.0;
       _accuracy = p.getString('gemini_accuracy') ?? 'balanced';
@@ -758,6 +764,9 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
     await p.setString('gemini_end_sens', _endSens);
     await p.setInt('gemini_chunk_ms', _chunkMs);
     await p.setString('gemini_model', _model);
+    await p.setDouble('gemini_sync_offset', _syncOffsetSec);
+    await p.setBool('gemini_buffer_pause', _bufferPause);
+    await p.setInt('gemini_buffer_pause_sec', _bufferPauseSec);
     await p.setDouble('gemini_dub_volume', _dubVolume);
     await p.setDouble('gemini_orig_volume', _origVolume);
     await p.setString('gemini_accuracy', _accuracy);
@@ -929,6 +938,40 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
               decoration: BoxDecoration(color: _chunkMs==ms ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
               child: Text('${ms}ms', style: TextStyle(color: _chunkMs==ms ? Colors.white : Colors.white38, fontSize: 11)))))]),
         const SizedBox(height: 12),
+        // ── Dubbing Sync ──
+        const Divider(color: Colors.white12, height: 16),
+        const Text('Dubbing Sync', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        const Text('Fix delay between video and dubbed audio', style: TextStyle(color: Colors.white38, fontSize: 10)),
+        const SizedBox(height: 8),
+        Row(children: [
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Video Seek Back', style: TextStyle(color: Colors.white, fontSize: 12)),
+            Text('Seek video back on start to sync dubbing', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ])),
+          Text('${_syncOffsetSec.toStringAsFixed(1)}s', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 12)),
+        ]),
+        Slider(value: _syncOffsetSec, min: 0, max: 5, divisions: 10,
+          activeColor: const Color(0xFF7C3AED),
+          onChanged: (v) => setState(() => _syncOffsetSec = v)),
+        const SizedBox(height: 6),
+        Row(children: [
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Buffer Pause', style: TextStyle(color: Colors.white, fontSize: 12)),
+            Text('Pause video on start to fill dubbing buffer', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ])),
+          Switch(value: _bufferPause, onChanged: (v) => setState(() => _bufferPause = v), activeColor: const Color(0xFF7C3AED)),
+        ]),
+        if (_bufferPause) ...[
+          Row(children: [
+            const Expanded(child: Text('Pause Duration', style: TextStyle(color: Colors.white, fontSize: 12))),
+            Text('${_bufferPauseSec}s', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 12)),
+          ]),
+          Slider(value: _bufferPauseSec.toDouble(), min: 1, max: 8, divisions: 7,
+            activeColor: const Color(0xFF7C3AED),
+            onChanged: (v) => setState(() => _bufferPauseSec = v.round())),
+        ],
+        const SizedBox(height: 12),
         Row(children: [
           Expanded(child: FilledButton(onPressed: _saveSettings,
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED).withOpacity(0.6), padding: const EdgeInsets.symmetric(vertical: 8)),
@@ -942,7 +985,7 @@ class _GeminiApiKeyCardState extends State<_GeminiApiKeyCard> {
             setState(() {
               _silenceMs=350; _prefixMs=20;
               _startSens='START_SENSITIVITY_HIGH'; _endSens='END_SENSITIVITY_HIGH';
-              _chunkMs=100; _model='gemini-3.5-live-translate-preview'; _dubVolume=1.0; _origVolume=1.0; _accuracy='balanced';
+              _chunkMs=100; _model='gemini-3.5-live-translate-preview'; _dubVolume=1.0; _origVolume=1.0; _accuracy='balanced'; _syncOffsetSec=2.0; _bufferPause=false; _bufferPauseSec=3;
             });
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('↺ Reset to defaults'), duration: Duration(seconds: 1)));
