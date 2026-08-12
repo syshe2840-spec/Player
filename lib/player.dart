@@ -349,6 +349,15 @@ class _PlayerState extends State<PlayerScreen>{
 
     _subs.add(player.stream.completed.listen((done){
       if(!done)return;
+      // وقتی ویدیو تموم شد AI رو خاموش کن
+      if (_dgActive) {
+        _geminiPollTimer?.cancel(); _geminiPollTimer = null;
+        _dgActive = false; _dgText = ''; _dgText2 = '';
+        try { if (_useGeminiLive) const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+        try { if (_useVosk) VoskService.stop(); } catch(_) {}
+        if (_mounted) player.setVolume(100);
+        if (_mounted) setState((){_aiLog.add('[AI] stopped — video ended');});
+      }
       switch(_repeatMode){
         case _Repeat.one:player.seek(Duration.zero);player.play();break;
         case _Repeat.all:_switchVideo((_idx+1)%widget.playlist.length);break;
@@ -3207,7 +3216,7 @@ StatefulBuilder(builder: (_, ss2) {
               ])))),
         ]),
 
-      if (_translate) ...[
+      if (_translate || _engine == 'gemini') ...[
         const SizedBox(height: 12),
         // حالت ترجمه
         Row(children: [
