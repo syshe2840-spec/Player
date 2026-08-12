@@ -79,6 +79,7 @@ class _PlayerState extends State<PlayerScreen>{
   bool _useAndroidStt = false;
   bool _useGeminiLive = false;
   bool _geminiDubMode = false;
+  String _geminiVoice = 'Charon';
   String _geminiVoice = 'Charon'; // default: male
   Timer? _geminiPollTimer;
   late int _curChannelIdx;
@@ -563,7 +564,7 @@ class _PlayerState extends State<PlayerScreen>{
       final prefs = await SharedPreferences.getInstance();
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
-      'voice': geminiVoice,
+      'voice': _geminiVoice,
       'model': prefs.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview',
       // Accuracy preset — overrides manual settings
       ...() {
@@ -772,7 +773,7 @@ class _PlayerState extends State<PlayerScreen>{
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
       _geminiDubMode = result['geminiDubMode'] as bool? ?? false;
-      final geminiVoice = result['geminiVoice'] as String? ?? 'Charon';
+      _geminiVoice = result['geminiVoice'] as String? ?? 'Charon';
       // درخواست permission میکروفون
       final micStatus = await permission_handler.Permission.microphone.request();
       if (!micStatus.isGranted) {
