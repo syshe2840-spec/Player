@@ -64,11 +64,7 @@ class GeminiLiveService(private val apiKey: String) {
     @Volatile private var lastAudioHash: Int = 0
 
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
-        // اگه قبلاً running بود، اول stop کن
-        if (running.get()) {
-            stop()
-            Thread.sleep(300)
-        }
+        if (running.get()) { stop(); Thread.sleep(300) }
         running.set(true)
         projection = proj
         config = cfg
@@ -234,8 +230,15 @@ class GeminiLiveService(private val apiKey: String) {
                     if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
                 }
             }
-            val inputT = sc.optJSONObject("outputTranscription")
-            if (inputT != null) {
+            // outputTranscription (subtitle mode)
+            val outputT = sc.optJSONObject("outputTranscription")
+            if (outputT != null) {
+                val t = outputT.optString("text","")
+                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
+            }
+            // inputTranscription هم بگیر (وقتی source==target)
+            val inputT = sc.optJSONObject("inputTranscription")
+            if (inputT != null && !config.dubMode) {
                 val t = inputT.optString("text","")
                 if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
             }
@@ -395,3 +398,4 @@ class ByteArrayBuffer(private val maxBytes: Int) {
 
     fun clear() { synchronized(lock) { data.clear() } }
 }
+
