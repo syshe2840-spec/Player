@@ -79,7 +79,6 @@ class _PlayerState extends State<PlayerScreen>{
   bool _useAndroidStt = false;
   bool _useGeminiLive = false;
   bool _geminiDubMode = false;
-  String _geminiVoice = 'Charon';
   String _geminiVoice = 'Charon'; // default: male
   Timer? _geminiPollTimer;
   late int _curChannelIdx;
