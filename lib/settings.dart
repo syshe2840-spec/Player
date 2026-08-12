@@ -668,8 +668,12 @@ class _IptvVpnBypassCardState extends State<_IptvVpnBypassCard> {
     await p.setBool('iptv_vpn_bypass', v);
     setState(() => _enabled = v);
     try {
-      final res = await const MethodChannel('com.vezoo.player/network').invokeMethod<bool>('setIptvBypassVpn', {'enabled': v});
-      debugPrint('[VPN] bypass=$v result=$res');
+      final iface = await const MethodChannel('com.vezoo.player/network')
+        .invokeMethod<String>('setIptvBypassVpn', {'enabled': v}) ?? '';
+      debugPrint('[VPN] bypass=$v iface=$iface');
+      // ذخیره interface برای MPV
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('iptv_network_iface', v ? iface : '');
     } catch (e) { debugPrint('[VPN] error: $e'); }
   }
   @override
