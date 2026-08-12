@@ -78,7 +78,9 @@ class _PlayerState extends State<PlayerScreen>{
   bool _useVosk = true;
   bool _useAndroidStt = false;
   bool _useGeminiLive = false;
-  bool _geminiDubMode = false;
+  bool _geminiDubMode = true; // همیشه DUB
+  bool _geminiWithVosk = false; // Gemini DUB + Vosk subtitle همزمان
+  String _geminiSubEngine = 'vosk'; // vosk / android
   String _geminiVoice = 'Charon'; // default: male
   Timer? _geminiPollTimer;
   late int _curChannelIdx;
@@ -825,8 +827,18 @@ class _PlayerState extends State<PlayerScreen>{
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
-      _geminiDubMode = result['geminiDubMode'] as bool? ?? false;
-      _geminiVoice = result['geminiVoice'] as String? ?? 'Charon';
+      _geminiDubMode = true; // همیشه DUB
+      _geminiWithVosk = result['geminiWithSub'] as bool? ?? false;
+      _geminiSubEngine = result['geminiSubEngine'] as String? ?? 'vosk';
+      final newVoice = result['geminiVoice'] as String? ?? 'Charon';
+      final newLang = result['lang'] as String? ?? _voskTranslateTo;
+      // اگه Gemini فعاله و lang/voice تغییر نکرده → فقط تنظیمات رو update کن بدون restart
+      if (_useGeminiLive && _dgActive && newLang == _voskTranslateTo && newVoice == _geminiVoice) {
+        _geminiVoice = newVoice;
+        if (_mounted) setState((){_aiLog.add('[Gemini] Settings updated (no restart)');});
+        return;
+      }
+      _geminiVoice = newVoice;
       // درخواست permission میکروفون
       final micStatus = await permission_handler.Permission.microphone.request();
       if (!micStatus.isGranted) {
@@ -910,13 +922,13 @@ class _PlayerState extends State<PlayerScreen>{
         _voskSrtEntries = [];
         _voskStartTime = DateTime.now();
         _lastFinalTime = DateTime.now();
-        await Future.delayed(const Duration(milliseconds:300));
-        // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
-        // ── Gemini Live ──
+        // ── Gemini Live — قبل از delay (درخواست permission سریع‌تر) ──
         if (_useGeminiLive) {
           await _startGeminiLive();
           return;
         }
+        await Future.delayed(const Duration(milliseconds:300));
+        // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
         // ── Android Built-in STT ──
         if (_useAndroidStt) {
           _dgSub = AndroidSttService.events().listen((e) {
@@ -2543,18 +2555,79 @@ class _PlayerState extends State<PlayerScreen>{
     ],
     ...[
       const SizedBox(width:8),
-      GestureDetector(
-        onTap:()=>_toggleDeeepgram(),
-        child:Container(
-          padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-          decoration:BoxDecoration(
-            color:_dgActive?Colors.green.withOpacity(0.8):Colors.white12,
-            borderRadius:BorderRadius.circular(6),
-            border:Border.all(color:_dgActive?Colors.green:Colors.white24)),
-          child:Row(mainAxisSize:MainAxisSize.min,children:[
-            Icon(Icons.record_voice_over_rounded,size:14,color:_dgActive?Colors.white:Colors.white54),
+      // ── AI Controls ──
+      if (!_dgActive)
+        GestureDetector(
+          onTap:()=>_toggleDeeepgram(),
+          child:Container(
+            padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+            decoration:BoxDecoration(
+              color:Colors.white12,
+              borderRadius:BorderRadius.circular(6),
+              border:Border.all(color:Colors.white24)),
+            child:const Row(mainAxisSize:MainAxisSize.min,children:[
+              Icon(Icons.record_voice_over_rounded,size:14,color:Colors.white54),
+              SizedBox(width:4),
+              Text('AI',style:TextStyle(fontSize:11,color:Colors.white54,fontWeight:FontWeight.bold)),
+            ])))
+      else
+        Row(mainAxisSize:MainAxisSize.min, children:[
+          if (_useGeminiLive) ...[
+            GestureDetector(
+              onTap: () {
+                _geminiPollTimer?.cancel(); _geminiPollTimer = null;
+                try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+                player.setVolume(100);
+                if (_mounted) setState((){
+                  _useGeminiLive = false; _dgText2 = '';
+                  if (!_useVosk && !_useAndroidStt) { _dgActive = false; _dgText = ''; }
+                  _aiLog.add('[DUB] stopped');
+                });
+              },
+              child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                decoration:BoxDecoration(color:const Color(0xFF10B981).withOpacity(0.8), borderRadius:BorderRadius.circular(6)),
+                child:const Row(mainAxisSize:MainAxisSize.min,children:[
+                  Icon(Icons.record_voice_over_rounded,size:12,color:Colors.white),
+                  SizedBox(width:3),
+                  Text('■ DUB',style:TextStyle(fontSize:10,color:Colors.white,fontWeight:FontWeight.bold)),
+                ]))),
             const SizedBox(width:4),
-            Text('AI',style:TextStyle(fontSize:11,color:_dgActive?Colors.white:Colors.white54,fontWeight:FontWeight.bold)),
+          ],
+          if (_useVosk || _useAndroidStt) ...[
+            GestureDetector(
+              onTap: () {
+                _voskPollTimer?.cancel(); _voskPollTimer = null;
+                _androidSttPollTimer?.cancel();
+                try { if (_useVosk) VoskService.stop(); } catch(_) {}
+                try { if (_useAndroidStt) AndroidSttService.stop(); } catch(_) {}
+                if (_mounted) setState((){
+                  _useVosk = false; _useAndroidStt = false; _dgText = '';
+                  if (!_useGeminiLive) _dgActive = false;
+                  _aiLog.add('[SUB] stopped');
+                });
+              },
+              child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.8), borderRadius:BorderRadius.circular(6)),
+                child:const Row(mainAxisSize:MainAxisSize.min,children:[
+                  Icon(Icons.subtitles_rounded,size:12,color:Colors.white),
+                  SizedBox(width:3),
+                  Text('■ SUB',style:TextStyle(fontSize:10,color:Colors.white,fontWeight:FontWeight.bold)),
+                ]))),
+            const SizedBox(width:4),
+          ],
+          GestureDetector(
+            onTap:(){if(mounted)setState(()=>_showAiLog=!_showAiLog);},
+            child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+              decoration:BoxDecoration(color:Colors.green.withOpacity(0.8), borderRadius:BorderRadius.circular(6)),
+              child:const Row(mainAxisSize:MainAxisSize.min,children:[
+                Icon(Icons.bug_report_rounded,size:12,color:Colors.white),
+                SizedBox(width:3),
+                Text('LOG',style:TextStyle(fontSize:10,color:Colors.white,fontWeight:FontWeight.bold)),
+              ]))),
+        ]),4,fontWeight:FontWeight.bold)),
           ]))),
     ],
     if(true)...[ // AI LOG روی همه ویدیوها
@@ -2822,7 +2895,9 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   bool _mlkitDownloading = false;
   double _mlkitProgress = 0;
   bool _mlkitReady = false;
-  bool _geminiDubMode = false;
+  bool _geminiDubMode = true; // Gemini همیشه DUB
+  bool _geminiWithSub = false; // همزمان زیرنویس
+  String _geminiSubEngine = 'vosk'; // vosk / android
   String _geminiVoice = 'Charon'; // default: male
 
 
@@ -3044,6 +3119,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             ])))),
       ]),
       // Gemini mode toggle
+      // Gemini فقط DUB دارد (subtitle از Vosk/Android STT) 
       if (_engine == 'gemini') ...[
         const SizedBox(height: 10),
         Row(children: [
@@ -3092,6 +3168,32 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           items: _geminiVoices.entries.map((e) => DropdownMenuItem(value: e.key,
             child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
           onChanged: (v) => setState(() => _geminiVoice = v!)),
+      ],
+      // Subtitle همزمان با Gemini DUB
+      if (_engine == 'gemini') ...[
+        const SizedBox(height: 10),
+        Row(children: [
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Subtitle alongside Dub', style: TextStyle(color: Colors.white, fontSize: 12)),
+            Text('Show subtitles while dubbing plays', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ])),
+          Switch(value: _geminiWithSub, onChanged: (v) => setState(() => _geminiWithSub = v), activeColor: const Color(0xFF10B981)),
+        ]),
+        if (_geminiWithSub) ...[
+          const SizedBox(height: 6),
+          Row(children: [
+            const Text('Subtitle Engine:', style: TextStyle(color: Colors.white60, fontSize: 11)),
+            const SizedBox(width: 8),
+            GestureDetector(onTap: () => setState(() => _geminiSubEngine = 'vosk'),
+              child: Container(margin: const EdgeInsets.only(right:6), padding: const EdgeInsets.symmetric(horizontal:10, vertical:4),
+                decoration: BoxDecoration(color: _geminiSubEngine=='vosk' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
+                child: Text('Vosk', style: TextStyle(color: _geminiSubEngine=='vosk' ? Colors.white : Colors.white38, fontSize: 11)))),
+            GestureDetector(onTap: () => setState(() => _geminiSubEngine = 'android'),
+              child: Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:4),
+                decoration: BoxDecoration(color: _geminiSubEngine=='android' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
+                child: Text('Android STT', style: TextStyle(color: _geminiSubEngine=='android' ? Colors.white : Colors.white38, fontSize: 11)))),
+          ]),
+        ],
       ],
       const SizedBox(height: 14),
 
@@ -3381,7 +3483,9 @@ if (_engine != 'gemini') StatefulBuilder(builder: (_, ss2) {
           'translateOnFinish': _translateOnFinish,
           'showOriginal': _showOriginal,
           'useOffline': _useOffline,
-          'geminiDubMode': _geminiDubMode,
+          'geminiDubMode': true, // همیشه DUB
+          'geminiWithSub': _geminiWithSub,
+          'geminiSubEngine': _geminiSubEngine,
           'geminiVoice': _geminiVoice,
         }),
         child: const Text('شروع')),
