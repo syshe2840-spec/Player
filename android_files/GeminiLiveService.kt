@@ -64,7 +64,7 @@ class GeminiLiveService(private val apiKey: String) {
     @Volatile private var lastAudioHash: Int = 0
 
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
-        if (running.get()) { stop(); Thread.sleep(300) }
+        if (running.get()) { stop() }  // بدون sleep — async stop
         running.set(true)
         projection = proj
         config = cfg
@@ -357,6 +357,8 @@ class GeminiLiveService(private val apiKey: String) {
         playThread?.interrupt(); playThread = null
         sendThread?.interrupt(); sendThread = null
         audioThread?.interrupt(); audioThread = null
+        audioQueue?.let { SharedAudioService.removeConsumer(it) }
+        audioQueue = null
         inputQueue.clear()
         stopInternal(); send("status", "stopped")
     }
@@ -365,7 +367,8 @@ class GeminiLiveService(private val apiKey: String) {
         audioBuffer.clear()
         try { audioTrack?.stop(); audioTrack?.release() } catch (_:Exception) {}; audioTrack = null
         try { socket?.close(); socket = null } catch (_:Exception) {}
-        try { projection?.stop() } catch (_:Exception) {}; projection = null
+        // projection توسط SharedAudioService مدیریت میشه
+        projection = null
     }
 
     fun getNextEvent(): Map<String,Any>? = eventQueue.poll()
@@ -398,4 +401,3 @@ class ByteArrayBuffer(private val maxBytes: Int) {
 
     fun clear() { synchronized(lock) { data.clear() } }
 }
-
