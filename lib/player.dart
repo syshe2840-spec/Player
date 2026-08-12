@@ -590,6 +590,27 @@ class _PlayerState extends State<PlayerScreen>{
     });
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Option 2: Video Seek Back for sync
+      if (_geminiDubMode) {
+        final syncOffset = prefs.getDouble('gemini_sync_offset') ?? 2.0;
+        if (syncOffset > 0 && _position.inSeconds > syncOffset) {
+          final newPos = Duration(milliseconds: (_position.inMilliseconds - (syncOffset*1000).round()).clamp(0, _duration.inMilliseconds));
+          player.seek(newPos);
+          if (_mounted) setState((){_aiLog.add('[DUB] seek back ${syncOffset}s for sync');});
+        }
+        // Option 3: Buffer Pause
+        final bufPause = prefs.getBool('gemini_buffer_pause') ?? false;
+        final bufSec = prefs.getInt('gemini_buffer_pause_sec') ?? 3;
+        if (bufPause) {
+          player.pause();
+          if (_mounted) setState((){_aiLog.add('[DUB] paused ${bufSec}s to fill buffer...');});
+          await Future.delayed(Duration(seconds: bufSec));
+          if (_mounted && _dgActive) { player.play(); setState((){_aiLog.add('[DUB] buffer ready — playing');});}
+        }
+        // Volume
+        final origVol = (prefs.getDouble('gemini_orig_volume') ?? 0.3) * 100;
+        if (_mounted) { player.setVolume(origVol.clamp(0, 100)); setState((){_aiLog.add('[DUB] orig vol → ${origVol.round()}%');}); }
+      }
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
       'voice': _geminiVoice,
