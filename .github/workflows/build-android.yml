@@ -71,6 +71,7 @@ jobs:
             cp android_files/YtDlpService.kt "$MAKT_DIR/YtDlpService.kt" || true
             cp android_files/VoskService.kt "$MAKT_DIR/VoskService.kt" || true
             cp android_files/GeminiLiveService.kt "$MAKT_DIR/GeminiLiveService.kt" || true
+            cp android_files/SharedAudioService.kt "$MAKT_DIR/SharedAudioService.kt" || true
             echo "=== Kotlin files copied ==="
             MANIFEST="android/app/src/main/AndroidManifest.xml"
             if ! grep -q "LiveSubService" "$MANIFEST"; then
