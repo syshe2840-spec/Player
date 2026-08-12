@@ -636,13 +636,7 @@ class _PlayerState extends State<PlayerScreen>{
         if (mounted) showSnack(context, '❌ Gemini: $err', color: Colors.red, seconds: 5);
       }
     });
-    // original volume when dub mode starts
-    if (_geminiDubMode) {
-      final p2 = await SharedPreferences.getInstance();
-      final origVol = (p2.getDouble('gemini_orig_volume') ?? 0.3) * 100;
-      if (_mounted) player.setVolume(origVol.clamp(0, 100));
-      if (_mounted) setState((){_aiLog.add('[DUB] original audio → ${origVol.round()}%');});
-    }
+
   }
 
   Future<String> _translateVosk(String text) async {
@@ -3051,10 +3045,10 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
       const SizedBox(height: 14),
 
       // زبان مبدا
-      const Align(alignment: Alignment.centerRight,
+      if (_engine != 'gemini') const Align(alignment: Alignment.centerRight,
         child: Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 12))),
       const SizedBox(height: 6),
-StatefulBuilder(builder: (_, ss2) {
+if (_engine != 'gemini') StatefulBuilder(builder: (_, ss2) {
         if (_engine == 'android') {
           // Android STT — همه زبان‌های پشتیبانی شده
           return DropdownButtonFormField<String>(
@@ -3123,7 +3117,7 @@ StatefulBuilder(builder: (_, ss2) {
       }),
       const SizedBox(height: 16),
 
-      Row(children: [
+      if (_engine != 'gemini') Row(children: [
         const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
         Switch(value: _translate, onChanged: (v) => setState(() { _translate = v; if (v) _showOriginal = false; }),
           activeColor: const Color(0xFF7C3AED)),
@@ -3131,7 +3125,7 @@ StatefulBuilder(builder: (_, ss2) {
 
       // سرعت polling
       const SizedBox(height: 12),
-      const Align(alignment: Alignment.centerRight,
+      if (_engine != 'gemini') const Align(alignment: Alignment.centerRight,
         child: Text('سرعت بروزرسانی', style: TextStyle(color: Colors.white60, fontSize: 12))),
       const SizedBox(height: 6),
       DropdownButtonFormField<int>(
@@ -3186,9 +3180,9 @@ StatefulBuilder(builder: (_, ss2) {
       ],
       const SizedBox(height: 10),
         // زمان نمایش
-        const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
+        if (_engine != 'gemini') const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
         const SizedBox(height: 6),
-        Row(children: [
+        if (_engine != 'gemini') Row(children: [
           Expanded(child: GestureDetector(
             onTap: () => setState(() => _translateOnFinish = false),
             child: Container(
