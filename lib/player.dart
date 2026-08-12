@@ -393,7 +393,17 @@ class _PlayerState extends State<PlayerScreen>{
     }
     if(widget.isLive||widget.isOnlineUrl||_curPath.startsWith('http'))
       setState(()=>_buffering=true);
-    if(widget.isLive){_addLiveLog('Opening stream...');_addLiveLog('URL: ${_curPath.substring(0,_curPath.length.clamp(0,60))}...');}
+    if(widget.isLive){
+      // VPN bypass — اعمال network interface به MPV
+      try {
+        final p = await SharedPreferences.getInstance();
+        final iface = p.getString('iptv_network_iface') ?? '';
+        if (iface.isNotEmpty) {
+          player.setProperty('network-device', iface);
+          debugPrint('[MPV] network-device=$iface');
+        }
+      } catch (_) {}
+      _addLiveLog('Opening stream...');_addLiveLog('URL: ${_curPath.substring(0,_curPath.length.clamp(0,60))}...');}
     final isHttp = _curPath.startsWith('http');
     final media = isHttp
       ? Media(_curPath, httpHeaders: {
@@ -441,7 +451,17 @@ class _PlayerState extends State<PlayerScreen>{
     setState((){});
     if(widget.isLive||widget.isOnlineUrl||_curPath.startsWith('http'))
       setState(()=>_buffering=true);
-    if(widget.isLive){_addLiveLog('Opening stream...');_addLiveLog('URL: ${_curPath.substring(0,_curPath.length.clamp(0,60))}...');}
+    if(widget.isLive){
+      // VPN bypass — اعمال network interface به MPV
+      try {
+        final p = await SharedPreferences.getInstance();
+        final iface = p.getString('iptv_network_iface') ?? '';
+        if (iface.isNotEmpty) {
+          player.setProperty('network-device', iface);
+          debugPrint('[MPV] network-device=$iface');
+        }
+      } catch (_) {}
+      _addLiveLog('Opening stream...');_addLiveLog('URL: ${_curPath.substring(0,_curPath.length.clamp(0,60))}...');}
     final isHttp = _curPath.startsWith('http');
     final media = isHttp
       ? Media(_curPath, httpHeaders: {
