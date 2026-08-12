@@ -137,7 +137,14 @@ class MainActivity : FlutterActivity() {
                             } else null
                             connectivityMgr?.bindProcessToNetwork(targetNet)
                             android.util.Log.d("Network", "VPN bypass=$enabled net=$targetNet")
-                            result.success(targetNet != null || !enabled)
+                            if (enabled && targetNet != null) {
+                                val linkProps = connectivityMgr?.getLinkProperties(targetNet)
+                                val iface = linkProps?.interfaceName ?: ""
+                                android.util.Log.d("Network", "Direct iface=$iface")
+                                result.success(iface)
+                            } else {
+                                result.success("")
+                            }
                         } else result.success(false)
                     }
                     "getNetworkInfo" -> {
