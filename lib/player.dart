@@ -746,8 +746,18 @@ class _PlayerState extends State<PlayerScreen>{
 
   void _toggleDeeepgram()async{
     if(_dgActive){
-      await DeepgramService.stop();
-      _dgSub?.cancel();
+      _geminiPollTimer?.cancel(); _geminiPollTimer = null;
+      if (_useGeminiLive) {
+        try { await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+        player.setVolume(100); // برگردوندن volume
+      } else if (_useVosk) {
+        try { VoskService.stop(); } catch(_) {}
+      } else if (_useAndroidStt) {
+        try { AndroidSttService.stop(); } catch(_) {}
+      } else {
+        await DeepgramService.stop();
+        _dgSub?.cancel();
+      }
       setState((){_dgActive=false;_dgText='';_dgText2='';});
     } else {
       // انتخاب زبان + تنظیمات ترجمه
@@ -3213,7 +3223,7 @@ if (_engine != 'gemini') StatefulBuilder(builder: (_, ss2) {
       if (_translate || _engine == 'gemini') ...[
         const SizedBox(height: 12),
         // حالت ترجمه
-        Row(children: [
+        if (_engine != 'gemini') Row(children: [
           Expanded(child: GestureDetector(
             onTap: () async {
               setState(() => _useOffline = true);
@@ -3258,7 +3268,7 @@ if (_engine != 'gemini') StatefulBuilder(builder: (_, ss2) {
                 const Text('Powered by Cloudflare Worker', style: TextStyle(color: Colors.white24, fontSize: 9)),
               ])))),
         ]),
-        if (_useOffline) ...[
+        if (_useOffline && _engine != 'gemini') ...[
           const SizedBox(height: 8),
           StatefulBuilder(builder: (ctx2, ss2) => Column(children: [
             if (!_mlkitReady && !_mlkitDownloading)
