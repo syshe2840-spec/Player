@@ -64,7 +64,12 @@ class GeminiLiveService(private val apiKey: String) {
     @Volatile private var lastAudioHash: Int = 0
 
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
-        if (running.getAndSet(true)) return
+        // اگه قبلاً running بود، اول stop کن
+        if (running.get()) {
+            stop()
+            Thread.sleep(300)
+        }
+        running.set(true)
         projection = proj
         config = cfg
         if (cfg.dubMode) initAudioTrack()
@@ -148,12 +153,12 @@ class GeminiLiveService(private val apiKey: String) {
             val modalities = if (config.dubMode) JSONArray().put("AUDIO") else JSONArray().put("TEXT")
             val setup = JSONObject()
                 .put("model", "models/${config.model}")
-                .put("generationConfig", JSONObject()
-                    .put("responseModalities", modalities)
-                    .put("translationConfig", JSONObject()
-                        .put("targetLanguageCode", config.targetLang)
-                        .put("echoTargetLanguage", false))
-                    .apply {
+                .put("generationConfig", JSONObject().apply {
+                        put("responseModalities", modalities)
+                        put("translationConfig", JSONObject()
+                            .put("targetLanguageCode", config.targetLang)
+                            .put("echoTargetLanguage", false))
+                        // speechConfig هم‌سطح responseModalities
                         if (config.dubMode && config.voice.isNotEmpty()) {
                             put("speechConfig", JSONObject()
                                 .put("voiceConfig", JSONObject()
