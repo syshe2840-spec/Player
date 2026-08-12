@@ -563,6 +563,7 @@ class _PlayerState extends State<PlayerScreen>{
       final prefs = await SharedPreferences.getInstance();
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
+      'voice': geminiVoice,
       'model': prefs.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview',
       // Accuracy preset — overrides manual settings
       ...() {
@@ -3296,7 +3297,10 @@ StatefulBuilder(builder: (_, ss2) {
             style: const TextStyle(color: Colors.white60, fontSize: 12))),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _translateTo,  // همیشه _translateTo
+          value: () {
+            final langs = _engine=='gemini' ? _geminiLangs : _transLangs;
+            return langs.containsKey(_translateTo) ? _translateTo : langs.keys.first;
+          }(),
           dropdownColor: const Color(0xFF1A1A2A),
           decoration: InputDecoration(
             filled: true, fillColor: const Color(0xFF1A1A2A),
