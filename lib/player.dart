@@ -3163,12 +3163,13 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
               const SizedBox(height: 4),
-              Builder(builder: (ctx) {
-                // زبان‌های مدل‌های دانلود شده
+Builder(builder: (ctx) {
                 final downloadedLangs = VoskService.downloadedModels
-                    .map((m) => m.lang).toSet().toList();
+                    .map((m) => m.langCode).toSet().toList();
                 if (downloadedLangs.isEmpty) {
-                  return const Text('No Vosk models downloaded', style: TextStyle(color: Colors.orange, fontSize: 11));
+                  return const Text('No Vosk models downloaded
+Go to Settings → Vosk',
+                    style: TextStyle(color: Colors.orange, fontSize: 11));
                 }
                 final validLang = downloadedLangs.contains(_lang) ? _lang : downloadedLangs.first;
                 return DropdownButtonFormField<String>(
@@ -3178,9 +3179,9 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                   style: const TextStyle(color: Colors.white, fontSize: 12),
-                  items: downloadedLangs.map((lang) => DropdownMenuItem(
+                  items: downloadedLangs.map<DropdownMenuItem<String>>((lang) => DropdownMenuItem<String>(
                     value: lang,
-                    child: Text('$lang — ${VoskService.downloadedModels.where((m) => m.lang == lang).first.name}')
+                    child: Text('$lang — ${VoskService.downloadedModels.firstWhere((m) => m.langCode == lang).name}'),
                   )).toList(),
                   onChanged: (v) { if (v != null) setState(() => _lang = v); });
               }),
