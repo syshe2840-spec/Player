@@ -78,7 +78,10 @@ class _PlayerState extends State<PlayerScreen>{
   bool _useVosk = true;
   bool _useAndroidStt = false;
   bool _useGeminiLive = false;
-  bool _geminiDubMode = true; // همیشه DUB
+  bool _geminiDubMode = true;
+  bool _geminiEnabled = false;
+  bool _voskEnabled = false;
+  bool _androidEnabled = false;
   bool _geminiWithVosk = false; // Gemini DUB + Vosk subtitle همزمان
   String _geminiSubEngine = 'vosk'; // vosk / android
   String _geminiVoice = 'Charon'; // default: male
