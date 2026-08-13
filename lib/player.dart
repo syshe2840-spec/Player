@@ -788,19 +788,10 @@ class _PlayerState extends State<PlayerScreen>{
   }
 
   void _toggleDeeepgram()async{
-    if(_dgActive){
-      _geminiPollTimer?.cancel(); _geminiPollTimer = null;
-      if (_useGeminiLive) {
-        try { await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
-        player.setVolume(100); // برگردوندن volume
-      } else if (_useVosk) {
-        try { VoskService.stop(); } catch(_) {}
-      } else if (_useAndroidStt) {
-        try { AndroidSttService.stop(); } catch(_) {}
-      } else {
-        await DeepgramService.stop();
-        _dgSub?.cancel();
-      }
+    // همیشه dialog باز میکنه — stop دیگه نمیکنه
+    // (stop از دکمه‌های ■ DUB و ■ SUB انجام میشه)
+    if(false && _dgActive){
+      // این بخش دیگه اجرا نمیشه
       setState((){_dgActive=false;_dgText='';_dgText2='';});
     } else {
       // انتخاب زبان + تنظیمات ترجمه
@@ -827,9 +818,10 @@ class _PlayerState extends State<PlayerScreen>{
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
-      _geminiDubMode = true; // همیشه DUB
-      _geminiWithVosk = result['geminiWithSub'] as bool? ?? false;
-      _geminiSubEngine = result['geminiSubEngine'] as String? ?? 'vosk';
+      _geminiDubMode = true;
+      _geminiEnabled = result['geminiEnabled'] as bool? ?? false;
+      _voskEnabled = result['voskEnabled'] as bool? ?? false;
+      _androidEnabled = result['androidEnabled'] as bool? ?? false;
       final newVoice = result['geminiVoice'] as String? ?? 'Charon';
       final newLang = result['lang'] as String? ?? _voskTranslateTo;
       // اگه Gemini فعاله و lang/voice تغییر نکرده → فقط تنظیمات رو update کن بدون restart
@@ -2559,11 +2551,12 @@ class _PlayerState extends State<PlayerScreen>{
   ]);
 
   Widget _aiControlsWidget() {
+    // AI button — همیشه dialog باز میکنه (stop نمیکنه)
     if (!_dgActive) {
       return GestureDetector(
-        onTap: ()=>_toggleDeeepgram(),
+        onTap: () => _toggleDeeepgram(),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+          padding: const EdgeInsets.symmetric(horizontal:8, vertical:4),
           decoration: BoxDecoration(
             color: Colors.white12,
             borderRadius: BorderRadius.circular(6),
@@ -2574,21 +2567,37 @@ class _PlayerState extends State<PlayerScreen>{
             Text('AI', style: TextStyle(fontSize:11, color:Colors.white54, fontWeight:FontWeight.bold)),
           ])));
     }
+    // وقتی active هست — دکمه‌های جدا برای هر engine
     return Row(mainAxisSize: MainAxisSize.min, children: [
+      // دکمه AI برای باز کردن dialog (بدون stop)
+      GestureDetector(
+        onTap: () => _toggleDeeepgram(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal:8, vertical:4),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(6)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.record_voice_over_rounded, size:12, color:Colors.white),
+            SizedBox(width:3),
+            Text('AI', style: TextStyle(fontSize:10, color:Colors.white, fontWeight:FontWeight.bold)),
+          ]))),
+      const SizedBox(width:4),
+      // ■ DUB — فقط اگه Gemini DUB فعاله
       if (_useGeminiLive) ...[
         GestureDetector(
           onTap: () {
             _geminiPollTimer?.cancel(); _geminiPollTimer = null;
             try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
             player.setVolume(100);
-            if (_mounted) setState((){
+            if (_mounted) setState(() {
               _useGeminiLive = false; _dgText2 = '';
               if (!_useVosk && !_useAndroidStt) { _dgActive = false; _dgText = ''; }
               _aiLog.add('[DUB] stopped');
             });
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+            padding: const EdgeInsets.symmetric(horizontal:8, vertical:4),
             decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
             child: const Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.record_voice_over_rounded, size:12, color:Colors.white),
@@ -2597,6 +2606,7 @@ class _PlayerState extends State<PlayerScreen>{
             ]))),
         const SizedBox(width:4),
       ],
+      // ■ SUB — اگه Vosk یا Android STT فعاله
       if (_useVosk || _useAndroidStt) ...[
         GestureDetector(
           onTap: () {
@@ -2604,14 +2614,14 @@ class _PlayerState extends State<PlayerScreen>{
             _androidSttPollTimer?.cancel();
             try { if (_useVosk) VoskService.stop(); } catch(_) {}
             try { if (_useAndroidStt) AndroidSttService.stop(); } catch(_) {}
-            if (_mounted) setState((){
+            if (_mounted) setState(() {
               _useVosk = false; _useAndroidStt = false; _dgText = '';
               if (!_useGeminiLive) _dgActive = false;
               _aiLog.add('[SUB] stopped');
             });
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+            padding: const EdgeInsets.symmetric(horizontal:8, vertical:4),
             decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
             child: const Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.subtitles_rounded, size:12, color:Colors.white),
@@ -2620,11 +2630,12 @@ class _PlayerState extends State<PlayerScreen>{
             ]))),
         const SizedBox(width:4),
       ],
+      // LOG button
       GestureDetector(
-        onTap: ()=>_showAiLogDialog(),
+        onTap: () => _showAiLogDialog(),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
-          decoration: BoxDecoration(color: Colors.green.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
+          padding: const EdgeInsets.symmetric(horizontal:8, vertical:4),
+          decoration: BoxDecoration(color: Colors.green.withOpacity(0.5), borderRadius: BorderRadius.circular(6)),
           child: const Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.bug_report_rounded, size:12, color:Colors.white),
             SizedBox(width:3),
@@ -2882,8 +2893,9 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   double _mlkitProgress = 0;
   bool _mlkitReady = false;
   bool _geminiDubMode = true; // Gemini همیشه DUB
-  bool _geminiWithSub = false; // همزمان زیرنویس
-  String _geminiSubEngine = 'vosk'; // vosk / android
+  bool _geminiEnabled = false; // Gemini DUB toggle
+  bool _voskEnabled = false;   // Vosk subtitle toggle
+  bool _androidEnabled = false; // Android STT toggle
   String _geminiVoice = 'Charon'; // default: male
 
 
@@ -3057,130 +3069,93 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
     backgroundColor: const Color(0xFF12121C),
     title: const Text('تنظیمات زیرنویس زنده', style: TextStyle(color: Colors.white, fontSize: 15)),
     content: SizedBox(width: 300, height: 420, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      // ── انتخاب موتور ──
-      Row(children: [
-        Expanded(child: GestureDetector(
-          onTap: () => setState(() => _engine = 'vosk'),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: _engine == 'vosk' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
-              borderRadius: BorderRadius.circular(8)),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.memory_rounded, color: _engine=='vosk' ? Colors.white : Colors.white38, size: 16),
-              const SizedBox(height: 4),
-              Text('Vosk', style: TextStyle(color: _engine=='vosk' ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
-              Text('آفلاین', style: TextStyle(color: _engine=='vosk' ? Colors.white60 : Colors.white24, fontSize: 9)),
-            ])))),
-        const SizedBox(width: 8),
-        Expanded(child: GestureDetector(
-          onTap: () => setState(() => _engine = 'android'),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: _engine == 'android' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A),
-              borderRadius: BorderRadius.circular(8)),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.android_rounded, color: _engine=='android' ? Colors.white : Colors.white38, size: 16),
-              const SizedBox(height: 4),
-              Text('Android', style: TextStyle(color: _engine=='android' ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
-              Text('آنلاین - بیشتر زبان', style: TextStyle(color: _engine=='android' ? Colors.white60 : Colors.white24, fontSize: 9)),
-            ])))),
-        const SizedBox(width: 6),
-        Expanded(child: GestureDetector(
-          onTap: () => setState(() { _engine = 'gemini'; if (!_geminiLangs.containsKey(_translateTo)) _translateTo = 'fa'; }),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: _engine == 'gemini' ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _engine == 'gemini' ? const Color(0xFF10B981) : Colors.white12)),
-            child: Column(children: [
-              Icon(Icons.auto_awesome_rounded, size: 20,
-                color: _engine=='gemini' ? const Color(0xFF10B981) : Colors.white38),
-              const SizedBox(height: 4),
-              Text('Gemini', style: TextStyle(color: _engine=='gemini' ? Colors.white : Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
-              Text('AI Live', style: TextStyle(color: _engine=='gemini' ? Colors.white70 : Colors.white38, fontSize: 10)),
-              Text('Needs API key', style: TextStyle(color: _engine=='gemini' ? Colors.white60 : Colors.white24, fontSize: 9)),
-            ])))),
-      ]),
-      // Gemini mode toggle
-      // Gemini فقط DUB دارد (subtitle از Vosk/Android STT) 
-      if (_engine == 'gemini') ...[
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(child: GestureDetector(
-            onTap: () => setState(() => _geminiDubMode = false),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: !_geminiDubMode ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: !_geminiDubMode ? const Color(0xFF10B981) : Colors.white12)),
-              child: Column(children: [
-                Icon(Icons.subtitles_rounded, size: 16, color: !_geminiDubMode ? const Color(0xFF10B981) : Colors.white38),
-                const SizedBox(height: 3),
-                Text('زیرنویس', style: TextStyle(color: !_geminiDubMode ? Colors.white : Colors.white38, fontSize: 11)),
-              ])))),
-          const SizedBox(width: 8),
-          Expanded(child: GestureDetector(
-            onTap: () => setState(() => _geminiDubMode = true),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: _geminiDubMode ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _geminiDubMode ? const Color(0xFF10B981) : Colors.white12)),
-              child: Column(children: [
-                Icon(Icons.record_voice_over_rounded, size: 16, color: _geminiDubMode ? const Color(0xFF10B981) : Colors.white38),
-                const SizedBox(height: 3),
-                Text('🎙 دوبله', style: TextStyle(color: _geminiDubMode ? Colors.white : Colors.white38, fontSize: 11)),
-              ])))),
-        ]),
-      ],
-      // Voice — فقط Gemini + dub mode
-      if (_engine == 'gemini' && _geminiDubMode) ...[
-        const SizedBox(height: 10),
-        const Align(alignment: Alignment.centerRight,
-          child: Text('Voice', style: TextStyle(color: Colors.white60, fontSize: 12))),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          value: _geminiVoices.containsKey(_geminiVoice) ? _geminiVoice : 'Charon',
-          dropdownColor: const Color(0xFF1A1A2A),
-          decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-          items: _geminiVoices.entries.map((e) => DropdownMenuItem(value: e.key,
-            child: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)))).toList(),
-          onChanged: (v) => setState(() => _geminiVoice = v!)),
-      ],
-      // Subtitle همزمان با Gemini DUB
-      if (_engine == 'gemini') ...[
-        const SizedBox(height: 10),
-        Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Subtitle alongside Dub', style: TextStyle(color: Colors.white, fontSize: 12)),
-            Text('Show subtitles while dubbing plays', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ])),
-          Switch(value: _geminiWithSub, onChanged: (v) => setState(() => _geminiWithSub = v), activeColor: const Color(0xFF10B981)),
-        ]),
-        if (_geminiWithSub) ...[
-          const SizedBox(height: 6),
-          Row(children: [
-            const Text('Subtitle Engine:', style: TextStyle(color: Colors.white60, fontSize: 11)),
+      // ── Gemini DUB ──
+      Container(
+        decoration: BoxDecoration(
+          color: _geminiEnabled ? const Color(0xFF10B981).withOpacity(0.1) : const Color(0xFF1A1A2A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _geminiEnabled ? const Color(0xFF10B981) : Colors.white12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Row(children: [
+            const Icon(Icons.record_voice_over_rounded, size: 16, color: Color(0xFF10B981)),
             const SizedBox(width: 8),
-            GestureDetector(onTap: () => setState(() => _geminiSubEngine = 'vosk'),
-              child: Container(margin: const EdgeInsets.only(right:6), padding: const EdgeInsets.symmetric(horizontal:10, vertical:4),
-                decoration: BoxDecoration(color: _geminiSubEngine=='vosk' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
-                child: Text('Vosk', style: TextStyle(color: _geminiSubEngine=='vosk' ? Colors.white : Colors.white38, fontSize: 11)))),
-            GestureDetector(onTap: () => setState(() => _geminiSubEngine = 'android'),
-              child: Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:4),
-                decoration: BoxDecoration(color: _geminiSubEngine=='android' ? const Color(0xFF7C3AED) : const Color(0xFF1A1A2A), borderRadius: BorderRadius.circular(6)),
-                child: Text('Android STT', style: TextStyle(color: _geminiSubEngine=='android' ? Colors.white : Colors.white38, fontSize: 11)))),
-          ]),
-        ],
-      ],
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Gemini DUB', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text('AI Live dubbing — Needs API key', style: TextStyle(color: Colors.white38, fontSize: 10)),
+            ])),
+            Switch(value: _geminiEnabled, onChanged: (v) => setState(() { _geminiEnabled = v; if (v) { _voskEnabled = false; _androidEnabled = false; } }), activeColor: const Color(0xFF10B981)),
+          ])),
+          if (_geminiEnabled) ...[
+            const Divider(color: Colors.white12, height: 1),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // Voice
+              Row(children: [
+                const Text('Voice', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                const SizedBox(width: 8),
+                Expanded(child: DropdownButton<String>(
+                  value: _geminiVoice, isExpanded: true,
+                  dropdownColor: const Color(0xFF1A1A2A),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  underline: const SizedBox(),
+                  items: _geminiVoices.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                  onChanged: (v) => setState(() => _geminiVoice = v!))),
+              ]),
+              const SizedBox(height: 6),
+              // Target Language
+              const Text('Target Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<String>(
+                value: _geminiLangs.containsKey(_translateTo) ? _translateTo : 'fa',
+                dropdownColor: const Color(0xFF1A1A2A),
+                decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                items: _geminiLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                onChanged: (v) => setState(() => _translateTo = v!)),
+            ])),
+          ],
+        ])),
+      const SizedBox(height: 8),
+
+      // ── Vosk Subtitle ──
+      Container(
+        decoration: BoxDecoration(
+          color: _voskEnabled ? const Color(0xFF7C3AED).withOpacity(0.1) : const Color(0xFF1A1A2A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _voskEnabled ? const Color(0xFF7C3AED) : Colors.white12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Row(children: [
+            const Icon(Icons.subtitles_rounded, size: 16, color: Color(0xFF7C3AED)),
+            const SizedBox(width: 8),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Vosk Subtitle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text('Offline · Local model', style: TextStyle(color: Colors.white38, fontSize: 10)),
+            ])),
+            Switch(value: _voskEnabled, onChanged: (v) => setState(() { _voskEnabled = v; if (v) _androidEnabled = false; }), activeColor: const Color(0xFF7C3AED)),
+          ])),
+          if (_voskEnabled) ...[
+            const Divider(color: Colors.white12, height: 1),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text('Uses Vosk offline model', style: const TextStyle(color: Colors.white54, fontSize: 11))),
+          ],
+        ])),
+      const SizedBox(height: 8),
+
+      // ── Android STT ──
+      Container(
+        decoration: BoxDecoration(
+          color: _androidEnabled ? const Color(0xFF0EA5E9).withOpacity(0.1) : const Color(0xFF1A1A2A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _androidEnabled ? const Color(0xFF0EA5E9) : Colors.white12)),
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Row(children: [
+          const Icon(Icons.android_rounded, size: 16, color: Color(0xFF0EA5E9)),
+          const SizedBox(width: 8),
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Android STT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            Text('Online · More languages', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ])),
+          Switch(value: _androidEnabled, onChanged: (v) => setState(() { _androidEnabled = v; if (v) _voskEnabled = false; }), activeColor: const Color(0xFF0EA5E9)),
+        ]))),
       const SizedBox(height: 14),
 
       // زبان مبدا
@@ -3267,7 +3242,7 @@ if (_engine != 'gemini') StatefulBuilder(builder: (_, ss2) {
       if (_engine != 'gemini') const Align(alignment: Alignment.centerRight,
         child: Text('سرعت بروزرسانی', style: TextStyle(color: Colors.white60, fontSize: 12))),
       const SizedBox(height: 6),
-      DropdownButtonFormField<int>(
+      if (_engine != 'gemini') DropdownButtonFormField<int>(
         value: _pollMs,
         dropdownColor: const Color(0xFF1A1A2A),
         decoration: InputDecoration(
@@ -3469,9 +3444,9 @@ if (_engine != 'gemini') StatefulBuilder(builder: (_, ss2) {
           'translateOnFinish': _translateOnFinish,
           'showOriginal': _showOriginal,
           'useOffline': _useOffline,
-          'geminiDubMode': true, // همیشه DUB
-          'geminiWithSub': _geminiWithSub,
-          'geminiSubEngine': _geminiSubEngine,
+          'geminiEnabled': _geminiEnabled,
+          'voskEnabled': _voskEnabled,
+          'androidEnabled': _androidEnabled,
           'geminiVoice': _geminiVoice,
         }),
         child: const Text('شروع')),
