@@ -2537,8 +2537,9 @@ class _PlayerState extends State<PlayerScreen>{
               },
             ))),
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
-      ],
-    ])));
+        ]),
+      ),
+    ]);
   }
 
   Widget _abRow()=>Row(mainAxisSize:MainAxisSize.min,children:[
