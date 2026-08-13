@@ -54,6 +54,7 @@ class GeminiLiveService(private val apiKey: String) {
     private var audioThread: Thread? = null
     private var playThread: Thread? = null
     private var sendThread: Thread? = null
+    private var audioQueue: java.util.concurrent.LinkedBlockingQueue<ByteArray>? = null
     // INPUT_QUEUE — مثل e2dub: Queue(50), oldest dropped when full
     private val inputQueue = java.util.concurrent.LinkedBlockingQueue<ByteArray>(50)
 
