@@ -826,6 +826,11 @@ class _PlayerState extends State<PlayerScreen>{
       _voskEnabled = result['voskEnabled'] as bool? ?? false;
       _androidEnabled = result['androidEnabled'] as bool? ?? false;
       final newVoice = result['geminiVoice'] as String? ?? 'Charon';
+      // وصل کردن به engine flags
+      _useGeminiLive = _geminiEnabled;
+      _useVosk = _voskEnabled;
+      _useAndroidStt = _androidEnabled;
+      _geminiDubMode = true;
       final newLang = result['lang'] as String? ?? _voskTranslateTo;
       // اگه Gemini فعاله و lang/voice تغییر نکرده → فقط تنظیمات رو update کن بدون restart
       if (_useGeminiLive && _dgActive && newLang == _voskTranslateTo && newVoice == _geminiVoice) {
@@ -2902,6 +2907,22 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _geminiVoice = 'Charon'; // default: male
 
 
+  static const _voskLangs = {
+    'fa': '🇮🇷 Persian (fa)',
+    'en': '🇺🇸 English (en)',
+    'ar': '🇸🇦 Arabic (ar)',
+    'zh': '🇨🇳 Chinese (zh)',
+    'ru': '🇷🇺 Russian (ru)',
+    'es': '🇪🇸 Spanish (es)',
+    'fr': '🇫🇷 French (fr)',
+    'de': '🇩🇪 German (de)',
+    'tr': '🇹🇷 Turkish (tr)',
+    'hi': '🇮🇳 Hindi (hi)',
+    'ja': '🇯🇵 Japanese (ja)',
+    'ko': '🇰🇷 Korean (ko)',
+    'uk': '🇺🇦 Ukrainian (uk)',
+  };
+
   static const _geminiVoices = {
     'Aoede': '♀ Aoede (Female)',
     'Charon': '♂ Charon (Male)',
@@ -3139,7 +3160,19 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           ])),
           if (_voskEnabled) ...[
             const Divider(color: Colors.white12, height: 1),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text('Uses Vosk offline model', style: const TextStyle(color: Colors.white54, fontSize: 11))),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<String>(
+                value: _voskLangs.containsKey(_lang) ? _lang : 'fa',
+                dropdownColor: const Color(0xFF1A1A2A),
+                decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                items: _voskLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                onChanged: (v) => setState(() => _lang = v!)),
+            ])),
           ],
         ])),
       const SizedBox(height: 8),
@@ -3150,7 +3183,8 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           color: _androidEnabled ? const Color(0xFF0EA5E9).withOpacity(0.1) : const Color(0xFF1A1A2A),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _androidEnabled ? const Color(0xFF0EA5E9) : Colors.white12)),
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Row(children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Row(children: [
           const Icon(Icons.android_rounded, size: 16, color: Color(0xFF0EA5E9)),
           const SizedBox(width: 8),
           const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -3158,8 +3192,26 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             Text('Online · More languages', style: TextStyle(color: Colors.white38, fontSize: 10)),
           ])),
           Switch(value: _androidEnabled, onChanged: (v) => setState(() { _androidEnabled = v; if (v) _voskEnabled = false; }), activeColor: const Color(0xFF0EA5E9)),
-        ]))),
-      const SizedBox(height: 14),
+         ])),
+          if (_androidEnabled) ...[
+            const Divider(color: Colors.white12, height: 1),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<String>(
+                value: AndroidSttService.supportedLangs.containsKey(_lang) ? _lang : 'en',
+                dropdownColor: const Color(0xFF1A1A2A),
+                decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                items: AndroidSttService.supportedLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                onChanged: (v) => setState(() => _lang = v!)),
+            ])),
+          ],
+        ]),
+      ),
+
 
       // زبان مبدا
       if (_engine != 'gemini') const Align(alignment: Alignment.centerRight,
