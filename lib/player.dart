@@ -801,6 +801,7 @@ class _PlayerState extends State<PlayerScreen>{
       final result=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>_VoskSettingsDialog());
       if(result==null)return;
       final lang=result['lang'] as String;
+      final voskLang=result['voskLang'] as String? ?? lang;
       _voskTranslate=result['translate'] as bool;
       _voskTranslateTo=result['translateTo'] as String;
       // اگه ترجمه فعاله، sub2 رو خودکار روشن کن
@@ -883,7 +884,24 @@ class _PlayerState extends State<PlayerScreen>{
       if (_useGeminiLive) {
         if (_mounted) setState((){_aiLog.add('[ENGINE] → Gemini Live branch selected');});
         await _startGeminiLive();
-        return;
+        if (!_useVosk && !_useAndroidStt) return;
+        // صبر برای MediaProjection grant و SharedAudioService start
+        if (_mounted) setState((){_aiLog.add('[ENGINE] → Waiting for Gemini permission...');});
+        int waited = 0;
+        bool sharedReady = false;
+        while (!sharedReady && waited < 8000) {
+          await Future.delayed(const Duration(milliseconds: 300));
+          waited += 300;
+          try {
+            final status = await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod<String>('getNextEvent');
+            sharedReady = _aiLog.any((l) => l.contains('recording_started') || l.contains('connected'));
+          } catch(_) {}
+        }
+        if (sharedReady) {
+          if (_mounted) setState((){_aiLog.add('[ENGINE] ✅ SharedAudio ready → starting subtitle...');});
+        } else {
+          if (_mounted) setState((){_aiLog.add('[ENGINE] ⚠️ SharedAudio not ready, Vosk uses mic');});
+        }
       }
       if (_useVosk) {
         // Vosk — آفلاین + MediaProjection
@@ -976,7 +994,7 @@ class _PlayerState extends State<PlayerScreen>{
 
         final finalModelId = modelId ?? VoskService.downloadedModels
             .where((m) => m.langCode == (lang == 'multi' ? 'en' : lang)).toList().firstOrNull?.id;
-        await VoskService.start(lang=='multi'?'en':lang, modelId: finalModelId);
+        await VoskService.start(voskLang=='multi'?'en':voskLang, modelId: finalModelId);
         // polling هر 200ms
         _voskPollTimer = Timer.periodic(Duration(milliseconds:_voskPollMs), (_) async {
           if (!_mounted || _voskPollTimer == null) return;
@@ -2903,6 +2921,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   bool _geminiDubMode = true;
   bool _geminiEnabled = false;
   List<dynamic> _downloadedVoskModels = [];
+  String _voskLang = 'fa'; // زبان Vosk جدا
   bool _voskEnabled = false;   // Vosk subtitle toggle
   bool _androidEnabled = false; // Android STT toggle
   String _geminiVoice = 'Charon'; // default: male
@@ -3186,7 +3205,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                     final m = _downloadedVoskModels.firstWhere((x) => x.langCode == l);
                     return DropdownMenuItem<String>(value: l, child: Text('${m.name} ($l)'));
                   }).toList(),
-                  onChanged: (v) { if (v != null) setState(() => _lang = v); });
+                  onChanged: (v) { if (v != null) setState(() { _lang = v; _voskLang = v; }); });
               }(),
             ])),
           ],
@@ -3507,6 +3526,7 @@ if (_engine != 'gemini') StatefulBuilder(builder: (_, ss2) {
         style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
         onPressed: () => Navigator.pop(ctx, {
           'lang': _lang == 'auto' ? 'multi' : _lang,
+          'voskLang': _voskLang,
           'translate': _translate,
           'translateTo': _translateTo,
           'pollMs': _pollMs,
