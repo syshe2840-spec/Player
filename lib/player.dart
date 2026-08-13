@@ -2537,8 +2537,7 @@ class _PlayerState extends State<PlayerScreen>{
               },
             ))),
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
-        ]),
-      ),
+      ],
     ]);
   }
 
@@ -2553,10 +2552,9 @@ class _PlayerState extends State<PlayerScreen>{
               decoration:BoxDecoration(color:Colors.red.withOpacity(0.7),borderRadius:BorderRadius.circular(6)),
               child:const Icon(Icons.clear,size:16))),
     ],
-    ...[
-      const SizedBox(width:8),
-      // ── AI Controls ──
-      if (!_dgActive)
+    const SizedBox(width:8),
+    // ── AI Controls ──
+    if (!_dgActive)
         GestureDetector(
           onTap:()=>_toggleDeeepgram(),
           child:Container(
@@ -2570,8 +2568,8 @@ class _PlayerState extends State<PlayerScreen>{
               SizedBox(width:4),
               Text('AI',style:TextStyle(fontSize:11,color:Colors.white54,fontWeight:FontWeight.bold)),
             ])))
-      else
-        Row(mainAxisSize:MainAxisSize.min, children:[
+    else
+      Row(mainAxisSize:MainAxisSize.min, children:[
           if (_useGeminiLive) ...[
             GestureDetector(
               onTap: () {
@@ -2627,25 +2625,7 @@ class _PlayerState extends State<PlayerScreen>{
                 SizedBox(width:3),
                 Text('LOG',style:TextStyle(fontSize:10,color:Colors.white,fontWeight:FontWeight.bold)),
               ]))),
-        ]),4,fontWeight:FontWeight.bold)),
-          ]))),
-    ],
-    if(true)...[ // AI LOG روی همه ویدیوها
-      const SizedBox(width:8),
-      GestureDetector(
-        onTap:()=>_showAiLogDialog(),
-        child:Container(
-          padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-          decoration:BoxDecoration(
-            color:const Color(0xFF7C3AED).withOpacity(0.3),
-            borderRadius:BorderRadius.circular(6),
-            border:Border.all(color:const Color(0xFF7C3AED))),
-          child:const Row(mainAxisSize:MainAxisSize.min,children:[
-            Icon(Icons.bug_report_rounded,size:14,color:Colors.white),
-            SizedBox(width:4),
-            Text('AI LOG',style:TextStyle(fontSize:11,color:Colors.white,fontWeight:FontWeight.bold)),
-          ]))),
-    ],
+        ]),
   ]);
 
   Widget _abBtn(String label,Duration? val,VoidCallback onTap)=>GestureDetector(
