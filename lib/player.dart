@@ -2538,7 +2538,7 @@ class _PlayerState extends State<PlayerScreen>{
             ))),
           Text(fmt(_duration),style:const TextStyle(fontSize:12)),
       ],
-    ]);
+    ])));
   }
 
   Widget _abRow()=>Row(mainAxisSize:MainAxisSize.min,children:[
@@ -2616,7 +2616,7 @@ class _PlayerState extends State<PlayerScreen>{
             const SizedBox(width:4),
           ],
           GestureDetector(
-            onTap:(){if(mounted)setState(()=>_showAiLog=!_showAiLog);},
+            onTap:()=>_showAiLogDialog(),
             child:Container(
               padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
               decoration:BoxDecoration(color:Colors.green.withOpacity(0.8), borderRadius:BorderRadius.circular(6)),
