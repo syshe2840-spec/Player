@@ -925,7 +925,9 @@ class _PlayerState extends State<PlayerScreen>{
         // ── Gemini Live — قبل از delay (درخواست permission سریع‌تر) ──
         if (_useGeminiLive) {
           await _startGeminiLive();
-          return;
+          // اگه فقط Gemini بود برگرد، وگرنه Vosk/Android هم start بشه
+          if (!_useVosk && !_useAndroidStt) return;
+          if (_mounted) setState((){_aiLog.add('[AI] Starting subtitle alongside DUB...');});
         }
         await Future.delayed(const Duration(milliseconds:300));
         // اگه از dialog modelId اومد استفاده کن وگرنه اولین دانلود شده
@@ -2900,8 +2902,9 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   bool _mlkitDownloading = false;
   double _mlkitProgress = 0;
   bool _mlkitReady = false;
-  bool _geminiDubMode = true; // Gemini همیشه DUB
-  bool _geminiEnabled = false; // Gemini DUB toggle
+  bool _geminiDubMode = true;
+  bool _geminiEnabled = false;
+  List<dynamic> _downloadedVoskModels = [];
   bool _voskEnabled = false;   // Vosk subtitle toggle
   bool _androidEnabled = false; // Android STT toggle
   String _geminiVoice = 'Charon'; // default: male
@@ -3087,6 +3090,15 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
     'yo': '🌍 Yorùbá',
     'zu': '🇿🇦 isiZulu',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    // لود مدل‌های Vosk در initState (نه هر build)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() => _downloadedVoskModels = VoskService.downloadedModels.toList());
+    });
+  }
 
   @override
   Widget build(BuildContext ctx) => AlertDialog(
