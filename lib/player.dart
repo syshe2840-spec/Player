@@ -815,9 +815,7 @@ class _PlayerState extends State<PlayerScreen>{
       _voskPollMs=result['pollMs'] as int;
       final modelId=result['modelId'] as String?;
       final engine=result['engine'] as String? ?? 'vosk';
-      _useAndroidStt = engine == 'android';
-      _useVosk = engine == 'vosk';
-      _useGeminiLive = engine == 'gemini';
+      // engine-based flags حذف شد — از toggle های جدید استفاده میشه
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
@@ -3095,9 +3093,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   void initState() {
     super.initState();
     // لود مدل‌های Vosk در initState (نه هر build)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() => _downloadedVoskModels = VoskService.downloadedModels.toList());
-    });
+    _downloadedVoskModels = VoskService.downloadedModels.toList();
   }
 
   @override
@@ -3175,27 +3171,23 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
               const SizedBox(height: 4),
-Builder(builder: (ctx) {
-                final downloadedLangs = VoskService.downloadedModels
-                    .map((m) => m.langCode).toSet().toList();
-                if (downloadedLangs.isEmpty) {
-                  return const Text('No Vosk models downloaded.',
-                    style: TextStyle(color: Colors.orange, fontSize: 11));
-                }
-                final validLang = downloadedLangs.contains(_lang) ? _lang : downloadedLangs.first;
+() {
+                final langs = _downloadedVoskModels.map((m) => m.langCode as String).toSet().toList();
+                if (langs.isEmpty) return const Text('No Vosk models downloaded', style: TextStyle(color: Colors.orange, fontSize: 11));
+                final valid = langs.contains(_lang) ? _lang : langs.first;
                 return DropdownButtonFormField<String>(
-                  value: validLang,
+                  value: valid,
                   dropdownColor: const Color(0xFF1A1A2A),
                   decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                   style: const TextStyle(color: Colors.white, fontSize: 12),
-                  items: downloadedLangs.map<DropdownMenuItem<String>>((lang) => DropdownMenuItem<String>(
-                    value: lang,
-                    child: Text('$lang — ${VoskService.downloadedModels.firstWhere((m) => m.langCode == lang).name}'),
-                  )).toList(),
+                  items: langs.map<DropdownMenuItem<String>>((l) {
+                    final m = _downloadedVoskModels.firstWhere((x) => x.langCode == l);
+                    return DropdownMenuItem<String>(value: l, child: Text('${m.name} ($l)'));
+                  }).toList(),
                   onChanged: (v) { if (v != null) setState(() => _lang = v); });
-              }),
+              }(),
             ])),
           ],
         ])),
