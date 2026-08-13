@@ -3163,15 +3163,27 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
               const SizedBox(height: 4),
-              DropdownButtonFormField<String>(
-                value: _voskLangs.containsKey(_lang) ? _lang : 'fa',
-                dropdownColor: const Color(0xFF1A1A2A),
-                decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-                items: _voskLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                onChanged: (v) => setState(() => _lang = v!)),
+              Builder(builder: (ctx) {
+                // زبان‌های مدل‌های دانلود شده
+                final downloadedLangs = VoskService.downloadedModels
+                    .map((m) => m.lang).toSet().toList();
+                if (downloadedLangs.isEmpty) {
+                  return const Text('No Vosk models downloaded', style: TextStyle(color: Colors.orange, fontSize: 11));
+                }
+                final validLang = downloadedLangs.contains(_lang) ? _lang : downloadedLangs.first;
+                return DropdownButtonFormField<String>(
+                  value: validLang,
+                  dropdownColor: const Color(0xFF1A1A2A),
+                  decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  items: downloadedLangs.map((lang) => DropdownMenuItem(
+                    value: lang,
+                    child: Text('$lang — ${VoskService.downloadedModels.where((m) => m.lang == lang).first.name}')
+                  )).toList(),
+                  onChanged: (v) { if (v != null) setState(() => _lang = v); });
+              }),
             ])),
           ],
         ])),
