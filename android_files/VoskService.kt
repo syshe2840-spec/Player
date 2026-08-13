@@ -62,42 +62,55 @@ class VoskService(
         )
 
         try {
-            if (projection != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val config = AudioPlaybackCaptureConfiguration.Builder(projection)
-                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                    .build()
-                recorder = AudioRecord.Builder()
-                    .setAudioFormat(AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(SAMPLE_RATE)
-                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO).build())
-                    .setBufferSizeInBytes(buf)
-                    .setAudioPlaybackCaptureConfig(config).build()
-                if (recorder?.state != AudioRecord.STATE_INITIALIZED) {
-                    recorder?.release(); recorder = null; useMic(buf)
+            // اگه SharedAudioService فعاله، از queue بخون (جلوگیری از تداخل MediaProjection)
+            val sharedQueue = if (SharedAudioService.isRunning()) {
+                send("status", "using_shared_audio")
+                SharedAudioService.addConsumer()
+            } else null
+
+            if (sharedQueue == null) {
+                if (projection != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val config = AudioPlaybackCaptureConfiguration.Builder(projection)
+                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                        .build()
+                    recorder = AudioRecord.Builder()
+                        .setAudioFormat(AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(SAMPLE_RATE)
+                            .setChannelMask(AudioFormat.CHANNEL_IN_MONO).build())
+                        .setBufferSizeInBytes(buf)
+                        .setAudioPlaybackCaptureConfig(config).build()
+                    if (recorder?.state != AudioRecord.STATE_INITIALIZED) {
+                        recorder?.release(); recorder = null; useMic(buf)
+                    } else {
+                        send("status", "capturing_internal_audio")
+                    }
                 } else {
-                    send("status", "capturing_internal_audio")
+                    useMic(buf)
                 }
-            } else {
-                useMic(buf)
+
+                if (recorder?.state != AudioRecord.STATE_INITIALIZED) {
+                    send("error", "Audio init failed"); running = false; return
+                }
+                recorder?.startRecording()
             }
 
-            if (recorder?.state != AudioRecord.STATE_INITIALIZED) {
-                send("error", "Audio init failed"); running = false; return
-            }
-
-            recorder?.startRecording()
             send("status", "recording_started")
 
             val chunk = ByteArray(buf / 4)
             var total = 0L
             while (running) {
-                val read = recorder?.read(chunk, 0, chunk.size) ?: -1
-                if (read > 0) {
-                    total += read
-                    if (total % (SAMPLE_RATE * 2 * 5L) < read) send("status", "sent ${total/1024}kb")
-                    val isFinal = recognizer?.acceptWaveForm(chunk, read) ?: false
+                val pcmData = if (sharedQueue != null) {
+                    try { sharedQueue.poll(250, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: Exception) { null }
+                } else {
+                    val read = recorder?.read(chunk, 0, chunk.size) ?: -1
+                    if (read > 0) chunk.copyOf(read) else null
+                }
+                if (pcmData != null && pcmData.isNotEmpty()) {
+                    total += pcmData.size
+                    if (total % (SAMPLE_RATE * 2 * 5L) < pcmData.size) send("status", "sent ${total/1024}kb")
+                    val isFinal = recognizer?.acceptWaveForm(pcmData, pcmData.size) ?: false
                     if (isFinal) {
                         val res = JSONObject(recognizer?.result ?: "{}").optString("text", "")
                         if (res.isNotEmpty()) send("transcript", mapOf("text" to res, "final" to true))
@@ -105,8 +118,9 @@ class VoskService(
                         val p = JSONObject(recognizer?.partialResult ?: "{}").optString("partial", "")
                         if (p.isNotEmpty()) send("transcript", mapOf("text" to p, "final" to false))
                     }
-                } else if (read < 0) break
+                }
             }
+            sharedQueue?.let { SharedAudioService.removeConsumer(it) }
         } catch (e: Exception) {
             send("error", "${e.javaClass.simpleName}: ${e.message}")
         } finally { stop() }
