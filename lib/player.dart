@@ -3167,8 +3167,7 @@ Builder(builder: (ctx) {
                 final downloadedLangs = VoskService.downloadedModels
                     .map((m) => m.langCode).toSet().toList();
                 if (downloadedLangs.isEmpty) {
-                  return const Text('No Vosk models downloaded
-Go to Settings → Vosk',
+                  return const Text('No Vosk models downloaded.',
                     style: TextStyle(color: Colors.orange, fontSize: 11));
                 }
                 final validLang = downloadedLangs.contains(_lang) ? _lang : downloadedLangs.first;
