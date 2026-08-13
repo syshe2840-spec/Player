@@ -2554,79 +2554,84 @@ class _PlayerState extends State<PlayerScreen>{
     ],
     const SizedBox(width:8),
     // ── AI Controls ──
-    if (!_dgActive)
-        GestureDetector(
-          onTap:()=>_toggleDeeepgram(),
-          child:Container(
-            padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-            decoration:BoxDecoration(
-              color:Colors.white12,
-              borderRadius:BorderRadius.circular(6),
-              border:Border.all(color:Colors.white24)),
-            child:const Row(mainAxisSize:MainAxisSize.min,children:[
-              Icon(Icons.record_voice_over_rounded,size:14,color:Colors.white54),
-              SizedBox(width:4),
-              Text('AI',style:TextStyle(fontSize:11,color:Colors.white54,fontWeight:FontWeight.bold)),
-            ])))
-    else
-      Row(mainAxisSize:MainAxisSize.min, children:[
-          if (_useGeminiLive) ...[
-            GestureDetector(
-              onTap: () {
-                _geminiPollTimer?.cancel(); _geminiPollTimer = null;
-                try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
-                player.setVolume(100);
-                if (_mounted) setState((){
-                  _useGeminiLive = false; _dgText2 = '';
-                  if (!_useVosk && !_useAndroidStt) { _dgActive = false; _dgText = ''; }
-                  _aiLog.add('[DUB] stopped');
-                });
-              },
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-                decoration:BoxDecoration(color:const Color(0xFF10B981).withOpacity(0.8), borderRadius:BorderRadius.circular(6)),
-                child:const Row(mainAxisSize:MainAxisSize.min,children:[
-                  Icon(Icons.record_voice_over_rounded,size:12,color:Colors.white),
-                  SizedBox(width:3),
-                  Text('■ DUB',style:TextStyle(fontSize:10,color:Colors.white,fontWeight:FontWeight.bold)),
-                ]))),
-            const SizedBox(width:4),
-          ],
-          if (_useVosk || _useAndroidStt) ...[
-            GestureDetector(
-              onTap: () {
-                _voskPollTimer?.cancel(); _voskPollTimer = null;
-                _androidSttPollTimer?.cancel();
-                try { if (_useVosk) VoskService.stop(); } catch(_) {}
-                try { if (_useAndroidStt) AndroidSttService.stop(); } catch(_) {}
-                if (_mounted) setState((){
-                  _useVosk = false; _useAndroidStt = false; _dgText = '';
-                  if (!_useGeminiLive) _dgActive = false;
-                  _aiLog.add('[SUB] stopped');
-                });
-              },
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-                decoration:BoxDecoration(color:const Color(0xFF7C3AED).withOpacity(0.8), borderRadius:BorderRadius.circular(6)),
-                child:const Row(mainAxisSize:MainAxisSize.min,children:[
-                  Icon(Icons.subtitles_rounded,size:12,color:Colors.white),
-                  SizedBox(width:3),
-                  Text('■ SUB',style:TextStyle(fontSize:10,color:Colors.white,fontWeight:FontWeight.bold)),
-                ]))),
-            const SizedBox(width:4),
-          ],
-          GestureDetector(
-            onTap:()=>_showAiLogDialog(),
-            child:Container(
-              padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-              decoration:BoxDecoration(color:Colors.green.withOpacity(0.8), borderRadius:BorderRadius.circular(6)),
-              child:const Row(mainAxisSize:MainAxisSize.min,children:[
-                Icon(Icons.bug_report_rounded,size:12,color:Colors.white),
-                SizedBox(width:3),
-                Text('LOG',style:TextStyle(fontSize:10,color:Colors.white,fontWeight:FontWeight.bold)),
-              ]))),
-        ]),
+    _aiControlsWidget(),
   ]);
+
+  Widget _aiControlsWidget() {
+    if (!_dgActive) {
+      return GestureDetector(
+        onTap: ()=>_toggleDeeepgram(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+          decoration: BoxDecoration(
+            color: Colors.white12,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.white24)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.record_voice_over_rounded, size:14, color:Colors.white54),
+            SizedBox(width:4),
+            Text('AI', style: TextStyle(fontSize:11, color:Colors.white54, fontWeight:FontWeight.bold)),
+          ])));
+    }
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (_useGeminiLive) ...[
+        GestureDetector(
+          onTap: () {
+            _geminiPollTimer?.cancel(); _geminiPollTimer = null;
+            try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+            player.setVolume(100);
+            if (_mounted) setState((){
+              _useGeminiLive = false; _dgText2 = '';
+              if (!_useVosk && !_useAndroidStt) { _dgActive = false; _dgText = ''; }
+              _aiLog.add('[DUB] stopped');
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+            decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.record_voice_over_rounded, size:12, color:Colors.white),
+              SizedBox(width:3),
+              Text('■ DUB', style: TextStyle(fontSize:10, color:Colors.white, fontWeight:FontWeight.bold)),
+            ]))),
+        const SizedBox(width:4),
+      ],
+      if (_useVosk || _useAndroidStt) ...[
+        GestureDetector(
+          onTap: () {
+            _voskPollTimer?.cancel(); _voskPollTimer = null;
+            _androidSttPollTimer?.cancel();
+            try { if (_useVosk) VoskService.stop(); } catch(_) {}
+            try { if (_useAndroidStt) AndroidSttService.stop(); } catch(_) {}
+            if (_mounted) setState((){
+              _useVosk = false; _useAndroidStt = false; _dgText = '';
+              if (!_useGeminiLive) _dgActive = false;
+              _aiLog.add('[SUB] stopped');
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+            decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.subtitles_rounded, size:12, color:Colors.white),
+              SizedBox(width:3),
+              Text('■ SUB', style: TextStyle(fontSize:10, color:Colors.white, fontWeight:FontWeight.bold)),
+            ]))),
+        const SizedBox(width:4),
+      ],
+      GestureDetector(
+        onTap: ()=>_showAiLogDialog(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal:8,vertical:4),
+          decoration: BoxDecoration(color: Colors.green.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.bug_report_rounded, size:12, color:Colors.white),
+            SizedBox(width:3),
+            Text('LOG', style: TextStyle(fontSize:10, color:Colors.white, fontWeight:FontWeight.bold)),
+          ]))),
+    ]);
+  }
+
 
   Widget _abBtn(String label,Duration? val,VoidCallback onTap)=>GestureDetector(
     onTap:onTap,
