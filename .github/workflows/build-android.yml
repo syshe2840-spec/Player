@@ -260,6 +260,13 @@ jobs:
           echo "build=$BUILD" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Create Git Tag
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git tag -f v${{ steps.version.outputs.version }}
+          git push -f origin v${{ steps.version.outputs.version }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
