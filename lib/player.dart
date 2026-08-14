@@ -994,7 +994,17 @@ class _PlayerState extends State<PlayerScreen>{
 
         final finalModelId = modelId ?? VoskService.downloadedModels
             .where((m) => m.langCode == (lang == 'multi' ? 'en' : lang)).toList().firstOrNull?.id;
-        await VoskService.start(voskLang=='multi'?'en':voskLang, modelId: finalModelId);
+        // اگه Gemini DUB فعاله، Vosk بدون MediaProjection جدید start میشه
+        if (_useGeminiLive && _dgActive) {
+          // startDirect — بدون permission dialog جدید
+          await const MethodChannel('com.vezoo.player/vosk').invokeMethod('startDirect', {
+            'lang': voskLang=='multi'?'en':voskLang,
+            'modelId': finalModelId,
+          });
+          if (_mounted) setState((){_aiLog.add('[Vosk] Started via SharedAudio (no extra permission)');});
+        } else {
+          await VoskService.start(voskLang=='multi'?'en':voskLang, modelId: finalModelId);
+        }
         // polling هر 200ms
         _voskPollTimer = Timer.periodic(Duration(milliseconds:_voskPollMs), (_) async {
           if (!_mounted || _voskPollTimer == null) return;
