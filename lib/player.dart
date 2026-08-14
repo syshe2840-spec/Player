@@ -885,23 +885,9 @@ class _PlayerState extends State<PlayerScreen>{
         if (_mounted) setState((){_aiLog.add('[ENGINE] → Gemini Live branch selected');});
         await _startGeminiLive();
         if (!_useVosk && !_useAndroidStt) return;
-        // صبر برای MediaProjection grant و SharedAudioService start
-        if (_mounted) setState((){_aiLog.add('[ENGINE] → Waiting for Gemini permission...');});
-        int waited = 0;
-        bool sharedReady = false;
-        while (!sharedReady && waited < 8000) {
-          await Future.delayed(const Duration(milliseconds: 300));
-          waited += 300;
-          try {
-            final status = await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod<String>('getNextEvent');
-            sharedReady = _aiLog.any((l) => l.contains('recording_started') || l.contains('connected'));
-          } catch(_) {}
-        }
-        if (sharedReady) {
-          if (_mounted) setState((){_aiLog.add('[ENGINE] ✅ SharedAudio ready → starting subtitle...');});
-        } else {
-          if (_mounted) setState((){_aiLog.add('[ENGINE] ⚠️ SharedAudio not ready, Vosk uses mic');});
-        }
+        // صبر ۲ ثانیه تا SharedAudioService آماده بشه
+        if (_mounted) setState((){_aiLog.add('[ENGINE] Waiting 2s for SharedAudio...');});
+        await Future.delayed(const Duration(seconds: 2));
       }
       if (_useVosk) {
         // Vosk — آفلاین + MediaProjection
@@ -994,9 +980,8 @@ class _PlayerState extends State<PlayerScreen>{
 
         final finalModelId = modelId ?? VoskService.downloadedModels
             .where((m) => m.langCode == (lang == 'multi' ? 'en' : lang)).toList().firstOrNull?.id;
-        // اگه Gemini DUB فعاله، Vosk بدون MediaProjection جدید start میشه
-        if (_useGeminiLive && _dgActive) {
-          // startDirect — بدون permission dialog جدید
+        // اگه Gemini DUB انتخاب شده، Vosk بدون permission جدید start میشه
+        if (_useGeminiLive) {
           await const MethodChannel('com.vezoo.player/vosk').invokeMethod('startDirect', {
             'lang': voskLang=='multi'?'en':voskLang,
             'modelId': finalModelId,
