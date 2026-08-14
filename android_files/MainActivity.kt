@@ -293,6 +293,14 @@ class MainActivity : FlutterActivity() {
                         else Thread { voskService?.start(lang, null, modelId) }.start()
                         result.success(null)
                     }
+                    "startDirect" -> {
+                        // Vosk بدون MediaProjection — از SharedAudioService میخونه
+                        val lang = call.argument<String>("lang") ?: "en"
+                        val modelId = call.argument<String>("modelId")
+                        voskService = VoskService(this, voskCallbackChannel)
+                        Thread { voskService?.start(lang, null, modelId) }.start()
+                        result.success(null)
+                    }
                     "stop" -> {
                         voskService?.stop()
                         // پایان دادن به MediaProjection foreground service
