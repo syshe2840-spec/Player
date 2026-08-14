@@ -276,6 +276,14 @@ class MainActivity : FlutterActivity() {
                         val modelId = call.argument<String>("modelId")
                         voskService = VoskService(this, voskCallbackChannel)
                         pendingVoskLang = lang
+                        // اگه SharedAudioService فعاله (Gemini در حال اجراست)
+                        // Vosk بدون projection جدید start میشه
+                        if (SharedAudioService.isRunning()) {
+                            android.util.Log.d("Vosk", "Using SharedAudioService — skip MediaProjection")
+                            Thread { voskService?.start(lang, null, modelId) }.start()
+                            result.success(null)
+                            return@setMethodCallHandler
+                        }
                         val svcIntent = android.content.Intent(this, MediaProjectionService::class.java)
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
                             startForegroundService(svcIntent) else startService(svcIntent)
