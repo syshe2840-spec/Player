@@ -62,6 +62,7 @@ class GeminiLiveService(private val apiKey: String) {
     private val audioBuffer = ByteArrayBuffer(MAX_OUTPUT_BYTES)
 
     @Volatile private var dubVolume: Float = 1.0f
+    @Volatile private var isPlayingDub: Boolean = false
     @Volatile private var lastAudioHash: Int = 0
 
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
@@ -299,6 +300,8 @@ class GeminiLiveService(private val apiKey: String) {
                 try {
                     val chunk = inputQueue.poll(250, java.util.concurrent.TimeUnit.MILLISECONDS) ?: continue
                     if (!connected.get()) continue
+                    // وقتی دوبله داره پخش میشه، این chunk رو skip کن (feedback loop prevention)
+                    if (isPlayingDub) continue
                     val b64 = Base64.encodeToString(chunk, Base64.NO_WRAP)
                     wsSend(JSONObject().put("realtimeInput", JSONObject()
                         .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
