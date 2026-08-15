@@ -80,10 +80,11 @@ class GeminiLiveService(private val apiKey: String) {
             .coerceAtLeast(OUTPUT_FRAME_BYTES * 4)
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
-                // USAGE_ASSISTANT — AudioPlaybackCapture این رو نمیگیره
-                // جلوگیری از feedback loop
                 .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                // هیچ‌کس نمیتونه این صدا رو capture کنه
+                .setAllowedCapturePolicy(AudioAttributes.ALLOW_CAPTURE_BY_NONE)
+                .build())
             .setAudioFormat(AudioFormat.Builder().setSampleRate(OUTPUT_SAMPLE_RATE)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
