@@ -610,15 +610,7 @@ class _PlayerState extends State<PlayerScreen>{
           player.seek(newPos);
           if (_mounted) setState((){_aiLog.add('[DUB] seek back ${syncOffset}s for sync');});
         }
-        // Option 3: Buffer Pause
-        final bufPause = prefs.getBool('gemini_buffer_pause') ?? false;
-        final bufSec = prefs.getInt('gemini_buffer_pause_sec') ?? 3;
-        if (bufPause) {
-          player.pause();
-          if (_mounted) setState((){_aiLog.add('[DUB] paused ${bufSec}s to fill buffer...');});
-          await Future.delayed(Duration(seconds: bufSec));
-          if (_mounted && _dgActive) { player.play(); setState((){_aiLog.add('[DUB] buffer ready — playing');});}
-        }
+        // Option 3: Buffer Pause — اجرا بعد از connected (در polling loop)
         // Volume
         final origVol = (prefs.getDouble('gemini_orig_volume') ?? 0.3) * 100;
         if (_mounted) { player.setVolume(origVol.clamp(0, 100)); setState((){_aiLog.add('[DUB] orig vol → ${origVol.round()}%');}); }
