@@ -311,11 +311,18 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "startDirect" -> {
-                        // Vosk بدون MediaProjection — از SharedAudioService میخونه
                         val lang = call.argument<String>("lang") ?: "en"
                         val modelId = call.argument<String>("modelId")
                         voskService = VoskService(this, voskCallbackChannel)
-                        Thread { voskService?.start(lang, null, modelId) }.start()
+                        Thread {
+                            // صبر تا SharedAudioService آماده بشه (max 5s)
+                            var waited = 0
+                            while (!SharedAudioService.isRunning() && waited < 5000) {
+                                Thread.sleep(200); waited += 200
+                            }
+                            android.util.Log.d("Vosk", "SharedAudio running=${SharedAudioService.isRunning()} after ${waited}ms")
+                            voskService?.start(lang, null, modelId)
+                        }.start()
                         result.success(null)
                     }
                     "stop" -> {
