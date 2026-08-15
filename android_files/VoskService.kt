@@ -69,13 +69,6 @@ class VoskService(
             } else null
 
             if (sharedQueue == null) {
-                // اگه projection نداریم و SharedAudio running نیست
-                // یعنی داریم کنار Gemini کار میکنیم → mic fallback نکن
-                if (projection == null) {
-                    send("error", "SharedAudioService not ready — cannot start without MediaProjection")
-                    running = false
-                    return
-                }
                 if (projection != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val config = AudioPlaybackCaptureConfiguration.Builder(projection)
                         .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
