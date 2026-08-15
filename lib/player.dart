@@ -360,9 +360,10 @@ class _PlayerState extends State<PlayerScreen>{
         _dgActive = false; _dgText = ''; _dgText2 = '';
         try {
           if (_useGeminiLive) {
-            await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('clearBuffer');
-            await Future.delayed(const Duration(milliseconds: 150));
-            const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop');
+            try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('clearBuffer'); } catch(_) {}
+            Future.delayed(const Duration(milliseconds: 150), () {
+              try { const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+            });
           }
         } catch(_) {}
         try { if (_useVosk) VoskService.stop(); } catch(_) {}
