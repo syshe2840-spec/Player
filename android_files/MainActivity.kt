@@ -204,6 +204,8 @@ class MainActivity : FlutterActivity() {
                     )
                     pendingGeminiLang = lang
                     pendingGeminiDub = dubMode
+                    // stop instance قدیمی قبل از ساختن جدید
+                    geminiService?.stop()
                     geminiService = GeminiLiveService(apiKey)
                     // درخواست MediaProjection برای capture صدای داخلی
                     val svcIntent = android.content.Intent(this, MediaProjectionService::class.java)
@@ -229,6 +231,10 @@ class MainActivity : FlutterActivity() {
                 }
                 "stop" -> { geminiService?.stop(); geminiService = null; result.success(null) }
                 "getNextEvent" -> result.success(geminiService?.getNextEvent())
+                "clearBuffer" -> {
+                    geminiService?.clearBuffer()
+                    result.success(null)
+                }
                 "setDubVolume" -> {
                     val vol = (call.argument<Double>("volume") ?: 1.0).toFloat()
                     geminiService?.setDubVolume(vol); result.success(null)
