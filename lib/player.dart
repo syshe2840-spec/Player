@@ -884,9 +884,8 @@ class _PlayerState extends State<PlayerScreen>{
         if (_mounted) setState((){_aiLog.add('[ENGINE] → Gemini Live branch selected');});
         await _startGeminiLive();
         if (!_useVosk && !_useAndroidStt) return;
-        // صبر ۲ ثانیه تا SharedAudioService آماده بشه
-        if (_mounted) setState((){_aiLog.add('[ENGINE] Waiting 2s for SharedAudio...');});
-        await Future.delayed(const Duration(seconds: 2));
+        // Vosk بعد از recording_started Gemini start میشه (در polling loop)
+        if (_mounted) setState((){_aiLog.add('[ENGINE] Vosk will start after Gemini is ready...');});
       }
       if (_useVosk) {
         // Vosk — آفلاین + MediaProjection
