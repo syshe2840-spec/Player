@@ -167,10 +167,10 @@ class GeminiLiveService(private val apiKey: String) {
                 .put("realtimeInputConfig", JSONObject()
                     .put("automaticActivityDetection", JSONObject()
                         .put("disabled", false)
-                        .put("startOfSpeechSensitivity", config.startSensitivity)
-                        .put("endOfSpeechSensitivity", config.endSensitivity)
-                        .put("prefixPaddingMs", config.prefixPaddingMs)
-                        .put("silenceDurationMs", config.silenceDurationMs)))
+                        .put("startOfSpeechSensitivity", "START_SENSITIVITY_HIGH")
+                        .put("endOfSpeechSensitivity", "END_SENSITIVITY_HIGH")
+                        .put("prefixPaddingMs", 20)
+                        .put("silenceDurationMs", 350)))
                 .put("sessionResumption", JSONObject())
                 .put("contextWindowCompression", JSONObject().put("slidingWindow", JSONObject()))
 
@@ -343,6 +343,11 @@ class GeminiLiveService(private val apiKey: String) {
         val sb = StringBuilder(); var b = inp.read()
         while (b >= 0 && b.toChar() != '\n') { if (b.toChar() != '\r') sb.append(b.toChar()); b = inp.read() }
         return sb.toString()
+    }
+
+    fun clearBuffer() {
+        audioBuffer.clear()
+        android.util.Log.d(TAG, "Audio buffer cleared")
     }
 
     fun setDubVolume(vol: Float) { dubVolume = vol.coerceIn(0f, 1f); audioTrack?.setVolume(dubVolume) }
