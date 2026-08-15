@@ -106,6 +106,8 @@ class MainActivity : FlutterActivity() {
     private var geminiService: GeminiLiveService? = null
     private var pendingGeminiLang: String? = null
     private var pendingGeminiDub: Boolean = false
+    private var cachedProjection: android.media.projection.MediaProjection? = null
+    private var pendingGeminiCfg: GeminiConfig? = null
     private val PROJ_REQ_VOSK = 9999
     private val PROJ_REQ_GEMINI = 9998
 
@@ -204,14 +206,29 @@ class MainActivity : FlutterActivity() {
                     )
                     pendingGeminiLang = lang
                     pendingGeminiDub = dubMode
-                    // stop instance قدیمی قبل از ساختن جدید
                     geminiService?.stop()
                     geminiService = GeminiLiveService(apiKey)
-                    // درخواست MediaProjection برای capture صدای داخلی
+                    val cfg = GeminiConfig(
+                        targetLang = lang, model = call.argument<String>("model") ?: "gemini-3.5-live-translate-preview",
+                        dubMode = dubMode, voice = call.argument<String>("voice") ?: "Charon",
+                        silenceDurationMs = call.argument<Int>("silenceMs") ?: 350,
+                        prefixPaddingMs = call.argument<Int>("prefixMs") ?: 20,
+                        startSensitivity = call.argument<String>("startSens") ?: "START_SENSITIVITY_HIGH",
+                        endSensitivity = call.argument<String>("endSens") ?: "END_SENSITIVITY_HIGH",
+                        chunkMs = call.argument<Int>("chunkMs") ?: 100)
+                    pendingGeminiCfg = cfg
+                    // اگه projection قبلی هنوز معتبره، استفاده کن
+                    val existing = cachedProjection
+                    if (existing != null && SharedAudioService.isRunning()) {
+                        android.util.Log.d("Gemini", "Reusing existing MediaProjection")
+                        Thread { geminiService?.start(cfg, existing) }.start()
+                        result.success(null)
+                        return@setMethodCallHandler
+                    }
                     val svcIntent = android.content.Intent(this, MediaProjectionService::class.java)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
                         startForegroundService(svcIntent) else startService(svcIntent)
-                    android.os.SystemClock.sleep(500)
+                    android.os.SystemClock.sleep(300)
                     val mgr = getSystemService(android.media.projection.MediaProjectionManager::class.java)
                     if (mgr != null) startActivityForResult(mgr.createScreenCaptureIntent(), PROJ_REQ_GEMINI)
                     else geminiService?.start(GeminiConfig(
@@ -229,7 +246,12 @@ class MainActivity : FlutterActivity() {
                     geminiService?.sendAudio(bytes)
                     result.success(null)
                 }
-                "stop" -> { geminiService?.stop(); geminiService = null; result.success(null) }
+                "stop" -> {
+                    geminiService?.stop(); geminiService = null
+                    // رها کردن MediaProjection
+                    cachedProjection?.stop(); cachedProjection = null
+                    result.success(null)
+                }
                 "getNextEvent" -> result.success(geminiService?.getNextEvent())
                 "clearBuffer" -> {
                     geminiService?.clearBuffer()
@@ -744,7 +766,8 @@ class MainActivity : FlutterActivity() {
             val projection = mgr?.getMediaProjection(result, data)
             pendingGeminiLang?.let { lang ->
                 pendingGeminiLang = null
-                val pendingCfg = GeminiConfig(targetLang=lang, dubMode=pendingGeminiDub)
+                cachedProjection = projection  // cache projection
+                val pendingCfg = pendingGeminiCfg ?: GeminiConfig(targetLang=lang, dubMode=pendingGeminiDub)
                 Thread {
                     try { geminiService?.start(pendingCfg, projection) }
                     catch (e: Throwable) { android.util.Log.e("Gemini", "start failed: ${e.message}") }
