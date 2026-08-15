@@ -334,8 +334,8 @@ class _LiveTabState extends State<_LiveTab> {
       return _buildGroupGrid();
     }
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (_, __) => setState(() { _showGrid = true; _selCat = null; _search = ''; _applyFilter(); }),
+      canPop: _loading && _cats.isEmpty,  // اگه لود fail شده، back کار کنه
+      onPopInvokedWithResult: (did, __) { if (!did) setState(() { _showGrid = true; _selCat = null; _search = ''; _applyFilter(); }); },
       child: _loading ? const Center(child: CircularProgressIndicator()) : Column(children: [
         // search + back to groups
         Padding(padding: EdgeInsets.only(left:10, right:10, top:10, bottom: kb > 0 ? 0 : 10),
@@ -599,8 +599,8 @@ class _SeriesTabState extends State<_SeriesTab> {
   @override Widget build(BuildContext context) {
     if (_showGrid && _cats.isNotEmpty) return _buildGroupGrid();
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (_, __) => setState(() { _showGrid=true; _selCat=null; _search=''; _applyFilter(); }),
+      canPop: _loading && _cats.isEmpty,
+      onPopInvokedWithResult: (did, __) { if (!did) setState(() { _showGrid=true; _selCat=null; _search=''; _applyFilter(); }); },
       child: _loading ? const Center(child: CircularProgressIndicator()) : Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(10,10,10,6),
           child: Row(children: [
@@ -722,3 +722,4 @@ class _EpisodesSheetState extends State<_EpisodesSheet> {
         })),
     ]));
 }
+
