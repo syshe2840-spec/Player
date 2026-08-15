@@ -358,7 +358,13 @@ class _PlayerState extends State<PlayerScreen>{
       if (_dgActive) {
         _geminiPollTimer?.cancel(); _geminiPollTimer = null;
         _dgActive = false; _dgText = ''; _dgText2 = '';
-        try { if (_useGeminiLive) const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop'); } catch(_) {}
+        try {
+          if (_useGeminiLive) {
+            await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('clearBuffer');
+            await Future.delayed(const Duration(milliseconds: 150));
+            const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('stop');
+          }
+        } catch(_) {}
         try { if (_useVosk) VoskService.stop(); } catch(_) {}
         if (_mounted) player.setVolume(100);
         if (_mounted) setState((){_aiLog.add('[AI] stopped — video ended');});
