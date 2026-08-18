@@ -3539,7 +3539,9 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
         child: const Text('شروع')),
     ],
   );
-} {
+}
+
+class _SrtEntry {
   final int idx;
   final Duration start, end;
   final String text;
