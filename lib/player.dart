@@ -3359,8 +3359,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Row(children: [Icon(Icons.wifi_off_rounded, size: 13, color: Color(0xFF7C3AED)), SizedBox(width: 5), Text('Offline (ML Kit)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))]),
                     const SizedBox(height: 3),
-                    const Text('Fast · 30 languages
-~30MB per language', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                    const Text('Fast · 30 languages · ~30MB per language', style: TextStyle(color: Colors.white38, fontSize: 9)),
                     if (_useOffline && _mlkitReady == true)
                       const Padding(padding: EdgeInsets.only(top:4), child: Text('✅ Model ready', style: TextStyle(color: Color(0xFF4ade80), fontSize: 9, fontWeight: FontWeight.bold)))
                     else if (_useOffline && _mlkitReady == false)
@@ -3385,8 +3384,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                   child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [Icon(Icons.cloud_rounded, size: 13, color: Colors.white54), SizedBox(width: 5), Text('Online (AI)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))]),
                     SizedBox(height: 3),
-                    Text('92 languages · Internet
-Cloudflare Worker', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                    Text('92 languages · Internet · Cloudflare Worker', style: TextStyle(color: Colors.white38, fontSize: 9)),
                   ])))),
             ]),
           ],
