@@ -752,7 +752,18 @@ class MainActivity : FlutterActivity() {
     override fun onPictureInPictureModeChanged(inPip: Boolean, cfg: android.content.res.Configuration?) { super.onPictureInPictureModeChanged(inPip, cfg); pipCh?.invokeMethod("pipModeChanged", mapOf("inPip" to inPip)) }
     override fun onUserLeaveHint() { super.onUserLeaveHint(); if (playing && playerActive && Build.VERSION.SDK_INT >= 26) try { enterPip() } catch (_: Exception) {} }
     override fun onStart() { super.onStart(); if (playing) showNotif() }
-    override fun onDestroy() { try { unregisterReceiver(receiver) } catch (_: Exception) {}; nm().cancel(NOTIF_ID); super.onDestroy() }
+    override fun onDestroy() {
+        try { unregisterReceiver(receiver) } catch (_: Exception) {}
+        nm().cancel(NOTIF_ID)
+        // توقف همه سرویس‌های capture وقتی app بسته میشه
+        geminiService?.stop(); geminiService = null
+        voskService?.stop(); voskService = null
+        SharedAudioService.stop()
+        cachedProjection?.stop(); cachedProjection = null
+        try { stopService(android.content.Intent(this, MediaProjectionService::class.java)) } catch (_: Exception) {}
+        try { stopService(android.content.Intent(this, LiveSubService::class.java)) } catch (_: Exception) {}
+        super.onDestroy()
+    }
 
     @Suppress("DEPRECATION")
     override fun onActivityResult(req: Int, result: Int, data: android.content.Intent?) {
