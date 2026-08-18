@@ -55,9 +55,13 @@ object SharedAudioService {
         return q
     }
 
-    /** حذف consumer */
+    /** حذف consumer — اگه هیچ consumer نموند، auto-stop */
     fun removeConsumer(q: LinkedBlockingQueue<ByteArray>) {
         consumers.remove(q)
+        if (consumers.isEmpty() && running.get()) {
+            Log.d(TAG, "No consumers left — auto stopping")
+            stop()
+        }
     }
 
     private fun captureLoop() {
