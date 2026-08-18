@@ -3413,38 +3413,44 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                         Text('92 languages · Cloudflare Worker', style: TextStyle(color: Colors.white38, fontSize: 9)),
                       ])))),
                 ]),
+                const SizedBox(height: 8),
+                // زمان نمایش
+                const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Expanded(child: GestureDetector(
+                    onTap: () => setState(() => _translateOnFinish = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: !_translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Column(children: [
+                        Icon(Icons.flash_on_rounded, size: 16, color: !_translateOnFinish ? Colors.white : Colors.white38),
+                        const SizedBox(height: 3),
+                        Text('همزمان با صدا', style: TextStyle(color: !_translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+                      ])))),
+                  const SizedBox(width: 8),
+                  Expanded(child: GestureDetector(
+                    onTap: () => setState(() => _translateOnFinish = true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Column(children: [
+                        Icon(Icons.pause_circle_rounded, size: 16, color: _translateOnFinish ? Colors.white : Colors.white38),
+                        const SizedBox(height: 3),
+                        Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+                      ])))),
+                ]),
               ],
-                Expanded(child: GestureDetector(
-                  onTap: () => setState(() => _translateOnFinish = false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: !_translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
-                      borderRadius: BorderRadius.circular(8)),
-                    child: Column(children: [
-                      Icon(Icons.flash_on_rounded, size: 16, color: !_translateOnFinish ? Colors.white : Colors.white38),
-                      const SizedBox(height: 3),
-                      Text('همزمان با صدا', style: TextStyle(color: !_translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
-                    ])))),
-                const SizedBox(width: 8),
-                Expanded(child: GestureDetector(
-                  onTap: () => setState(() => _translateOnFinish = true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
-                      borderRadius: BorderRadius.circular(8)),
-                    child: Column(children: [
-                      Icon(Icons.pause_circle_rounded, size: 16, color: _translateOnFinish ? Colors.white : Colors.white38),
-                      const SizedBox(height: 3),
-                      Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
-                    ])))),
-              ]),
             ])),
           ],
         ])),
-      const SizedBox(height: 14),
-    )),
+            const SizedBox(height: 14),
+    ]),
+    ),
     actions: [
       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لغو')),
       FilledButton(
@@ -3467,7 +3473,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
         }),
         child: const Text('شروع')),
     ],
-  );
+  ));
 }
 
 class _SrtEntry {
