@@ -237,8 +237,12 @@ class MainActivity : FlutterActivity() {
                 }
                 "stop" -> {
                     geminiService?.stop(); geminiService = null
-                    // رها کردن MediaProjection
-                    cachedProjection?.stop(); cachedProjection = null
+                    // اگه Vosk هم فعال نیست، همه چیز رو رها کن
+                    if (voskService == null || !SharedAudioService.isRunning()) {
+                        SharedAudioService.stop()
+                        cachedProjection?.stop(); cachedProjection = null
+                        try { stopService(android.content.Intent(this, MediaProjectionService::class.java)) } catch (_: Exception) {}
+                    }
                     result.success(null)
                 }
                 "getNextEvent" -> result.success(geminiService?.getNextEvent())
