@@ -3448,7 +3448,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             ])),
           ],
         ])),
-            const SizedBox(height: 14),
+      const SizedBox(height: 14),
     ]),
     ),
     actions: [
