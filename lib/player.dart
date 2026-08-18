@@ -3186,7 +3186,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                     else if (_useOffline && _mlkitReady == false)
                       TextButton(
                         onPressed: () async {
-                          await MlKitTranslationService.downloadModel(_translateTo);
+                          await MlKitTranslationService.downloadModels('en', _translateTo);
                           final r = await MlKitTranslationService.isModelDownloaded(_translateTo);
                           if (mounted) setState(() => _mlkitReady = r);
                         },
