@@ -3157,62 +3157,6 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                 style: const TextStyle(color: Colors.white, fontSize: 12),
                 items: _geminiLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                 onChanged: (v) => setState(() => _translateTo = v!)),
-      ],
-    ),
-    actions: [
-              Expanded(child: GestureDetector(
-                onTap: () async {
-                  setState(() => _useOffline = true);
-                  final ready = await MlKitTranslationService.isModelDownloaded(_translateTo);
-                  if (mounted) setState(() => _mlkitReady = ready);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
-                    border: Border.all(color: _useOffline ? const Color(0xFF7C3AED) : Colors.white12),
-                    borderRadius: BorderRadius.circular(10)),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Row(children: [
-                      Icon(Icons.wifi_off_rounded, size: 13, color: Color(0xFF7C3AED)),
-                      SizedBox(width: 5),
-                      Text('Offline (ML Kit)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                    ]),
-                    const SizedBox(height: 3),
-                    const Text('Fast · Private · 30 languages\n~30MB per language',
-                      style: TextStyle(color: Colors.white38, fontSize: 9)),
-                    if (_useOffline && _mlkitReady == true)
-                      const Padding(padding: EdgeInsets.only(top:4), child: Text('✅ Model ready', style: TextStyle(color: Color(0xFF4ade80), fontSize: 9, fontWeight: FontWeight.bold)))
-                    else if (_useOffline && _mlkitReady == false)
-                      TextButton(
-                        onPressed: () async {
-                          await MlKitTranslationService.downloadModels('en', _translateTo);
-                          final r = await MlKitTranslationService.isModelDownloaded(_translateTo);
-                          if (mounted) setState(() => _mlkitReady = r);
-                        },
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF7C3AED), padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        child: Text('⬇ Download (${_translateTo.toUpperCase()})', style: const TextStyle(fontSize: 9))),
-                  ])))),
-              const SizedBox(width: 8),
-              Expanded(child: GestureDetector(
-                onTap: () => setState(() => _useOffline = false),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: !_useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
-                    border: Border.all(color: !_useOffline ? const Color(0xFF7C3AED) : Colors.white12),
-                    borderRadius: BorderRadius.circular(10)),
-                  child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Icon(Icons.cloud_rounded, size: 13, color: Colors.white54),
-                      SizedBox(width: 5),
-                      Text('Online (AI)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                    ]),
-                    SizedBox(height: 3),
-                    Text('92 languages · Internet\nCloudflare Worker',
-                      style: TextStyle(color: Colors.white38, fontSize: 9)),
-                  ])))),
-            ]),
             ])),
           ],
         ])),
@@ -3237,9 +3181,9 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           if (_voskEnabled) ...[
             const Divider(color: Colors.white12, height: 1),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              const Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 11)),
               const SizedBox(height: 4),
-() {
+              () {
                 final langs = _downloadedVoskModels.map((m) => m.langCode as String).toSet().toList();
                 if (langs.isEmpty) return const Text('No Vosk models downloaded', style: TextStyle(color: Colors.orange, fontSize: 11));
                 final valid = langs.contains(_lang) ? _lang : langs.first;
@@ -3256,6 +3200,120 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                   }).toList(),
                   onChanged: (v) { if (v != null) setState(() { _lang = v; _voskLang = v; }); });
               }(),
+              const SizedBox(height: 8),
+              Row(children: [
+                const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
+                Switch(value: _translate, onChanged: (v) => setState(() => _translate = v), activeColor: const Color(0xFF7C3AED)),
+              ]),
+              if (_translate) ...[
+                const SizedBox(height: 8),
+                const Align(alignment: Alignment.centerRight,
+                  child: Text('ترجمه به', style: TextStyle(color: Colors.white60, fontSize: 11))),
+                const SizedBox(height: 4),
+                DropdownButtonFormField<String>(
+                  value: _geminiLangs.containsKey(_translateTo) ? _translateTo : 'fa',
+                  dropdownColor: const Color(0xFF1A1A2A),
+                  decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  items: _geminiLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                  onChanged: (v) => setState(() => _translateTo = v!)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: GestureDetector(
+                    onTap: () async {
+                      setState(() => _useOffline = true);
+                      final ready = await MlKitTranslationService.isModelDownloaded(_translateTo);
+                      if (mounted) setState(() => _mlkitReady = ready);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
+                        border: Border.all(color: _useOffline ? const Color(0xFF7C3AED) : Colors.white12),
+                        borderRadius: BorderRadius.circular(10)),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Row(children: [Icon(Icons.wifi_off_rounded, size: 13, color: Color(0xFF7C3AED)), SizedBox(width: 5), Text('Offline (ML Kit)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))]),
+                        const SizedBox(height: 3),
+                        const Text('Fast · 30 languages · ~30MB per language', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                        if (_useOffline && _mlkitReady == true)
+                          const Padding(padding: EdgeInsets.only(top:4), child: Text('✅ Model ready', style: TextStyle(color: Color(0xFF4ade80), fontSize: 9, fontWeight: FontWeight.bold)))
+                        else if (_useOffline && _mlkitReady == false)
+                          TextButton(
+                            onPressed: () async {
+                              await MlKitTranslationService.downloadModels('en', _translateTo);
+                              final r = await MlKitTranslationService.isModelDownloaded(_translateTo);
+                              if (mounted) setState(() => _mlkitReady = r);
+                            },
+                            style: TextButton.styleFrom(foregroundColor: const Color(0xFF7C3AED), padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                            child: Text('Download (${_translateTo.toUpperCase()})', style: const TextStyle(fontSize: 9))),
+                      ])))),
+                  const SizedBox(width: 8),
+                  Expanded(child: GestureDetector(
+                    onTap: () => setState(() => _useOffline = false),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: !_useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
+                        border: Border.all(color: !_useOffline ? const Color(0xFF7C3AED) : Colors.white12),
+                        borderRadius: BorderRadius.circular(10)),
+                      child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [Icon(Icons.cloud_rounded, size: 13, color: Colors.white54), SizedBox(width: 5), Text('Online (AI)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))]),
+                        SizedBox(height: 3),
+                        Text('92 languages · Cloudflare Worker', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                      ])))),
+                ]),
+              ],
+              const SizedBox(height: 6),
+              // سرعت بروزرسانی
+              const Align(alignment: Alignment.centerRight,
+                child: Text('سرعت بروزرسانی', style: TextStyle(color: Colors.white60, fontSize: 11))),
+              const SizedBox(height: 4),
+              if (_engine != 'gemini') DropdownButtonFormField<int>(
+                value: _pollMs,
+                dropdownColor: const Color(0xFF1A1A2A),
+                decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                items: const [
+                  DropdownMenuItem(value: 100, child: Text('سریع (پیش‌فرض) — 100ms')),
+                  DropdownMenuItem(value: 200, child: Text('متوسط — 200ms')),
+                  DropdownMenuItem(value: 500, child: Text('کُند — 500ms')),
+                ],
+                onChanged: (v) => setState(() => _pollMs = v!)),
+              const SizedBox(height: 8),
+              // زمان نمایش
+              const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(child: GestureDetector(
+                  onTap: () => setState(() => _translateOnFinish = false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: !_translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Column(children: [
+                      Icon(Icons.flash_on_rounded, size: 16, color: !_translateOnFinish ? Colors.white : Colors.white38),
+                      const SizedBox(height: 3),
+                      Text('همزمان با صدا', style: TextStyle(color: !_translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+                    ])))),
+                const SizedBox(width: 8),
+                Expanded(child: GestureDetector(
+                  onTap: () => setState(() => _translateOnFinish = true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Column(children: [
+                      Icon(Icons.pause_circle_rounded, size: 16, color: _translateOnFinish ? Colors.white : Colors.white38),
+                      const SizedBox(height: 3),
+                      Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+                    ])))),
+              ]),
             ])),
           ],
         ])),
@@ -3269,253 +3327,66 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           border: Border.all(color: _androidEnabled ? const Color(0xFF0EA5E9) : Colors.white12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Row(children: [
-          const Icon(Icons.android_rounded, size: 16, color: Color(0xFF0EA5E9)),
-          const SizedBox(width: 8),
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Android STT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-            Text('Online · More languages', style: TextStyle(color: Colors.white38, fontSize: 10)),
+            const Icon(Icons.android_rounded, size: 16, color: Color(0xFF0EA5E9)),
+            const SizedBox(width: 8),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Android STT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text('Online · More languages', style: TextStyle(color: Colors.white38, fontSize: 10)),
+            ])),
+            Switch(value: _androidEnabled, onChanged: (v) => setState(() { _androidEnabled = v; if (v) _voskEnabled = false; }), activeColor: const Color(0xFF0EA5E9)),
           ])),
-          Switch(value: _androidEnabled, onChanged: (v) => setState(() { _androidEnabled = v; if (v) _voskEnabled = false; }), activeColor: const Color(0xFF0EA5E9)),
-         ])),
           if (_androidEnabled) ...[
             const Divider(color: Colors.white12, height: 1),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              const Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 11)),
               const SizedBox(height: 4),
               DropdownButtonFormField<String>(
                 value: AndroidSttService.supportedLangs.containsKey(_lang) ? _lang : 'en',
                 dropdownColor: const Color(0xFF1A1A2A),
                 decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
                 items: AndroidSttService.supportedLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                 onChanged: (v) => setState(() => _lang = v!)),
+              const SizedBox(height: 8),
+              Row(children: [
+                const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
+                Switch(value: _translate, onChanged: (v) => setState(() => _translate = v), activeColor: const Color(0xFF7C3AED)),
+              ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: GestureDetector(
+                  onTap: () => setState(() => _translateOnFinish = false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: !_translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Column(children: [
+                      Icon(Icons.flash_on_rounded, size: 16, color: !_translateOnFinish ? Colors.white : Colors.white38),
+                      const SizedBox(height: 3),
+                      Text('همزمان با صدا', style: TextStyle(color: !_translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+                    ])))),
+                const SizedBox(width: 8),
+                Expanded(child: GestureDetector(
+                  onTap: () => setState(() => _translateOnFinish = true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
+                      borderRadius: BorderRadius.circular(8)),
+                    child: Column(children: [
+                      Icon(Icons.pause_circle_rounded, size: 16, color: _translateOnFinish ? Colors.white : Colors.white38),
+                      const SizedBox(height: 3),
+                      Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
+                    ])))),
+              ]),
             ])),
           ],
-        ]),
-      ),
-
-
-      // ── تنظیمات Vosk ──
-      if (_voskEnabled) ...[
-        const SizedBox(height: 6),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // زبان Vosk از مدل‌های دانلود شده
-          const Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 11)),
-          const SizedBox(height: 4),
-          () {
-            final langs = _downloadedVoskModels.map((m) => m.langCode as String).toSet().toList();
-            if (langs.isEmpty) return const Text('No Vosk models downloaded', style: TextStyle(color: Colors.orange, fontSize: 11));
-            final valid = langs.contains(_lang) ? _lang : langs.first;
-            return DropdownButtonFormField<String>(
-              value: valid,
-              dropdownColor: const Color(0xFF1A1A2A),
-              decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              items: langs.map<DropdownMenuItem<String>>((l) {
-                final m = _downloadedVoskModels.firstWhere((x) => x.langCode == l);
-                return DropdownMenuItem<String>(value: l, child: Text('${m.name} ($l)'));
-              }).toList(),
-              onChanged: (v) { if (v != null) setState(() { _lang = v; _voskLang = v; }); });
-          }(),
-          const SizedBox(height: 8),
-          // ترجمه real-time
-          Row(children: [
-            const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
-            Switch(value: _translate, onChanged: (v) => setState(() => _translate = v), activeColor: const Color(0xFF7C3AED)),
-          ]),
-          if (_translate) ...[
-            const SizedBox(height: 8),
-            // Target Language
-            const Align(alignment: Alignment.centerRight,
-              child: Text('ترجمه به', style: TextStyle(color: Colors.white60, fontSize: 11))),
-            const SizedBox(height: 4),
-            DropdownButtonFormField<String>(
-              value: _geminiLangs.containsKey(_translateTo) ? _translateTo : 'fa',
-              dropdownColor: const Color(0xFF1A1A2A),
-              decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              items: _geminiLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-              onChanged: (v) => setState(() => _translateTo = v!)),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: GestureDetector(
-                onTap: () async {
-                  setState(() => _useOffline = true);
-                  final ready = await MlKitTranslationService.isModelDownloaded(_translateTo);
-                  if (mounted) setState(() => _mlkitReady = ready);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
-                    border: Border.all(color: _useOffline ? const Color(0xFF7C3AED) : Colors.white12),
-                    borderRadius: BorderRadius.circular(10)),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Row(children: [Icon(Icons.wifi_off_rounded, size: 13, color: Color(0xFF7C3AED)), SizedBox(width: 5), Text('Offline (ML Kit)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))]),
-                    const SizedBox(height: 3),
-                    const Text('Fast · 30 languages · ~30MB per language', style: TextStyle(color: Colors.white38, fontSize: 9)),
-                    if (_useOffline && _mlkitReady == true)
-                      const Padding(padding: EdgeInsets.only(top:4), child: Text('✅ Model ready', style: TextStyle(color: Color(0xFF4ade80), fontSize: 9, fontWeight: FontWeight.bold)))
-                    else if (_useOffline && _mlkitReady == false)
-                      TextButton(
-                        onPressed: () async {
-                          await MlKitTranslationService.downloadModels('en', _translateTo);
-                          final r = await MlKitTranslationService.isModelDownloaded(_translateTo);
-                          if (mounted) setState(() => _mlkitReady = r);
-                        },
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF7C3AED), padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        child: Text('⬇ Download (${_translateTo.toUpperCase()})', style: const TextStyle(fontSize: 9))),
-                  ])))),
-              const SizedBox(width: 8),
-              Expanded(child: GestureDetector(
-                onTap: () => setState(() => _useOffline = false),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: !_useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
-                    border: Border.all(color: !_useOffline ? const Color(0xFF7C3AED) : Colors.white12),
-                    borderRadius: BorderRadius.circular(10)),
-                  child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [Icon(Icons.cloud_rounded, size: 13, color: Colors.white54), SizedBox(width: 5), Text('Online (AI)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))]),
-                    SizedBox(height: 3),
-                    Text('92 languages · Internet · Cloudflare Worker', style: TextStyle(color: Colors.white38, fontSize: 9)),
-                  ])))),
-            ]),
-          ],
-          // سرعت بروزرسانی
-          const SizedBox(height: 6),
-          const Align(alignment: Alignment.centerRight,
-            child: Text('سرعت بروزرسانی', style: TextStyle(color: Colors.white60, fontSize: 11))),
-          const SizedBox(height: 4),
-          DropdownButtonFormField<int>(
-            value: _pollMs,
-            dropdownColor: const Color(0xFF1A1A2A),
-            decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            items: const [
-              DropdownMenuItem(value: 100, child: Text('سریع (پیش‌فرض) — 100ms')),
-              DropdownMenuItem(value: 200, child: Text('متوسط — 200ms')),
-              DropdownMenuItem(value: 500, child: Text('کُند — 500ms')),
-            ],
-            onChanged: (v) => setState(() => _pollMs = v!)),
-          const SizedBox(height: 8),
-          // زمان نمایش
-          const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
-          const SizedBox(height: 6),
-          Row(children: [
-            Expanded(child: GestureDetector(
-              onTap: () => setState(() => _translateOnFinish = false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: !_translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Column(children: [
-                  Icon(Icons.flash_on_rounded, size: 16, color: !_translateOnFinish ? Colors.white : Colors.white38),
-                  const SizedBox(height: 3),
-                  Text('همزمان با صدا', style: TextStyle(color: !_translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
-                ])))),
-            const SizedBox(width: 8),
-            Expanded(child: GestureDetector(
-              onTap: () => setState(() => _translateOnFinish = true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Column(children: [
-                  Icon(Icons.pause_circle_rounded, size: 16, color: _translateOnFinish ? Colors.white : Colors.white38),
-                  const SizedBox(height: 3),
-                  Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
-                ])))),
-          ]),
         ])),
-      ],
-      const SizedBox(height: 8),
-
-      // ── تنظیمات Android STT ──
-      if (_androidEnabled) ...[
-        const SizedBox(height: 6),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // زبان Android STT
-          const Text('زبان صحبت', style: TextStyle(color: Colors.white60, fontSize: 11)),
-          const SizedBox(height: 4),
-          DropdownButtonFormField<String>(
-            value: AndroidSttService.supportedLangs.containsKey(_lang) ? _lang : 'en',
-            dropdownColor: const Color(0xFF1A1A2A),
-            decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-            items: AndroidSttService.supportedLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-            onChanged: (v) => setState(() => _lang = v!)),
-          const SizedBox(height: 8),
-          // ترجمه real-time
-          Row(children: [
-            const Expanded(child: Text('ترجمه real-time', style: TextStyle(color: Colors.white, fontSize: 13))),
-            Switch(value: _translate, onChanged: (v) => setState(() => _translate = v), activeColor: const Color(0xFF7C3AED)),
-          ]),
-          const SizedBox(height: 8),
-          // زمان نمایش
-          const Text('زمان نمایش', style: TextStyle(color: Colors.white60, fontSize: 11)),
-          const SizedBox(height: 6),
-          Row(children: [
-            Expanded(child: GestureDetector(
-              onTap: () => setState(() => _translateOnFinish = false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: !_translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Column(children: [
-                  Icon(Icons.flash_on_rounded, size: 16, color: !_translateOnFinish ? Colors.white : Colors.white38),
-                  const SizedBox(height: 3),
-                  Text('همزمان با صدا', style: TextStyle(color: !_translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
-                ])))),
-            const SizedBox(width: 8),
-            Expanded(child: GestureDetector(
-              onTap: () => setState(() => _translateOnFinish = true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _translateOnFinish ? const Color(0xFF22c55e) : const Color(0xFF1A1A2A),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Column(children: [
-                  Icon(Icons.pause_circle_rounded, size: 16, color: _translateOnFinish ? Colors.white : Colors.white38),
-                  const SizedBox(height: 3),
-                  Text('بعد از پایان صدا', style: TextStyle(color: _translateOnFinish ? Colors.white : Colors.white38, fontSize: 11)),
-                ])))),
-          ]),
-        ])),
-      ],
-      const SizedBox(height: 8),
-
-      // ── ترجمه (مشترک Vosk/Android وقتی فعاله) ──
-      if (_translate && (_voskEnabled || _androidEnabled)) ...[
-        const SizedBox(height: 8),
-        const Align(alignment: Alignment.centerRight,
-          child: Text('Target Language', style: TextStyle(color: Colors.white60, fontSize: 11))),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<String>(
-          value: _geminiLangs.containsKey(_translateTo) ? _translateTo : 'fa',
-          dropdownColor: const Color(0xFF1A1A2A),
-          decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-          style: const TextStyle(color: Colors.white, fontSize: 12),
-          items: _geminiLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-          onChanged: (v) => setState(() => _translateTo = v!)),
-        const SizedBox(height: 8),
-      ],
-    ),
+      const SizedBox(height: 14),
+    ])),
     actions: [
       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لغو')),
       FilledButton(
@@ -3538,7 +3409,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
         }),
         child: const Text('شروع')),
     ],
-  );
+  ));
 }
 
 class _SrtEntry {
