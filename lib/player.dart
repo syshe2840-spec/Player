@@ -3157,6 +3157,62 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                 style: const TextStyle(color: Colors.white, fontSize: 12),
                 items: _geminiLangs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                 onChanged: (v) => setState(() => _translateTo = v!)),
+            const SizedBox(height: 8),
+            // حالت ترجمه — Offline/Online
+            Row(children: [
+              Expanded(child: GestureDetector(
+                onTap: () async {
+                  setState(() => _useOffline = true);
+                  final ready = await MlKitTranslationService.isModelDownloaded(_translateTo);
+                  if (mounted) setState(() => _mlkitReady = ready);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
+                    border: Border.all(color: _useOffline ? const Color(0xFF7C3AED) : Colors.white12),
+                    borderRadius: BorderRadius.circular(10)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Row(children: [
+                      Icon(Icons.wifi_off_rounded, size: 13, color: Color(0xFF7C3AED)),
+                      SizedBox(width: 5),
+                      Text('Offline (ML Kit)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ]),
+                    const SizedBox(height: 3),
+                    const Text('Fast · Private · 30 languages\n~30MB per language',
+                      style: TextStyle(color: Colors.white38, fontSize: 9)),
+                    if (_useOffline && _mlkitReady == true)
+                      const Padding(padding: EdgeInsets.only(top:4), child: Text('✅ Model ready', style: TextStyle(color: Color(0xFF4ade80), fontSize: 9, fontWeight: FontWeight.bold)))
+                    else if (_useOffline && _mlkitReady == false)
+                      TextButton(
+                        onPressed: () async {
+                          await MlKitTranslationService.downloadModel(_translateTo);
+                          final r = await MlKitTranslationService.isModelDownloaded(_translateTo);
+                          if (mounted) setState(() => _mlkitReady = r);
+                        },
+                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF7C3AED), padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        child: Text('⬇ Download (${_translateTo.toUpperCase()})', style: const TextStyle(fontSize: 9))),
+                  ])))),
+              const SizedBox(width: 8),
+              Expanded(child: GestureDetector(
+                onTap: () => setState(() => _useOffline = false),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: !_useOffline ? const Color(0xFF7C3AED).withOpacity(0.15) : const Color(0xFF1A1A2A),
+                    border: Border.all(color: !_useOffline ? const Color(0xFF7C3AED) : Colors.white12),
+                    borderRadius: BorderRadius.circular(10)),
+                  child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Icon(Icons.cloud_rounded, size: 13, color: Colors.white54),
+                      SizedBox(width: 5),
+                      Text('Online (AI)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ]),
+                    SizedBox(height: 3),
+                    Text('92 languages · Internet\nCloudflare Worker',
+                      style: TextStyle(color: Colors.white38, fontSize: 9)),
+                  ])))),
+            ]),
             ])),
           ],
         ])),
