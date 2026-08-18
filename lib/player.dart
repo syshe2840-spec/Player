@@ -3450,6 +3450,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
         ])),
       const SizedBox(height: 14),
     ])),
+    ),
     actions: [
       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لغو')),
       FilledButton(
@@ -3472,7 +3473,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
         }),
         child: const Text('شروع')),
     ],
-  ));
+  );
 }
 
 class _SrtEntry {
