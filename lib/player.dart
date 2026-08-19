@@ -668,6 +668,10 @@ class _PlayerState extends State<PlayerScreen>{
       final type = event['type'] as String? ?? '';
       final data = event['data'];
       final ts = DateTime.now().toString().substring(11, 19);
+      if (type == 'raw') {
+        // نشون دادن raw JSON برای debug زیرنویس
+        if (!_geminiDubMode) setState((){_aiLog.add('[RAW] ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');});
+      }
       if (type == 'transcript') {
         final t = ((data as Map?)?['text'] as String?) ?? '';
         final fin = (data as Map?)?['final'] as bool? ?? true;
@@ -838,8 +842,8 @@ class _PlayerState extends State<PlayerScreen>{
       _voskTranslateOnFinish = result['translateOnFinish'] as bool? ?? true;
       _voskShowOriginal = result['showOriginal'] as bool? ?? true;
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
-      _geminiDubMode = true;
       _geminiEnabled = result['geminiEnabled'] as bool? ?? false;
+      _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
       _voskEnabled = result['voskEnabled'] as bool? ?? false;
       _androidEnabled = result['androidEnabled'] as bool? ?? false;
       final newVoice = result['geminiVoice'] as String? ?? 'Charon';
@@ -958,7 +962,11 @@ class _PlayerState extends State<PlayerScreen>{
             final tsStr = DateTime.now().toString().substring(11, 19);
             _aiLog.add('[$tsStr] [Android] $type: $data');
             if (_aiLog.length > 50) _aiLog.removeAt(0);
-            if (type == 'transcript') {
+            if (type == 'raw') {
+        // نشون دادن raw JSON برای debug زیرنویس
+        if (!_geminiDubMode) setState((){_aiLog.add('[RAW] ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');});
+      }
+      if (type == 'transcript') {
               final t = (data as Map)['text'] as String;
               final fin = (data as Map)['final'] as bool;
               if (t.isNotEmpty) {
@@ -1016,7 +1024,11 @@ class _PlayerState extends State<PlayerScreen>{
           final data = event['data'];
           final ts = DateTime.now();
           final tsStr = '${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}';
-          if (type == 'transcript') {
+          if (type == 'raw') {
+        // نشون دادن raw JSON برای debug زیرنویس
+        if (!_geminiDubMode) setState((){_aiLog.add('[RAW] ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');});
+      }
+      if (type == 'transcript') {
             final t = (data as Map)['text'] as String? ?? '';
             final fin = (data as Map)['final'] as bool? ?? false;
             if (t.isEmpty) {}
@@ -3150,6 +3162,37 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           ])),
           if (_geminiEnabled) ...[
             const Divider(color: Colors.white12, height: 1),
+            Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 4), child: Row(children: [
+              Expanded(child: GestureDetector(
+                onTap: () => setState(() => _geminiSubMode = false),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: !_geminiSubMode ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
+                    border: Border.all(color: !_geminiSubMode ? const Color(0xFF10B981) : Colors.white12),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Column(children: [
+                    Icon(Icons.record_voice_over_rounded, size: 18, color: !_geminiSubMode ? const Color(0xFF10B981) : Colors.white38),
+                    const SizedBox(height: 4),
+                    Text('دوبله', style: TextStyle(color: !_geminiSubMode ? Colors.white : Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ])))),
+              const SizedBox(width: 8),
+              Expanded(child: GestureDetector(
+                onTap: () => setState(() => _geminiSubMode = true),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _geminiSubMode ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFF1A1A2A),
+                    border: Border.all(color: _geminiSubMode ? const Color(0xFF10B981) : Colors.white12),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Column(children: [
+                    Icon(Icons.subtitles_rounded, size: 18, color: _geminiSubMode ? const Color(0xFF10B981) : Colors.white38),
+                    const SizedBox(height: 4),
+                    Text('زیرنویس', style: TextStyle(color: _geminiSubMode ? Colors.white : Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ])))),
+            ])),
+          if (_geminiEnabled) ...[
+            const Divider(color: Colors.white12, height: 1),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // Voice
               Row(children: [
@@ -3486,6 +3529,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           'showOriginal': _showOriginal,
           'useOffline': _useOffline,
           'geminiEnabled': _geminiEnabled,
+          'geminiSubMode': _geminiSubMode,
           'voskEnabled': _voskEnabled,
           'androidEnabled': _androidEnabled,
           'geminiVoice': _geminiVoice,
