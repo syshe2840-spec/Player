@@ -154,15 +154,22 @@ class GeminiLiveService(private val apiKey: String) {
                 .put("model", "models/${config.model}")
                 .put("generationConfig", JSONObject().apply {
                         put("responseModalities", modalities)
-                        put("translationConfig", JSONObject()
-                            .put("targetLanguageCode", config.targetLang)
-                            .put("echoTargetLanguage", false))
-                        // speechConfig هم‌سطح responseModalities
-                        if (config.dubMode && config.voice.isNotEmpty()) {
-                            put("speechConfig", JSONObject()
-                                .put("voiceConfig", JSONObject()
-                                    .put("prebuiltVoiceConfig", JSONObject()
-                                        .put("voiceName", config.voice))))
+                        if (config.dubMode) {
+                            // DUB mode: translate audio to target language
+                            put("translationConfig", JSONObject()
+                                .put("targetLanguageCode", config.targetLang)
+                                .put("echoTargetLanguage", false))
+                            if (config.voice.isNotEmpty()) {
+                                put("speechConfig", JSONObject()
+                                    .put("voiceConfig", JSONObject()
+                                        .put("prebuiltVoiceConfig", JSONObject()
+                                            .put("voiceName", config.voice))))
+                            }
+                        } else {
+                            // SUBTITLE mode: transcribe + translate to text
+                            put("translationConfig", JSONObject()
+                                .put("targetLanguageCode", config.targetLang)
+                                .put("echoTargetLanguage", false))
                         }
                     })
                 .put("realtimeInputConfig", JSONObject()
