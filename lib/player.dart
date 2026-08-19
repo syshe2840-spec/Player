@@ -318,7 +318,10 @@ class _PlayerState extends State<PlayerScreen>{
     }));
     // ── MPV error stream ──
     _subs.add(player.stream.error.listen((err){
-      if(err.isNotEmpty)_addLiveLog('⚠ Error: $err');
+      if(err.isNotEmpty){
+        _addLiveLog('⚠ Error: $err');
+        if(_mounted && _buffering) setState(()=>_buffering=false);
+      }
     }));
     // ── MPV native log stream ──
     if(widget.isLive){
@@ -425,7 +428,15 @@ class _PlayerState extends State<PlayerScreen>{
         })
       : Media(_curPath);
 
-    await player.open(media);
+    // ریست state قبل از open — جلوگیری از گیر کردن
+    if (_mounted) setState(() { _buffering = false; });
+    try {
+      await player.open(media);
+    } catch (e) {
+      debugPrint('[Player] open error: $e');
+      if (_mounted) setState(() { _buffering = false; });
+      return;
+    }
     if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
     await Store.addToHistory(_curPath);
     final saved=await Store.getPos(_curPath);
@@ -483,7 +494,15 @@ class _PlayerState extends State<PlayerScreen>{
         })
       : Media(_curPath);
 
-    await player.open(media);
+    // ریست state قبل از open — جلوگیری از گیر کردن
+    if (_mounted) setState(() { _buffering = false; });
+    try {
+      await player.open(media);
+    } catch (e) {
+      debugPrint('[Player] open error: $e');
+      if (_mounted) setState(() { _buffering = false; });
+      return;
+    }
     if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
     await Store.addToHistory(_curPath);
     final sv=await Store.getPos(_curPath);
