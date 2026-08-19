@@ -3194,8 +3194,8 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             ])),
             const Divider(color: Colors.white12, height: 1),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // Voice
-              Row(children: [
+              // Voice — فقط برای دوبله
+              if (!_geminiSubMode) Row(children: [
                 const Text('Voice', style: TextStyle(color: Colors.white60, fontSize: 11)),
                 const SizedBox(width: 8),
                 Expanded(child: DropdownButton<String>(
