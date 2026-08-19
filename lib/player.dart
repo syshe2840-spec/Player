@@ -2931,6 +2931,7 @@ class _VoskSettingsDialog extends StatefulWidget {
 
 class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _lang = 'fa';
+  bool _geminiSubMode = false; // true=subtitle, false=dub
   late bool _translate = widget.initTranslate;
   late String _translateTo = widget.initTranslateTo;
   int _pollMs = 100;
