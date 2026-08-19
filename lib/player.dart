@@ -851,7 +851,7 @@ class _PlayerState extends State<PlayerScreen>{
       _useGeminiLive = _geminiEnabled;
       _useVosk = _voskEnabled;
       _useAndroidStt = _androidEnabled;
-      _geminiDubMode = true;
+      _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
       final newLang = result['lang'] as String? ?? _voskTranslateTo;
       // اگه Gemini فعاله و lang/voice تغییر نکرده → فقط تنظیمات رو update کن بدون restart
       if (_useGeminiLive && _dgActive && newLang == _voskTranslateTo && newVoice == _geminiVoice) {
