@@ -3192,7 +3192,6 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                     Text('زیرنویس', style: TextStyle(color: _geminiSubMode ? Colors.white : Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
                   ])))),
             ])),
-          if (_geminiEnabled) ...[
             const Divider(color: Colors.white12, height: 1),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // Voice
