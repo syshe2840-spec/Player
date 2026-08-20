@@ -166,12 +166,11 @@ class GeminiLiveService(private val apiKey: String) {
                                             .put("voiceName", config.voice))))
                             }
                         } else {
-                            // SUBTITLE mode: از همون مدل translate استفاده کن
-                            // ولی outputAudioTranscription فعاله تا text برگردونه
+                            // SUBTITLE mode: TEXT output با همون translationConfig
+                            // outputAudioTranscription وجود نداره — همین کافیه
                             put("translationConfig", JSONObject()
                                 .put("targetLanguageCode", config.targetLang)
                                 .put("echoTargetLanguage", false))
-                            put("outputAudioTranscription", JSONObject())
                         }
                     })
                 .put("realtimeInputConfig", JSONObject()
@@ -263,6 +262,23 @@ class GeminiLiveService(private val apiKey: String) {
     }
 
     private fun startAudioCapture() {
+        // اگه SharedAudioService فعاله، از queue مشترک بخون
+        if (SharedAudioService.isRunning()) {
+            audioQueue = SharedAudioService.addConsumer()
+            audioThread = Thread {
+                val q = audioQueue ?: return@Thread
+                while (running.get()) {
+                    try {
+                        val chunk = q.poll(250, java.util.concurrent.TimeUnit.MILLISECONDS) ?: continue
+                        if (!inputQueue.offer(chunk)) { inputQueue.poll(); inputQueue.offer(chunk) }
+                    } catch (_: InterruptedException) { break }
+                }
+            }
+            audioThread?.isDaemon = true; audioThread?.start()
+            android.util.Log.d(TAG, "Using SharedAudioService")
+            return
+        }
+
         val chunkBytes = INPUT_SAMPLE_RATE * config.chunkMs / 1000 * 2
         val chunkSamples = chunkBytes / 2
         val bufSize = AudioRecord.getMinBufferSize(INPUT_SAMPLE_RATE,
