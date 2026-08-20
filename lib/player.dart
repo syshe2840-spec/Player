@@ -2935,7 +2935,7 @@ class _VoskSettingsDialog extends StatefulWidget {
 class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _lang = 'fa';
   bool _geminiSubMode = false;
-  String _geminiModel = 'gemini-3.5-live-translate-preview';
+  String _geminiModel = 'gemini-3.5-live-translate-preview'; // subtitle هم از این استفاده میکنه
   late bool _translate = widget.initTranslate;
   late String _translateTo = widget.initTranslateTo;
   int _pollMs = 100;
@@ -3224,9 +3224,8 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                 style: const TextStyle(color: Colors.white, fontSize: 11),
                 items: const [
-                  DropdownMenuItem(value: 'gemini-3.5-live-translate-preview', child: Text('Gemini 3.5 Live Translate — Best for DUB')),
-                  DropdownMenuItem(value: 'gemini-2.0-flash-live-001', child: Text('Gemini 2.0 Flash Live — Best for Subtitle')),
-                  DropdownMenuItem(value: 'gemini-2.5-flash-preview-native-audio-dialog', child: Text('Gemini 2.5 Flash — Experimental')),
+                  DropdownMenuItem(value: 'gemini-3.5-live-translate-preview', child: Text('Gemini 3.5 Live Translate (DUB + SUB)')),
+                  DropdownMenuItem(value: 'gemini-2.5-flash-preview-native-audio-dialog', child: Text('Gemini 2.5 Flash (Experimental)')),
                 ],
                 onChanged: (v) => setState(() => _geminiModel = v!)),
               const SizedBox(height: 8),
