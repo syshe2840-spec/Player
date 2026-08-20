@@ -152,6 +152,15 @@ class GeminiLiveService(private val apiKey: String) {
             val modalities = if (config.dubMode) JSONArray().put("AUDIO") else JSONArray().put("TEXT")
             val setup = JSONObject()
                 .put("model", "models/${config.model}")
+                .apply {
+                    if (!config.dubMode) {
+                        // system instruction برای زیرنویس
+                        put("systemInstruction", JSONObject()
+                            .put("parts", JSONArray()
+                                .put(JSONObject()
+                                    .put("text", "Transcribe audio and translate to ${config.targetLang}. Output only the translated text, nothing else."))))
+                    }
+                }
                 .put("generationConfig", JSONObject().apply {
                         put("responseModalities", modalities)
                         if (config.dubMode) {
@@ -166,10 +175,8 @@ class GeminiLiveService(private val apiKey: String) {
                                             .put("voiceName", config.voice))))
                             }
                         } else {
-                            // SUBTITLE mode: transcribe + translate to text
-                            put("translationConfig", JSONObject()
-                                .put("targetLanguageCode", config.targetLang)
-                                .put("echoTargetLanguage", false))
+                            // SUBTITLE mode: فقط transcribe (بدون translationConfig)
+                            // مدل flash-live بدون translationConfig text برمیگردونه
                         }
                     })
                 .put("realtimeInputConfig", JSONObject()
@@ -215,6 +222,11 @@ class GeminiLiveService(private val apiKey: String) {
     }
 
     private fun handleMessage(text: String) {
+        // debug: همه messages خام در subtitle mode
+        if (!config.dubMode) {
+            android.util.Log.d(TAG, "SUB_RAW: ${text.take(300)}")
+            send("raw", text.take(200))
+        }
         try {
             val json = JSONObject(text)
             val err = json.optJSONObject("error")
