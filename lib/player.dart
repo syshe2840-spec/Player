@@ -80,6 +80,7 @@ class _PlayerState extends State<PlayerScreen>{
   bool _useGeminiLive = false;
   bool _geminiDubMode = true;
   bool _geminiEnabled = false;
+  String _selectedGeminiModel = 'gemini-3.5-live-translate-preview';
   bool _voskEnabled = false;
   bool _androidEnabled = false;
   bool _geminiWithVosk = false; // Gemini DUB + Vosk subtitle همزمان
@@ -637,7 +638,7 @@ class _PlayerState extends State<PlayerScreen>{
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
       'voice': _geminiVoice,
-      'model': selectedModel,
+      'model': _selectedGeminiModel,
       // Accuracy preset — overrides manual settings
       ...() {
         final acc = prefs.getString('gemini_accuracy') ?? 'balanced';
@@ -845,6 +846,7 @@ class _PlayerState extends State<PlayerScreen>{
       _geminiEnabled = result['geminiEnabled'] as bool? ?? false;
       _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
       final selectedModel = result['geminiModel'] as String? ?? 'gemini-3.5-live-translate-preview';
+      _selectedGeminiModel = selectedModel;
       _voskEnabled = result['voskEnabled'] as bool? ?? false;
       _androidEnabled = result['androidEnabled'] as bool? ?? false;
       final newVoice = result['geminiVoice'] as String? ?? 'Charon';
@@ -853,7 +855,6 @@ class _PlayerState extends State<PlayerScreen>{
       _useVosk = _voskEnabled;
       _useAndroidStt = _androidEnabled;
       _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
-      final selectedModel = result['geminiModel'] as String? ?? 'gemini-3.5-live-translate-preview';
       final newLang = result['lang'] as String? ?? _voskTranslateTo;
       // اگه Gemini فعاله و lang/voice تغییر نکرده → فقط تنظیمات رو update کن بدون restart
       if (_useGeminiLive && _dgActive && newLang == _voskTranslateTo && newVoice == _geminiVoice) {
@@ -2948,6 +2949,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   bool _mlkitReady = false;
   bool _geminiDubMode = true;
   bool _geminiEnabled = false;
+  String _selectedGeminiModel = 'gemini-3.5-live-translate-preview';
   List<dynamic> _downloadedVoskModels = [];
   String _voskLang = 'fa'; // زبان Vosk جدا
   bool _voskEnabled = false;   // Vosk subtitle toggle
