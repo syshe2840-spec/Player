@@ -152,15 +152,6 @@ class GeminiLiveService(private val apiKey: String) {
             val modalities = if (config.dubMode) JSONArray().put("AUDIO") else JSONArray().put("TEXT")
             val setup = JSONObject()
                 .put("model", "models/${config.model}")
-                .apply {
-                    if (!config.dubMode) {
-                        // system instruction برای زیرنویس
-                        put("systemInstruction", JSONObject()
-                            .put("parts", JSONArray()
-                                .put(JSONObject()
-                                    .put("text", "Transcribe audio and translate to ${config.targetLang}. Output only the translated text, nothing else."))))
-                    }
-                }
                 .put("generationConfig", JSONObject().apply {
                         put("responseModalities", modalities)
                         if (config.dubMode) {
@@ -175,8 +166,12 @@ class GeminiLiveService(private val apiKey: String) {
                                             .put("voiceName", config.voice))))
                             }
                         } else {
-                            // SUBTITLE mode: فقط transcribe (بدون translationConfig)
-                            // مدل flash-live بدون translationConfig text برمیگردونه
+                            // SUBTITLE mode: از همون مدل translate استفاده کن
+                            // ولی outputAudioTranscription فعاله تا text برگردونه
+                            put("translationConfig", JSONObject()
+                                .put("targetLanguageCode", config.targetLang)
+                                .put("echoTargetLanguage", false))
+                            put("outputAudioTranscription", JSONObject())
                         }
                     })
                 .put("realtimeInputConfig", JSONObject()
