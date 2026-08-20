@@ -637,7 +637,7 @@ class _PlayerState extends State<PlayerScreen>{
       await const MethodChannel('com.vezoo.player/gemini_live').invokeMethod('start', {
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
       'voice': _geminiVoice,
-      'model': prefs.getString('gemini_model') ?? 'gemini-3.5-live-translate-preview',
+      'model': selectedModel,
       // Accuracy preset — overrides manual settings
       ...() {
         final acc = prefs.getString('gemini_accuracy') ?? 'balanced';
@@ -844,6 +844,7 @@ class _PlayerState extends State<PlayerScreen>{
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
       _geminiEnabled = result['geminiEnabled'] as bool? ?? false;
       _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
+      final selectedModel = result['geminiModel'] as String? ?? 'gemini-3.5-live-translate-preview';
       _voskEnabled = result['voskEnabled'] as bool? ?? false;
       _androidEnabled = result['androidEnabled'] as bool? ?? false;
       final newVoice = result['geminiVoice'] as String? ?? 'Charon';
@@ -852,6 +853,7 @@ class _PlayerState extends State<PlayerScreen>{
       _useVosk = _voskEnabled;
       _useAndroidStt = _androidEnabled;
       _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
+      final selectedModel = result['geminiModel'] as String? ?? 'gemini-3.5-live-translate-preview';
       final newLang = result['lang'] as String? ?? _voskTranslateTo;
       // اگه Gemini فعاله و lang/voice تغییر نکرده → فقط تنظیمات رو update کن بدون restart
       if (_useGeminiLive && _dgActive && newLang == _voskTranslateTo && newVoice == _geminiVoice) {
@@ -2931,7 +2933,8 @@ class _VoskSettingsDialog extends StatefulWidget {
 
 class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _lang = 'fa';
-  bool _geminiSubMode = false; // true=subtitle, false=dub
+  bool _geminiSubMode = false;
+  String _geminiModel = 'gemini-3.5-live-translate-preview';
   late bool _translate = widget.initTranslate;
   late String _translateTo = widget.initTranslateTo;
   int _pollMs = 100;
@@ -3208,6 +3211,23 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
               ]),
               const SizedBox(height: 6),
               // Target Language
+              // Model
+              const Text('Model', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<String>(
+                value: _geminiModel,
+                dropdownColor: const Color(0xFF1A1A2A),
+                decoration: InputDecoration(filled: true, fillColor: const Color(0xFF0D0D1E),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                style: const TextStyle(color: Colors.white, fontSize: 11),
+                items: const [
+                  DropdownMenuItem(value: 'gemini-3.5-live-translate-preview', child: Text('Gemini 3.5 Live Translate — Best for DUB')),
+                  DropdownMenuItem(value: 'gemini-2.0-flash-live-001', child: Text('Gemini 2.0 Flash Live — Best for Subtitle')),
+                  DropdownMenuItem(value: 'gemini-2.5-flash-preview-native-audio-dialog', child: Text('Gemini 2.5 Flash — Experimental')),
+                ],
+                onChanged: (v) => setState(() => _geminiModel = v!)),
+              const SizedBox(height: 8),
               const Text('Target Language', style: TextStyle(color: Colors.white60, fontSize: 11)),
               const SizedBox(height: 4),
               DropdownButtonFormField<String>(
@@ -3529,6 +3549,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           'showOriginal': _showOriginal,
           'useOffline': _useOffline,
           'geminiEnabled': _geminiEnabled,
+          'geminiModel': _geminiModel,
           'geminiSubMode': _geminiSubMode,
           'voskEnabled': _voskEnabled,
           'androidEnabled': _androidEnabled,
