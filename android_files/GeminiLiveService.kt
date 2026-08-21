@@ -219,7 +219,7 @@ class GeminiLiveService(private val apiKey: String) {
         // debug: همه messages خام در subtitle mode
         if (!config.dubMode) {
             android.util.Log.d(TAG, "SUB_RAW: ${text.take(300)}")
-            send("raw", text.take(200))
+            send("raw", text.take(500))
         }
         try {
             val json = JSONObject(text)
@@ -252,11 +252,24 @@ class GeminiLiveService(private val apiKey: String) {
                 val t = outputT.optString("text","")
                 if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
             }
-            // inputTranscription هم بگیر (وقتی source==target)
+            // inputTranscription
             val inputT = sc.optJSONObject("inputTranscription")
             if (inputT != null && !config.dubMode) {
                 val t = inputT.optString("text","")
-                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
+                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to false))
+            }
+            // modelTurn.parts[].text — برای subtitle mode
+            if (!config.dubMode) {
+                val mt2 = sc.optJSONObject("modelTurn")
+                val parts2 = mt2?.optJSONArray("parts")
+                if (parts2 != null) {
+                    for (i in 0 until parts2.length()) {
+                        val textPart = parts2.getJSONObject(i).optString("text","")
+                        if (textPart.isNotEmpty()) {
+                            send("transcript", mapOf("text" to textPart, "final" to true))
+                        }
+                    }
+                }
             }
         } catch (e: Exception) { Log.e(TAG, "Parse: ${e.message}") }
     }
@@ -413,8 +426,20 @@ class GeminiLiveService(private val apiKey: String) {
 
     fun getNextEvent(): Map<String,Any>? = eventQueue.poll()
     private fun send(type: String, data: Any) {
-        eventQueue.offer(mapOf("type" to type, "data" to data))
-        if (eventQueue.size > 200) eventQueue.poll()
+        // raw events فقط برای debug — از اول حذف کن اگه queue پره
+        if (type == "raw") {
+            if (eventQueue.size < 20) eventQueue.offer(mapOf("type" to type, "data" to data))
+        } else {
+            // transcript و status همیشه اضافه میشن
+            eventQueue.offer(mapOf("type" to type, "data" to data))
+            if (eventQueue.size > 500) {
+                // فقط raw events رو حذف کن
+                val iter = eventQueue.iterator()
+                while (iter.hasNext() && eventQueue.size > 400) {
+                    if (iter.next()["type"] == "raw") iter.remove()
+                }
+            }
+        }
     }
 }
 
