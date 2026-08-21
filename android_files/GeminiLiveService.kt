@@ -277,6 +277,7 @@ class GeminiLiveService(private val apiKey: String) {
     private fun startAudioCapture() {
         // اگه SharedAudioService فعاله، از queue مشترک بخون
         if (SharedAudioService.isRunning()) {
+            send("status", "audio_source: SharedAudioService")
             audioQueue = SharedAudioService.addConsumer()
             audioThread = Thread {
                 val q = audioQueue ?: return@Thread
@@ -292,6 +293,7 @@ class GeminiLiveService(private val apiKey: String) {
             return
         }
 
+        send("status", "audio_source: DirectRecorder proj=${projection != null}")
         val chunkBytes = INPUT_SAMPLE_RATE * config.chunkMs / 1000 * 2
         val chunkSamples = chunkBytes / 2
         val bufSize = AudioRecord.getMinBufferSize(INPUT_SAMPLE_RATE,
