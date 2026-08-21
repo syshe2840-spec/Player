@@ -668,11 +668,8 @@ class _PlayerState extends State<PlayerScreen>{
       if (event == null || !_mounted) return;
       final type = event['type'] as String? ?? '';
       final data = event['data'];
+
       final ts = DateTime.now().toString().substring(11, 19);
-      if (type == 'raw') {
-        // نشون دادن raw JSON برای debug زیرنویس
-        if (!_geminiDubMode) setState((){_aiLog.add('[RAW] ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');});
-      }
       if (type == 'transcript') {
         final t = ((data as Map?)?['text'] as String?) ?? '';
         if (t.isNotEmpty) {
@@ -963,11 +960,7 @@ class _PlayerState extends State<PlayerScreen>{
             final tsStr = DateTime.now().toString().substring(11, 19);
             _aiLog.add('[$tsStr] [Android] $type: $data');
             if (_aiLog.length > 50) _aiLog.removeAt(0);
-            if (type == 'raw') {
-        // نشون دادن raw JSON برای debug زیرنویس
-        if (!_geminiDubMode) setState((){_aiLog.add('[RAW] ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');});
-      }
-      if (type == 'transcript') {
+            if (type == 'transcript') {
               final t = (data as Map)['text'] as String;
               final fin = (data as Map)['final'] as bool;
               if (t.isNotEmpty) {
@@ -1025,11 +1018,7 @@ class _PlayerState extends State<PlayerScreen>{
           final data = event['data'];
           final ts = DateTime.now();
           final tsStr = '${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}:${ts.second.toString().padLeft(2,'0')}';
-          if (type == 'raw') {
-        // نشون دادن raw JSON برای debug زیرنویس
-        if (!_geminiDubMode) setState((){_aiLog.add('[RAW] ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');});
-      }
-      if (type == 'transcript') {
+          if (type == 'transcript') {
             final t = (data as Map)['text'] as String? ?? '';
             final fin = (data as Map)['final'] as bool? ?? false;
             if (t.isEmpty) {}
@@ -1959,13 +1948,6 @@ class _PlayerState extends State<PlayerScreen>{
               ))))),
 
         // ── Deepgram AI Subtitle — sub1 (اصلی) ──
-        // DEBUG: همیشه نشون بده
-        if (_dgText.isNotEmpty) Positioned(
-          bottom: 100, left: 16, right: 16,
-          child: Container(
-            color: Colors.red.withOpacity(0.8),
-            padding: const EdgeInsets.all(8),
-            child: Text(_dgText, style: const TextStyle(color: Colors.white, fontSize: 18), textAlign: TextAlign.center))),
         if(_dgActive&&_dgText.isNotEmpty&&!_dgText.startsWith('⏳'))Positioned(
           bottom:_vs.bottomPadding+navBottom+80,left:16,right:16,
           child:IgnorePointer(child:Container(
