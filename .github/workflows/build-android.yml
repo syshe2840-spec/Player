@@ -225,7 +225,7 @@ jobs:
           fi
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --target-platform android-arm64
 
       - name: Sign APK
         env:
