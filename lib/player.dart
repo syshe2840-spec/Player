@@ -679,7 +679,10 @@ class _PlayerState extends State<PlayerScreen>{
           _aiLog.add('[Gemini] 💬 $t');
           // Gemini subtitle — مستقیم نمایش بده
           if (!_geminiDubMode) {
-            if (_mounted) setState(() => _dgText = t);
+            if (_mounted) setState(() {
+              _dgText = t;
+              _aiLog.add('[SUB DISPLAY] dgActive=$_dgActive dgText=${t.substring(0,t.length.clamp(0,20))}');
+            });
             Future.delayed(const Duration(seconds: 4), () {
               if (_mounted && _dgText == t) setState(() => _dgText = '');
             });
