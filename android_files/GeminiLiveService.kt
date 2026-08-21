@@ -68,6 +68,7 @@ class GeminiLiveService(private val apiKey: String) {
     fun start(cfg: GeminiConfig, proj: MediaProjection?) {
         if (running.get()) { stop() }  // بدون sleep — async stop
         running.set(true)
+        isPlayingDub = false  // ریست — جلوگیری از block صدا
         projection = proj
         config = cfg
         if (cfg.dubMode) initAudioTrack()
@@ -322,17 +323,17 @@ class GeminiLiveService(private val apiKey: String) {
             // stdin_reader مثل e2dub
             while (running.get()) {
                 val read = recorder.read(pcm, 0, chunkSamples)
-                if (read > 0) {
+                if (read > 0 && connected.get()) {
+                    if (isPlayingDub) continue
                     for (i in 0 until read) {
                         bytes[i*2] = (pcm[i].toInt() and 0xFF).toByte()
                         bytes[i*2+1] = ((pcm[i].toInt() shr 8) and 0xFF).toByte()
                     }
-                    val chunk = bytes.copyOf(read*2)
-                    // مثل e2dub — اگه queue پر بود، قدیمی رو drop کن
-                    if (!inputQueue.offer(chunk)) {
-                        inputQueue.poll()
-                        inputQueue.offer(chunk)
-                    }
+                    val b64 = Base64.encodeToString(bytes.copyOf(read*2), Base64.NO_WRAP)
+                    try {
+                        wsSend(JSONObject().put("realtimeInput", JSONObject()
+                            .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
+                    } catch (_: Exception) {}
                 }
             }
             try { recorder.stop(); recorder.release() } catch (_: Exception) {}
