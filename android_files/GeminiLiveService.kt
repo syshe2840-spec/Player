@@ -318,7 +318,7 @@ class GeminiLiveService(private val apiKey: String) {
             }
             if (recorder.state != android.media.AudioRecord.STATE_INITIALIZED) {
                 send("status", "❌ AudioRecord FAILED state=${recorder.state}")
-                recorder.release(); return
+                recorder.release(); return@Thread
             }
             send("status", "✅ AudioRecord OK — startRecording")
             recorder.startRecording()
