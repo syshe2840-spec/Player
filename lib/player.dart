@@ -1959,6 +1959,13 @@ class _PlayerState extends State<PlayerScreen>{
               ))))),
 
         // ── Deepgram AI Subtitle — sub1 (اصلی) ──
+        // DEBUG: همیشه نشون بده
+        if (_dgText.isNotEmpty) Positioned(
+          bottom: 100, left: 16, right: 16,
+          child: Container(
+            color: Colors.red.withOpacity(0.8),
+            padding: const EdgeInsets.all(8),
+            child: Text(_dgText, style: const TextStyle(color: Colors.white, fontSize: 18), textAlign: TextAlign.center))),
         if(_dgActive&&_dgText.isNotEmpty&&!_dgText.startsWith('⏳'))Positioned(
           bottom:_vs.bottomPadding+navBottom+80,left:16,right:16,
           child:IgnorePointer(child:Container(
