@@ -316,26 +316,40 @@ class GeminiLiveService(private val apiKey: String) {
                 AudioRecord(android.media.MediaRecorder.AudioSource.MIC, INPUT_SAMPLE_RATE,
                     AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufSize)
             }
+            if (recorder.state != android.media.AudioRecord.STATE_INITIALIZED) {
+                send("status", "❌ AudioRecord FAILED state=${recorder.state}")
+                recorder.release(); return
+            }
+            send("status", "✅ AudioRecord OK — startRecording")
             recorder.startRecording()
+            send("status", "▶ Recording started, sending audio to Gemini...")
             val pcm = ShortArray(chunkSamples)
             val bytes = ByteArray(chunkBytes)
+            var chunksSent = 0
 
-            // stdin_reader مثل e2dub
             while (running.get()) {
                 val read = recorder.read(pcm, 0, chunkSamples)
-                if (read > 0 && connected.get()) {
-                    if (isPlayingDub) continue
-                    for (i in 0 until read) {
-                        bytes[i*2] = (pcm[i].toInt() and 0xFF).toByte()
-                        bytes[i*2+1] = ((pcm[i].toInt() shr 8) and 0xFF).toByte()
+                if (read < 0) { send("status", "❌ recorder.read=$read"); break }
+                if (!connected.get()) { continue }
+                if (isPlayingDub) { continue }
+                for (i in 0 until read) {
+                    bytes[i*2] = (pcm[i].toInt() and 0xFF).toByte()
+                    bytes[i*2+1] = ((pcm[i].toInt() shr 8) and 0xFF).toByte()
+                }
+                val b64 = Base64.encodeToString(bytes.copyOf(read*2), Base64.NO_WRAP)
+                try {
+                    wsSend(JSONObject().put("realtimeInput", JSONObject()
+                        .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
+                    chunksSent++
+                    if (chunksSent == 1 || chunksSent % 20 == 0) {
+                        send("status", "📤 chunks sent: $chunksSent read=$read connected=${connected.get()}")
                     }
-                    val b64 = Base64.encodeToString(bytes.copyOf(read*2), Base64.NO_WRAP)
-                    try {
-                        wsSend(JSONObject().put("realtimeInput", JSONObject()
-                            .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
-                    } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    send("status", "❌ wsSend error: ${e.message?.take(50)}")
+                    break
                 }
             }
+            send("status", "⏹ audioThread ended. totalChunks=$chunksSent")
             try { recorder.stop(); recorder.release() } catch (_: Exception) {}
         }
         audioThread?.isDaemon = true
