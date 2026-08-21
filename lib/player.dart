@@ -675,21 +675,17 @@ class _PlayerState extends State<PlayerScreen>{
       }
       if (type == 'transcript') {
         final t = ((data as Map?)?['text'] as String?) ?? '';
-        final fin = (data as Map?)?['final'] as bool? ?? true;
         if (t.isNotEmpty) {
-          setState(() {
-            _dgText = t;
-            _aiLog.add('[Gemini] 💬 $t');
-          });
-          // Gemini subtitle — مستقیم نمایش بده (نیازی به handleVoskFinal نیست)
-          if (!_geminiDubMode && fin) {
-            _sub2Visible = true;
-            if (_mounted) setState(() { _dgText = t; });
-            // پاک کردن بعد از ۴ ثانیه
+          _aiLog.add('[Gemini] 💬 $t');
+          // Gemini subtitle — مستقیم نمایش بده
+          if (!_geminiDubMode) {
+            if (_mounted) setState(() => _dgText = t);
             Future.delayed(const Duration(seconds: 4), () {
               if (_mounted && _dgText == t) setState(() => _dgText = '');
             });
-          } else if (fin) {
+          } else {
+            // دوبله — از منطق موجود استفاده کن
+            if (_mounted) setState(() => _dgText = t);
             _handleVoskFinal(t);
           }
         }
