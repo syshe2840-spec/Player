@@ -167,11 +167,12 @@ class GeminiLiveService(private val apiKey: String) {
                                             .put("voiceName", config.voice))))
                             }
                         } else {
-                            // SUBTITLE mode: TEXT output با همون translationConfig
-                            // outputAudioTranscription وجود نداره — همین کافیه
+                            // SUBTITLE mode: text output + transcription
                             put("translationConfig", JSONObject()
                                 .put("targetLanguageCode", config.targetLang)
                                 .put("echoTargetLanguage", false))
+                            // این field باعث میشه Gemini text transcript بفرسته
+                            put("outputAudioTranscription", JSONObject())
                         }
                     })
                 .put("realtimeInputConfig", JSONObject()
@@ -218,10 +219,9 @@ class GeminiLiveService(private val apiKey: String) {
 
     private fun handleMessage(text: String) {
         // debug: همه messages خام در subtitle mode
-        if (!config.dubMode) {
-            android.util.Log.d(TAG, "SUB_RAW: ${text.take(300)}")
-            send("raw", text.take(500))
-        }
+        // لاگ همه events در subtitle mode
+        android.util.Log.d(TAG, "MSG[${ if(config.dubMode) "DUB" else "SUB"}]: ${text.take(200)}")
+        if (!config.dubMode) send("status", "📩 ${text.take(150)}")
         try {
             val json = JSONObject(text)
             val err = json.optJSONObject("error")
