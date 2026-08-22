@@ -639,6 +639,7 @@ class _PlayerState extends State<PlayerScreen>{
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
       'voice': _geminiVoice,
       'model': _selectedGeminiModel,
+      'showSub': geminiShowSub,
       // Accuracy preset — overrides manual settings
       ...() {
         final acc = prefs.getString('gemini_accuracy') ?? 'balanced';
@@ -839,6 +840,7 @@ class _PlayerState extends State<PlayerScreen>{
       _voskUseOfflineTranslate = result['useOffline'] as bool? ?? true;
       _geminiEnabled = result['geminiEnabled'] as bool? ?? false;
       _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
+      final geminiShowSub = result['geminiShowSub'] as bool? ?? false;
       final selectedModel = result['geminiModel'] as String? ?? 'gemini-3.5-live-translate-preview';
       _selectedGeminiModel = selectedModel;
       _voskEnabled = result['voskEnabled'] as bool? ?? false;
@@ -849,6 +851,7 @@ class _PlayerState extends State<PlayerScreen>{
       _useVosk = _voskEnabled;
       _useAndroidStt = _androidEnabled;
       _geminiDubMode = !(result['geminiSubMode'] as bool? ?? false);
+      final geminiShowSub = result['geminiShowSub'] as bool? ?? false;
       final newLang = result['lang'] as String? ?? _voskTranslateTo;
       // اگه Gemini فعاله و lang/voice تغییر نکرده → فقط تنظیمات رو update کن بدون restart
       if (_useGeminiLive && _dgActive && newLang == _voskTranslateTo && newVoice == _geminiVoice) {
@@ -2921,6 +2924,7 @@ class _VoskSettingsDialog extends StatefulWidget {
 class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _lang = 'fa';
   bool _geminiSubMode = false;
+  bool _geminiShowSub = false; // نمایش زیرنویس همزمان با دوبله
   String _geminiModel = 'gemini-3.5-live-translate-preview'; // subtitle هم از این استفاده میکنه
   late bool _translate = widget.initTranslate;
   late String _translateTo = widget.initTranslateTo;
@@ -3186,6 +3190,15 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
             const Divider(color: Colors.white12, height: 1),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // Voice — فقط برای دوبله
+              // نمایش زیرنویس همزمان با دوبله
+              if (!_geminiSubMode) Row(children: [
+                const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Show Subtitle', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  Text('Display translated text while dubbing', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                ])),
+                Switch(value: _geminiShowSub, onChanged: (v) => setState(() => _geminiShowSub = v), activeColor: const Color(0xFF10B981)),
+              ]),
+              const SizedBox(height: 6),
               if (!_geminiSubMode) Row(children: [
                 const Text('Voice', style: TextStyle(color: Colors.white60, fontSize: 11)),
                 const SizedBox(width: 8),
@@ -3538,6 +3551,7 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
           'geminiEnabled': _geminiEnabled,
           'geminiModel': _geminiModel,
           'geminiSubMode': _geminiSubMode,
+          'geminiShowSub': _geminiShowSub,
           'voskEnabled': _voskEnabled,
           'androidEnabled': _androidEnabled,
           'geminiVoice': _geminiVoice,
