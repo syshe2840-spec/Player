@@ -219,8 +219,7 @@ class GeminiLiveService(private val apiKey: String) {
     private fun handleMessage(text: String) {
         // debug: همه messages خام در subtitle mode
         // لاگ همه events در subtitle mode
-        android.util.Log.d(TAG, "MSG[${ if(config.dubMode) "DUB" else "SUB"}]: ${text.take(200)}")
-        if (!config.dubMode) send("status", "📩 ${text.take(150)}")
+
         try {
             val json = JSONObject(text)
             val err = json.optJSONObject("error")
@@ -293,8 +292,7 @@ class GeminiLiveService(private val apiKey: String) {
             return
         }
 
-        send("status", "audio_source: DirectRecorder proj=${projection != null}")
-        val chunkBytes = INPUT_SAMPLE_RATE * config.chunkMs / 1000 * 2
+val chunkBytes = INPUT_SAMPLE_RATE * config.chunkMs / 1000 * 2
         val chunkSamples = chunkBytes / 2
         val bufSize = AudioRecord.getMinBufferSize(INPUT_SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(chunkBytes * 4)
@@ -321,7 +319,6 @@ class GeminiLiveService(private val apiKey: String) {
             }
             send("status", "✅ AudioRecord OK — startRecording")
             recorder.startRecording()
-            send("status", "▶ Recording started, sending audio to Gemini...")
             val pcm = ShortArray(chunkSamples)
             val bytes = ByteArray(chunkBytes)
             var chunksSent = 0
@@ -340,15 +337,12 @@ class GeminiLiveService(private val apiKey: String) {
                     wsSend(JSONObject().put("realtimeInput", JSONObject()
                         .put("audio", JSONObject().put("mimeType","audio/pcm;rate=$INPUT_SAMPLE_RATE").put("data",b64))).toString())
                     chunksSent++
-                    if (chunksSent == 1 || chunksSent % 20 == 0) {
-                        send("status", "📤 chunks sent: $chunksSent read=$read connected=${connected.get()}")
-                    }
                 } catch (e: Exception) {
                     send("status", "❌ wsSend error: ${e.message?.take(50)}")
                     break
                 }
             }
-            send("status", "⏹ audioThread ended. totalChunks=$chunksSent")
+
             try { recorder.stop(); recorder.release() } catch (_: Exception) {}
         }
         audioThread?.isDaemon = true
