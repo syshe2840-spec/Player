@@ -25,6 +25,7 @@ data class GeminiConfig(
     val endSensitivity: String = "END_SENSITIVITY_HIGH",
     val chunkMs: Int = 100,
     val dubMode: Boolean = false,
+    val showSub: Boolean = false, // نمایش زیرنویس در کنار دوبله
     val voice: String = "Charon"
 )
 
@@ -223,8 +224,8 @@ class GeminiLiveService(private val apiKey: String) {
             if (err != null) { send("error", "[${err.optInt("code")}] ${err.optString("message")}"); return }
             val sc = json.optJSONObject("serverContent") ?: return
 
-            // outputTranscription — فقط در subtitle mode
-            if (!config.dubMode) {
+            // outputTranscription — subtitle mode یا DUB+ShowSub
+            if (!config.dubMode || config.showSub) {
                 val outputT = sc.optJSONObject("outputTranscription")
                 if (outputT != null) {
                     val t = outputT.optString("text","")
