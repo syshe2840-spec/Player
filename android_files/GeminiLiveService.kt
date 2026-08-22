@@ -217,14 +217,25 @@ class GeminiLiveService(private val apiKey: String) {
     }
 
     private fun handleMessage(text: String) {
-        // debug: همه messages خام در subtitle mode
-        // لاگ همه events در subtitle mode
-
         try {
             val json = JSONObject(text)
             val err = json.optJSONObject("error")
             if (err != null) { send("error", "[${err.optInt("code")}] ${err.optString("message")}"); return }
             val sc = json.optJSONObject("serverContent") ?: return
+
+            // outputTranscription — باید قبل از modelTurn چک بشه
+            val outputT = sc.optJSONObject("outputTranscription")
+            if (outputT != null) {
+                val t = outputT.optString("text","")
+                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
+            }
+            // inputTranscription
+            val inputT = sc.optJSONObject("inputTranscription")
+            if (inputT != null && !config.dubMode) {
+                val t = inputT.optString("text","")
+                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to false))
+            }
+
             val mt = sc.optJSONObject("modelTurn") ?: return
             val parts = mt.optJSONArray("parts") ?: return
             for (i in 0 until parts.length()) {
@@ -244,18 +255,6 @@ class GeminiLiveService(private val apiKey: String) {
                     val t = part.optString("text","")
                     if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
                 }
-            }
-            // outputTranscription (subtitle mode)
-            val outputT = sc.optJSONObject("outputTranscription")
-            if (outputT != null) {
-                val t = outputT.optString("text","")
-                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
-            }
-            // inputTranscription
-            val inputT = sc.optJSONObject("inputTranscription")
-            if (inputT != null && !config.dubMode) {
-                val t = inputT.optString("text","")
-                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to false))
             }
             // modelTurn.parts[].text — برای subtitle mode
             if (!config.dubMode) {
