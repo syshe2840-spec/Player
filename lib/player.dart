@@ -2924,7 +2924,6 @@ class _VoskSettingsDialog extends StatefulWidget {
 class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   String _lang = 'fa';
   bool _geminiSubMode = false;
-  bool _geminiShowSub = false; // نمایش زیرنویس همزمان با دوبله
   String _geminiModel = 'gemini-3.5-live-translate-preview'; // subtitle هم از این استفاده میکنه
   late bool _translate = widget.initTranslate;
   late String _translateTo = widget.initTranslateTo;
@@ -2939,7 +2938,6 @@ class _VoskSettingsDialogState extends State<_VoskSettingsDialog> {
   bool _mlkitReady = false;
   bool _geminiDubMode = true;
   bool _geminiEnabled = false;
-  bool _geminiShowSub = false;
   String _selectedGeminiModel = 'gemini-3.5-live-translate-preview';
   List<dynamic> _downloadedVoskModels = [];
   String _voskLang = 'fa'; // زبان Vosk جدا
