@@ -672,11 +672,11 @@ class _PlayerState extends State<PlayerScreen>{
       final ts = DateTime.now().toString().substring(11, 19);
       if (type == 'transcript') {
         final t = ((data as Map?)?['text'] as String?) ?? '';
+        if (_mounted) setState((){_aiLog.add('[TRANSCRIPT] t="${t.substring(0,t.length.clamp(0,50))}" empty=${t.isEmpty} dgActive=$_dgActive mounted=$_mounted');});
         if (t.isNotEmpty) {
-          // نمایش مستقیم زیرنویس روی صفحه
           if (_mounted) setState(() {
             _dgText = t;
-            _aiLog.add('[Gemini] 💬 $t');
+            _aiLog.add('[💬SET] dgText=\"${t.substring(0,t.length.clamp(0,30))}\"');
           });
           // پاک کردن بعد از ۴ ثانیه
           Future.delayed(const Duration(seconds: 4), () {
