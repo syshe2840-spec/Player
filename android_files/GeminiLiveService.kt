@@ -223,17 +223,18 @@ class GeminiLiveService(private val apiKey: String) {
             if (err != null) { send("error", "[${err.optInt("code")}] ${err.optString("message")}"); return }
             val sc = json.optJSONObject("serverContent") ?: return
 
-            // outputTranscription — باید قبل از modelTurn چک بشه
-            val outputT = sc.optJSONObject("outputTranscription")
-            if (outputT != null) {
-                val t = outputT.optString("text","")
-                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
-            }
-            // inputTranscription
-            val inputT = sc.optJSONObject("inputTranscription")
-            if (inputT != null && !config.dubMode) {
-                val t = inputT.optString("text","")
-                if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to false))
+            // outputTranscription — فقط در subtitle mode
+            if (!config.dubMode) {
+                val outputT = sc.optJSONObject("outputTranscription")
+                if (outputT != null) {
+                    val t = outputT.optString("text","")
+                    if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
+                }
+                val inputT = sc.optJSONObject("inputTranscription")
+                if (inputT != null) {
+                    val t = inputT.optString("text","")
+                    if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to false))
+                }
             }
 
             val mt = sc.optJSONObject("modelTurn") ?: return
