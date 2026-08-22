@@ -150,7 +150,7 @@ class GeminiLiveService(private val apiKey: String) {
             var line = readLine(inputStream!!); while (line.isNotEmpty()) { line = readLine(inputStream!!) }
 
             // Setup
-            val modalities = if (config.dubMode) JSONArray().put("AUDIO") else JSONArray().put("TEXT")
+            val modalities = JSONArray().put("AUDIO")  // هر دو حالت AUDIO — subtitle فقط text رو میگیره
             val setup = JSONObject()
                 .put("model", "models/${config.model}")
                 .put("generationConfig", JSONObject().apply {
@@ -167,12 +167,11 @@ class GeminiLiveService(private val apiKey: String) {
                                             .put("voiceName", config.voice))))
                             }
                         } else {
-                            // SUBTITLE mode: text output + transcription
+                            // SUBTITLE mode: مثل DUB ولی بدون پخش صدا
+                            // AUDIO output داریم ولی نمایش نمیدیم — فقط text transcript میگیریم
                             put("translationConfig", JSONObject()
                                 .put("targetLanguageCode", config.targetLang)
                                 .put("echoTargetLanguage", false))
-                            // این field باعث میشه Gemini text transcript بفرسته
-                            put("outputAudioTranscription", JSONObject())
                         }
                     })
                 .put("realtimeInputConfig", JSONObject()
@@ -231,7 +230,7 @@ class GeminiLiveService(private val apiKey: String) {
             val parts = mt.optJSONArray("parts") ?: return
             for (i in 0 until parts.length()) {
                 val part = parts.getJSONObject(i)
-                if (config.dubMode) {
+                if (config.dubMode) {  // فقط DUB پخش کنه — subtitle فقط transcript
                     val inline = part.optJSONObject("inlineData")
                     if (inline != null) {
                         val pcm = Base64.decode(inline.optString("data",""), Base64.DEFAULT)
