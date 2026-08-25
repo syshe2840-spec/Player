@@ -321,8 +321,9 @@ class _PlayerState extends State<PlayerScreen>{
     // ── MPV error stream ──
     _subs.add(player.stream.error.listen((err){
       if(err.isNotEmpty){
-        _addLiveLog('⚠ Error: $err');
+        _addLiveLog('⚠ MPV Error: $err');
         if(_mounted && _buffering) setState(()=>_buffering=false);
+        try { player.stop(); } catch(_) {}
       }
     }));
     // ── MPV native log stream ──
@@ -437,11 +438,10 @@ class _PlayerState extends State<PlayerScreen>{
     } catch (e) {
       debugPrint('[Player] open error: $e');
       if (_mounted) setState(() { _buffering = false; });
-      // recreate player تا از stuck state خارج بشیم
+      // player رو stop + کمی صبر تا MPV state ریست بشه
       try { 
-        await player.dispose();
-        player = media_kit.Player();
-        _initPlayerListeners();
+        await player.stop();
+        await Future.delayed(const Duration(milliseconds: 300));
       } catch (_) {}
       return;
     }
@@ -509,11 +509,10 @@ class _PlayerState extends State<PlayerScreen>{
     } catch (e) {
       debugPrint('[Player] open error: $e');
       if (_mounted) setState(() { _buffering = false; });
-      // recreate player تا از stuck state خارج بشیم
+      // player رو stop + کمی صبر تا MPV state ریست بشه
       try { 
-        await player.dispose();
-        player = media_kit.Player();
-        _initPlayerListeners();
+        await player.stop();
+        await Future.delayed(const Duration(milliseconds: 300));
       } catch (_) {}
       return;
     }
