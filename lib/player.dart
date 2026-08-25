@@ -431,19 +431,24 @@ class _PlayerState extends State<PlayerScreen>{
         })
       : Media(_curPath);
 
-    // ریست state قبل از open — جلوگیری از گیر کردن
     if (_mounted) setState(() { _buffering = false; });
     try {
       await player.open(media);
     } catch (e) {
       debugPrint('[Player] open error: $e');
       if (_mounted) setState(() { _buffering = false; });
-      // player رو stop + کمی صبر تا MPV state ریست بشه
-      try { 
-        await player.stop();
-        await Future.delayed(const Duration(milliseconds: 300));
-      } catch (_) {}
+      try { await player.stop(); await Future.delayed(const Duration(milliseconds: 300)); } catch (_) {}
       return;
+    }
+    // timeout — اگه ۱۲ ثانیه هیچ اتفاقی نیفتاد stop کن
+    if (widget.isLive || widget.isOnlineUrl || _curPath.startsWith('http')) {
+      final startIdx = _idx;
+      await Future.delayed(const Duration(seconds: 12));
+      if (_mounted && _idx == startIdx && _buffering && !player.state.playing) {
+        _addLiveLog('⏱ Stream timeout — stopping');
+        if (_mounted) setState(() => _buffering = false);
+        try { await player.stop(); } catch(_) {}
+      }
     }
     if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
     await Store.addToHistory(_curPath);
@@ -502,19 +507,24 @@ class _PlayerState extends State<PlayerScreen>{
         })
       : Media(_curPath);
 
-    // ریست state قبل از open — جلوگیری از گیر کردن
     if (_mounted) setState(() { _buffering = false; });
     try {
       await player.open(media);
     } catch (e) {
       debugPrint('[Player] open error: $e');
       if (_mounted) setState(() { _buffering = false; });
-      // player رو stop + کمی صبر تا MPV state ریست بشه
-      try { 
-        await player.stop();
-        await Future.delayed(const Duration(milliseconds: 300));
-      } catch (_) {}
+      try { await player.stop(); await Future.delayed(const Duration(milliseconds: 300)); } catch (_) {}
       return;
+    }
+    // timeout — اگه ۱۲ ثانیه هیچ اتفاقی نیفتاد stop کن
+    if (widget.isLive || widget.isOnlineUrl || _curPath.startsWith('http')) {
+      final startIdx = _idx;
+      await Future.delayed(const Duration(seconds: 12));
+      if (_mounted && _idx == startIdx && _buffering && !player.state.playing) {
+        _addLiveLog('⏱ Stream timeout — stopping');
+        if (_mounted) setState(() => _buffering = false);
+        try { await player.stop(); } catch(_) {}
+      }
     }
     if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
     await Store.addToHistory(_curPath);
