@@ -437,6 +437,12 @@ class _PlayerState extends State<PlayerScreen>{
     } catch (e) {
       debugPrint('[Player] open error: $e');
       if (_mounted) setState(() { _buffering = false; });
+      // recreate player تا از stuck state خارج بشیم
+      try { 
+        await player.dispose();
+        player = media_kit.Player();
+        _initPlayerListeners();
+      } catch (_) {}
       return;
     }
     if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
@@ -503,6 +509,12 @@ class _PlayerState extends State<PlayerScreen>{
     } catch (e) {
       debugPrint('[Player] open error: $e');
       if (_mounted) setState(() { _buffering = false; });
+      // recreate player تا از stuck state خارج بشیم
+      try { 
+        await player.dispose();
+        player = media_kit.Player();
+        _initPlayerListeners();
+      } catch (_) {}
       return;
     }
     if(widget.isLive)_addLiveLog('Stream opened — waiting for data...');
