@@ -246,31 +246,14 @@ class GeminiLiveService(private val apiKey: String) {
                     val inline = part.optJSONObject("inlineData")
                     if (inline != null) {
                         val pcm = Base64.decode(inline.optString("data",""), Base64.DEFAULT)
-                        val hash = pcm.take(32).hashCode()
-                        if (hash != lastAudioHash) {
-                            lastAudioHash = hash
-                            audioBuffer.append(pcm)
-                            // audio status رو به queue نفرست — queue رو flood میکنه
-                        }
+                        if (pcm.isNotEmpty()) audioBuffer.append(pcm)
                     }
                 } else {
                     val t = part.optString("text","")
                     if (t.isNotEmpty()) send("transcript", mapOf("text" to t, "final" to true))
                 }
             }
-            // modelTurn.parts[].text — برای subtitle mode
-            if (!config.dubMode) {
-                val mt2 = sc.optJSONObject("modelTurn")
-                val parts2 = mt2?.optJSONArray("parts")
-                if (parts2 != null) {
-                    for (i in 0 until parts2.length()) {
-                        val textPart = parts2.getJSONObject(i).optString("text","")
-                        if (textPart.isNotEmpty()) {
-                            send("transcript", mapOf("text" to textPart, "final" to true))
-                        }
-                    }
-                }
-            }
+
         } catch (e: Exception) { Log.e(TAG, "Parse: ${e.message}") }
     }
 
