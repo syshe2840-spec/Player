@@ -222,6 +222,11 @@ class GeminiLiveService(private val apiKey: String) {
     }
 
     private fun handleMessage(text: String) {
+        // لاگ raw در DUB+showSub
+        if (config.dubMode && config.showSub) {
+            android.util.Log.d(TAG, "DUB_SUB_RAW: ${text.take(200)}")
+            if (!text.contains("inlineData")) send("status", "📩 ${text.take(120)}")
+        }
         try {
             val json = JSONObject(text)
             val err = json.optJSONObject("error")
