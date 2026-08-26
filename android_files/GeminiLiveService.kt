@@ -222,10 +222,9 @@ class GeminiLiveService(private val apiKey: String) {
     }
 
     private fun handleMessage(text: String) {
-        // لاگ raw در DUB+showSub - همه messages
-        if (config.dubMode && config.showSub) {
-            val preview = text.replace(Regex("\"data\":\"[^\"]{20,}\""), "\"data\":\"...\"")
-            send("status", "📩 ${preview.take(150)}")
+        // فقط logcat — نه queue
+        if (config.dubMode && config.showSub && !text.contains("inlineData")) {
+            android.util.Log.d(TAG, "DUB_SUB: ${text.take(150)}")
         }
         try {
             val json = JSONObject(text)
@@ -429,17 +428,21 @@ val chunkBytes = INPUT_SAMPLE_RATE * config.chunkMs / 1000 * 2
 
     fun getNextEvent(): Map<String,Any>? = eventQueue.poll()
     private fun send(type: String, data: Any) {
-        // raw events فقط برای debug — از اول حذف کن اگه queue پره
-        if (type == "raw") {
-            if (eventQueue.size < 20) eventQueue.offer(mapOf("type" to type, "data" to data))
-        } else {
-            // transcript و status همیشه اضافه میشن
-            eventQueue.offer(mapOf("type" to type, "data" to data))
-            if (eventQueue.size > 500) {
-                // فقط raw events رو حذف کن
-                val iter = eventQueue.iterator()
-                while (iter.hasNext() && eventQueue.size > 400) {
-                    if (iter.next()["type"] == "raw") iter.remove()
+        val isDebug = type == "status" && data.toString().startsWith("📩")
+        when {
+            type == "raw" -> if (eventQueue.size < 20) eventQueue.offer(mapOf("type" to type, "data" to data))
+            isDebug -> if (eventQueue.size < 25) eventQueue.offer(mapOf("type" to type, "data" to data))
+            else -> {
+                // transcript و status مهم همیشه اضافه میشن
+                eventQueue.offer(mapOf("type" to type, "data" to data))
+                // حذف debug events اگه queue پر شد
+                if (eventQueue.size > 200) {
+                    val iter = eventQueue.iterator()
+                    while (iter.hasNext() && eventQueue.size > 150) {
+                        val e = iter.next()
+                        val t = e["type"]; val d = e["data"]?.toString() ?: ""
+                        if (t == "raw" || (t == "status" && d.startsWith("📩"))) iter.remove()
+                    }
                 }
             }
         }
