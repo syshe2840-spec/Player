@@ -639,7 +639,7 @@ class _PlayerState extends State<PlayerScreen>{
     } catch (e) { if (_mounted) setState((){_aiLog.add('[VPN] error: $e');}); }
     setState(() {
       _dgActive = true; _dgText = ''; _dgText2 = '';
-      _aiLog.add('[Gemini] 🚀 Starting — mode=$mode lang=$_voskTranslateTo showSub=$_geminiShowSub');
+      _aiLog.add('[Gemini] 🚀 mode=$mode dubMode=$_geminiDubMode showSub=$_geminiShowSub lang=$_voskTranslateTo');
       _aiLog.add('[Gemini] key=${key.substring(0, key.length.clamp(0, 8))}...');
     });
     try {
@@ -661,7 +661,7 @@ class _PlayerState extends State<PlayerScreen>{
         'apiKey': key, 'lang': _voskTranslateTo, 'dubMode': _geminiDubMode,
       'voice': _geminiVoice,
       'model': _selectedGeminiModel,
-      'showSub': _geminiShowSub,
+      'showSub': _geminiShowSub,  // showSub پاس میشه
       // Accuracy preset — overrides manual settings
       ...() {
         final acc = prefs.getString('gemini_accuracy') ?? 'balanced';
