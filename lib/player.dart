@@ -639,7 +639,7 @@ class _PlayerState extends State<PlayerScreen>{
     } catch (e) { if (_mounted) setState((){_aiLog.add('[VPN] error: $e');}); }
     setState(() {
       _dgActive = true; _dgText = ''; _dgText2 = '';
-      _aiLog.add('[Gemini] 🚀 Starting — mode=$mode lang=$_voskTranslateTo');
+      _aiLog.add('[Gemini] 🚀 Starting — mode=$mode lang=$_voskTranslateTo showSub=$_geminiShowSub');
       _aiLog.add('[Gemini] key=${key.substring(0, key.length.clamp(0, 8))}...');
     });
     try {
