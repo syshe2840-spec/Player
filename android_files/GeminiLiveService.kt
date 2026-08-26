@@ -151,11 +151,7 @@ class GeminiLiveService(private val apiKey: String) {
             var line = readLine(inputStream!!); while (line.isNotEmpty()) { line = readLine(inputStream!!) }
 
             // Setup
-            // اگه DUB+ShowSub هست، هر دو AUDIO و TEXT بخواه
-            val modalities = if (config.dubMode && config.showSub)
-                JSONArray().put("AUDIO").put("TEXT")
-            else
-                JSONArray().put("AUDIO")
+            val modalities = JSONArray().put("AUDIO")  // هر دو حالت AUDIO
             val setup = JSONObject()
                 .put("model", "models/${config.model}")
                 .put("generationConfig", JSONObject().apply {
@@ -170,6 +166,10 @@ class GeminiLiveService(private val apiKey: String) {
                                     .put("voiceConfig", JSONObject()
                                         .put("prebuiltVoiceConfig", JSONObject()
                                             .put("voiceName", config.voice))))
+                            }
+                            // اگه showSub هم فعاله، text transcript هم بخواه
+                            if (config.showSub) {
+                                put("outputAudioTranscription", JSONObject())
                             }
                         } else {
                             // SUBTITLE mode: مثل DUB ولی بدون پخش صدا
