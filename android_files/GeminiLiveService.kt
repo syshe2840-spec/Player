@@ -250,7 +250,7 @@ class GeminiLiveService(private val apiKey: String) {
                         if (hash != lastAudioHash) {
                             lastAudioHash = hash
                             audioBuffer.append(pcm)
-                            send("status", "audio:${pcm.size}")
+                            // audio status رو به queue نفرست — queue رو flood میکنه
                         }
                     }
                 } else {
