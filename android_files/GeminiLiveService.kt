@@ -151,7 +151,11 @@ class GeminiLiveService(private val apiKey: String) {
             var line = readLine(inputStream!!); while (line.isNotEmpty()) { line = readLine(inputStream!!) }
 
             // Setup
-            val modalities = JSONArray().put("AUDIO")  // هر دو حالت AUDIO — subtitle فقط text رو میگیره
+            // اگه DUB+ShowSub هست، هر دو AUDIO و TEXT بخواه
+            val modalities = if (config.dubMode && config.showSub)
+                JSONArray().put("AUDIO").put("TEXT")
+            else
+                JSONArray().put("AUDIO")
             val setup = JSONObject()
                 .put("model", "models/${config.model}")
                 .put("generationConfig", JSONObject().apply {
